@@ -1,0 +1,28 @@
+═══════════════════════════════════════════════════════════════
+  إضافة مفاتيح API إلى ملف .env
+═══════════════════════════════════════════════════════════════
+
+⚠️ مهم: افتح ملف .env في جذر المشروع وأضف هذه المفاتيح:
+
+───────────────────────────────────────────────────────────────
+# Google Maps Platform - AQILLAH Keys
+AQILLAH_MAPS_WEB_KEY=AIzaSyDZgR_h8J5a4UsqmzRNFBlo28412mT25kQ
+AQILLAH_ROUTES_KEY=AIzaSyC9zyma4lZ9YSDPlbDh3ZbVsYJkCXLs5gI
+AQILLAH_PLACES_KEY=AIzaSyB4R5NLRQMsQO84Uu1gQWPgmgPR_P9NoXA
+
+# Public Keys (for client-side)
+NEXT_PUBLIC_AQILLAH_MAPS_WEB_KEY=AIzaSyDZgR_h8J5a4UsqmzRNFBlo28412mT25kQ
+
+# Legacy Keys (for backward compatibility)
+GOOGLE_MAPS_API_KEY=AIzaSyDZgR_h8J5a4UsqmzRNFBlo28412mT25kQ
+GOOGLE_ROUTES_API_KEY=AIzaSyC9zyma4lZ9YSDPlbDh3ZbVsYJkCXLs5gI
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyDZgR_h8J5a4UsqmzRNFBlo28412mT25kQ
+───────────────────────────────────────────────────────────────
+
+✅ بعد الإضافة:
+1. احفظ الملف
+2. أعد تشغيل: npm run dev
+3. اختبر: http://localhost:3000/api/test-google-maps?test=all
+
+═══════════════════════════════════════════════════════════════
+

@@ -1,0 +1,509 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// مقطع طريق
+model RoadSegment {
+  id          String   @id @default(cuid())
+  roadName    String   // اسم الطريق
+  city        String   // المدينة
+  direction   String   // الاتجاه (شمال، جنوب، شرق، غرب)
+  startLat    Float    // خط العرض للبداية
+  startLng    Float    // خط الطول للبداية
+  endLat      Float    // خط العرض للنهاية
+  endLng      Float    // خط الطول للنهاية
+  length      Float    // طول المقطع بالكيلومتر
+  freeFlowSpeed Float  @default(60) // السرعة الطبيعية (كم/س)
+  hasTrafficLight Boolean @default(false) // وجود إشارة مرورية
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // العلاقات
+  trafficData TrafficData[]
+  predictions Prediction[]
+  bottlenecks Bottleneck[]
+  decisions TrafficDecision[]
+  signalRecommendations SignalRecommendation[]
+  alerts Alert[]
+  
+  @@index([city, direction])
+  @@index([startLat, startLng])
+}
+
+// بيانات حركة المرور المجمعة (مجهولة) - بعد طبقة إخفاء الهوية
+model TrafficData {
+  id            String   @id @default(cuid())
+  segmentId     String
+  segment       RoadSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  
+  timestamp     DateTime @default(now())
+  deviceCount   Int      // عدد الأجهزة المجمعة (≥ 30)
+  avgSpeed      Float    // متوسط السرعة (كم/س)
+  density       Float    // الكثافة (جهاز/كم)
+  congestionIndex Int    // مؤشر الازدحام (0-100)
+  delayMinutes  Float    // زمن التأخير بالدقائق
+  movementDirection Float // اتجاه الحركة (درجة)
+  
+  // بيانات التحقق من الخصوصية
+  kAnonymity    Int      @default(30) // k-anonymity value
+  isAnonymized  Boolean  @default(true) // تأكيد إخفاء الهوية
+  
+  @@index([segmentId, timestamp])
+  @@index([timestamp])
+}
+
+// تنبؤات الازدحام - محرك التنبؤ الذكي
+model Prediction {
+  id            String   @id @default(cuid())
+  segmentId     String
+  segment       RoadSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  
+  predictedAt   DateTime @default(now()) // وقت التنبؤ
+  predictedFor  DateTime // وقت التنبؤ له (5, 10, 30, 60 دقيقة)
+  predictedIndex Int     // مؤشر الازدحام المتوقع (0-100)
+  predictedDelayMinutes Float // زمن التأخير المتوقع بالدقائق
+  confidence    Float    // مستوى الثقة (0-1)
+  
+  // عوامل التنبؤ
+  factors       Json     // العوامل المؤثرة (JSON)
+  modelType     String   // نوع النموذج (temporal, ml, seasonal)
+  seasonalityFactor Float // عامل الموسمية
+  
+  @@index([segmentId, predictedFor])
+  @@index([predictedAt])
+}
+
+// تنبيهات للمستخدمين
+model Alert {
+  id            String   @id @default(cuid())
+  segmentId     String
+  segment       RoadSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  
+  type          String   // نوع التنبيه (congestion, accident, event, weather)
+  severity      String   // مستوى الخطورة (low, medium, high, critical)
+  message       String   // رسالة التنبيه
+  alternativeRoute Json? // مسار بديل مقترح
+  
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  
+  isActive      Boolean  @default(true)
+  
+  @@index([segmentId, isActive])
+  @@index([expiresAt])
+}
+
+// إحصائيات الاستخدام (للوحة التحكم)
+model UsageStats {
+  id            String   @id @default(cuid())
+  date          DateTime @unique @default(now())
+  
+  totalUsers    Int      @default(0)
+  activeAlerts  Int      @default(0)
+  routesSuggested Int    @default(0)
+  avgResponseTime Float  @default(0) // متوسط وقت الاستجابة
+  
+  @@index([date])
+}
+
+// نقطة انطلاق الازدحام (Bottleneck Origin Detection)
+model Bottleneck {
+  id            String   @id @default(cuid())
+  segmentId     String
+  segment       RoadSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  
+  detectedAt    DateTime @default(now())
+  originLat     Float    // خط عرض نقطة الانطلاق
+  originLng     Float    // خط طول نقطة الانطلاق
+  severity      String   // مستوى الخطورة (low, medium, high, critical)
+  speedDrop     Float    // نسبة هبوط السرعة (%)
+  backwardExtent Float   // امتداد الاختناق الخلفي (كم)
+  
+  isResolved    Boolean  @default(false)
+  resolvedAt     DateTime?
+  
+  @@index([segmentId, detectedAt])
+  @@index([isResolved])
+}
+
+// قرارات مرورية (Traffic Decision Engine)
+model TrafficDecision {
+  id            String   @id @default(cuid())
+  segmentId     String
+  segment       RoadSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  
+  decisionType  String   // نوع القرار (diversion, signal_adjustment, intervention)
+  recommendedAt DateTime @default(now())
+  implementedAt DateTime?
+  
+  // تأثير القرار
+  expectedDelayReduction Float // تقليل التأخير المتوقع (دقيقة)
+  expectedBenefitScore   Float // درجة الفائدة (0-100)
+  affectedSegments       Json  // المقاطع المتأثرة
+  
+  // تفاصيل القرار
+  details        Json     // تفاصيل القرار (JSON)
+  status         String   @default("pending") // pending, approved, implemented, rejected
+  
+  @@index([segmentId, recommendedAt])
+  @@index([status])
+}
+
+// توصيات الإشارات الذكية (Adaptive Signal Interface)
+model SignalRecommendation {
+  id            String   @id @default(cuid())
+  segmentId     String
+  segment       RoadSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  
+  signalId      String?  // معرف الإشارة (إن وجد)
+  recommendedAt DateTime @default(now())
+  
+  // توصيات التوقيت
+  greenTimeSeconds Int   // وقت الإشارة الخضراء (ثانية)
+  cycleTimeSeconds  Int   // وقت الدورة الكاملة (ثانية)
+  priority         String // الأولوية (normal, high, emergency)
+  
+  // التأثير المتوقع
+  expectedImpact Json    // التأثير المتوقع (JSON)
+  
+  implemented    Boolean @default(false)
+  implementedAt   DateTime?
+  
+  @@index([segmentId, recommendedAt])
+  @@index([implemented])
+}
+
+// مسارات الطوارئ (Emergency Routing)
+model EmergencyRoute {
+  id            String   @id @default(cuid())
+  
+  originLat     Float
+  originLng     Float
+  destinationLat Float
+  destinationLng Float
+  
+  requestedAt   DateTime @default(now())
+  route         Json     // المسار (إحداثيات)
+  distance      Float    // المسافة (كم)
+  estimatedTime Float    // الوقت المتوقع (دقيقة)
+  
+  // تحديثات حية
+  lastUpdate    DateTime @default(now())
+  updateInterval Int     @default(30) // فترة التحديث (ثانية)
+  
+  isActive      Boolean  @default(true)
+  congestionAlongRoute Json? // الازدحام على طول المسار
+  
+  @@index([isActive, lastUpdate])
+}
+
+// سجلات الخصوصية والأمان (Privacy & Security Audit)
+model PrivacyAudit {
+  id            String   @id @default(cuid())
+  
+  timestamp     DateTime @default(now())
+  eventType     String   // نوع الحدث (data_received, anonymization_applied, access_granted)
+  source        String   // المصدر (telecom_provider, system, user)
+  
+  // تفاصيل الخصوصية
+  kAnonymity    Int      // قيمة k-anonymity
+  dataVolume    Int      // حجم البيانات
+  anonymizationStatus String // حالة إخفاء الهوية (success, failed, partial)
+  
+  // الأمان
+  encryptionStatus String // حالة التشفير
+  accessLevel      String // مستوى الوصول
+  
+  // السجلات
+  logHash       String   // hash السجل للتأكد من عدم التلاعب
+  
+  @@index([timestamp])
+  @@index([eventType])
+}
+
+// مؤشرات الأداء KPI
+model KPI {
+  id            String   @id @default(cuid())
+  
+  date          DateTime @default(now())
+  kpiType       String   // نوع KPI
+  
+  // مؤشرات الأداء
+  predictionAccuracy Float // دقة التنبؤ (%)
+  responseTime       Float // وقت الاستجابة (ثانية)
+  decisionEffectiveness Float // فعالية القرارات (%)
+  privacyCompliance   Float // الامتثال للخصوصية (%)
+  systemUptime        Float // وقت التشغيل (%)
+  
+  // تفاصيل
+  details       Json     // تفاصيل إضافية (JSON)
+  
+  @@index([date, kpiType])
+}
+
+// المستخدمون
+model User {
+  id            String   @id @default(cuid())
+  email         String?  @unique
+  phone         String?  @unique
+  name          String?
+  
+  // إعدادات المستخدم
+  settings      Json?    // إعدادات التنبيهات والتطبيق
+  preferences   Json?    // تفضيلات المسار (تجنب الرسوم، إلخ)
+  
+  // تتبع الموقع (موافقة صريحة)
+  locationTrackingEnabled Boolean @default(false)
+  lastKnownLocation Json? // آخر موقع معروف
+  
+  // إحصائيات
+  totalRoutes   Int      @default(0)
+  totalAlertsReceived Int @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastActiveAt  DateTime?
+  
+  // العلاقات
+  vehicles      Vehicle[]
+  routes        Route[]
+  notifications UserNotification[]
+  
+  @@index([email])
+  @@index([phone])
+  @@index([lastActiveAt])
+}
+
+// المركبات (اختياري)
+model Vehicle {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  vin           String?  @unique
+  make          String?  // الشركة المصنعة
+  model         String?  // الموديل
+  year          Int?     // السنة
+  type          String?  // نوع المركبة (car, truck, etc.)
+  
+  // الموقع الحالي
+  lastLocation  Json?    // آخر موقع (lat, lng)
+  lastSpeed     Float?   // آخر سرعة (km/h)
+  lastHeading   Float?   // آخر اتجاه (درجة)
+  lastSeen      DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([lastSeen])
+}
+
+// سجل المسارات
+model Route {
+  id            String   @id @default(cuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // النقاط
+  origin        Json     // نقطة البداية {lat, lng}
+  destination   Json     // نقطة النهاية {lat, lng}
+  waypoints     Json?    // نقاط وسيطة
+  
+  // المسار
+  routeGeometry Json     // هندسة المسار (polyline)
+  distance      Float    // المسافة (km)
+  duration      Float    // المدة (دقيقة)
+  durationInTraffic Float? // المدة مع المرور (دقيقة)
+  
+  // الطقس على المسار
+  weatherData   Json?    // بيانات الطقس لكل مقطع
+  
+  // المخاطر
+  riskScores    Json?    // درجات المخاطر لكل مقطع
+  maxRiskLevel  String?  // أعلى مستوى خطر
+  
+  // الحالة
+  status        String   @default("planned") // planned, active, completed, cancelled
+  startedAt     DateTime?
+  completedAt   DateTime?
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+// بيانات الطقس
+model WeatherData {
+  id            String   @id @default(cuid())
+  
+  // الموقع
+  lat           Float
+  lng           Float
+  
+  // الطقس الحالي
+  timestamp     DateTime @default(now())
+  temperature   Float    // درجة الحرارة (مئوية)
+  humidity      Float    // الرطوبة (%)
+  windSpeed     Float    // سرعة الرياح (km/h)
+  windDirection Float    // اتجاه الرياح (درجة)
+  visibility    Float    // الرؤية (متر)
+  pressure      Float    // الضغط الجوي (hPa)
+  
+  // الأمطار
+  precipitation Float    @default(0) // هطول الأمطار (mm)
+  rainRate      Float    @default(0) // معدل الأمطار (mm/h)
+  snowRate      Float    @default(0) // معدل الثلج (mm/h)
+  
+  // الظروف
+  condition     String   // الحالة (clear, rain, snow, fog, etc.)
+  cloudCover    Float    // الغطاء السحابي (%)
+  
+  // التنبيهات
+  alerts        Json?    // تنبيهات الطقس (JSON array)
+  
+  // التوقعات
+  forecast      Json?    // توقعات ساعية ويومية
+  
+  @@index([lat, lng, timestamp])
+  @@index([timestamp])
+}
+
+// درجات المخاطر
+model RiskScore {
+  id            String   @id @default(cuid())
+  
+  // الموقع
+  lat           Float
+  lng           Float
+  routeId       String?  // إذا كان مرتبطاً بمسار
+  
+  // البيانات المدخلة
+  timestamp     DateTime @default(now())
+  weatherData   Json     // بيانات الطقس
+  trafficData   Json     // بيانات المرور
+  vehicleData   Json?    // بيانات المركبة (السرعة، الاتجاه)
+  
+  // النتيجة
+  riskScore     Float    // درجة المخاطر (0-100)
+  riskLevel     String   // مستوى الخطر (low, medium, high, critical)
+  riskCategory  String   // فئة الخطر (weather, traffic, road, visibility)
+  
+  // التوصيات
+  recommendedAction String? // الإجراء الموصى به (slow_down, reroute, stop, caution)
+  confidence    Float    // مستوى الثقة (0-1)
+  
+  // تفاصيل
+  factors       Json     // العوامل المؤثرة (JSON)
+  modelVersion  String?  // إصدار النموذج المستخدم
+  
+  @@index([lat, lng, timestamp])
+  @@index([routeId])
+  @@index([riskLevel])
+}
+
+// إشعارات المستخدمين
+model UserNotification {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // نوع الإشعار
+  type          String   // push, sms, email, in_app
+  category      String   // alert, warning, info, critical
+  
+  // المحتوى
+  title         String
+  message       String
+  data          Json?    // بيانات إضافية
+  
+  // الارتباط
+  alertId       String?   // إذا كان مرتبطاً بتنبيه
+  routeId      String?   // إذا كان مرتبطاً بمسار
+  
+  // الحالة
+  sent          Boolean  @default(false)
+  delivered    Boolean  @default(false)
+  read          Boolean  @default(false)
+  
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  readAt       DateTime?
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([userId, createdAt])
+  @@index([sent, delivered])
+  @@index([read])
+}
+
+// قواعد التنبيه (Policy Engine)
+model AlertRule {
+  id            String   @id @default(cuid())
+  
+  name          String   // اسم القاعدة
+  description   String?  // الوصف
+  
+  // الشروط
+  conditions    Json     // الشروط (JSON array)
+  // مثال: [{"field":"weather.rain_rate","operator":">","value":10}]
+  
+  // الإجراءات
+  actions       Json     // الإجراءات (JSON)
+  // مثال: {"type":"notify","channels":["push","sms"],"priority":"high"}
+  
+  // الأولوية
+  priority      String   @default("medium") // low, medium, high, critical
+  
+  // الحالة
+  enabled       Boolean  @default(true)
+  active        Boolean  @default(true)
+  
+  // الإحصائيات
+  triggerCount  Int      @default(0) // عدد مرات التنشيط
+  lastTriggered DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([enabled, active])
+  @@index([priority])
+}
+
+// سجل الأحداث (Audit Log)
+model AuditLog {
+  id            String   @id @default(cuid())
+  
+  timestamp     DateTime @default(now())
+  eventType     String   // نوع الحدث
+  userId        String?  // المستخدم (إن وجد)
+  
+  // التفاصيل
+  action        String   // الإجراء
+  resource      String?  // المورد المتأثر
+  resourceId    String?  // معرف المورد
+  
+  // البيانات
+  data          Json?    // بيانات إضافية
+  ipAddress     String?  // عنوان IP
+  userAgent     String?  // User Agent
+  
+  // النتيجة
+  success       Boolean  @default(true)
+  errorMessage  String?  // رسالة الخطأ (إن وجدت)
+  
+  @@index([timestamp])
+  @@index([eventType])
+  @@index([userId])
+  @@index([success])
+}
+
