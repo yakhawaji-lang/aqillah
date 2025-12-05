@@ -431,7 +431,7 @@ export default function MapPage() {
 
             {/* قائمة الطرق */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 max-h-[500px] overflow-y-auto">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">الطرق المراقبة</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">الطرق المراقبة 111</h3>
               <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs text-blue-800 text-center">
                   💡 انقر على أي موقع مزدحم (أحمر) على الخريطة لإضافته إلى القائمة

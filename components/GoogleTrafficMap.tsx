@@ -260,7 +260,7 @@ export default function GoogleTrafficMap({
                           <div><strong>الطريق:</strong> ${result.data.roadName}</div>
                           <div><strong>مستوى الازدحام:</strong> ${result.data.congestionIndex}%</div>
                           <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">
-                            تمت إضافته إلى قائمة الطرق المراقبة
+                            تمت إضافته إلى قائمة الطرق المراقبة 111
                           </div>
                         </div>
                       </div>
