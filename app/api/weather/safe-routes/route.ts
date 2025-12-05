@@ -12,8 +12,7 @@ const FORECAST_DAYS = 16
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const city = searchParams.get('city')
+    const city = request.nextUrl.searchParams.get('city')
 
     // إحداثيات المدن الرئيسية
     const cityCoordinates: Record<string, { lat: number; lng: number; bounds: { ne: { lat: number; lng: number }, sw: { lat: number; lng: number } } }> = {
