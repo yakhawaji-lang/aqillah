@@ -21,23 +21,36 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const originalError = window.onerror
     const originalUnhandledRejection = window.onunhandledrejection
     
+    // دالة للتحقق من أخطاء MetaMask
+    const isMetaMaskError = (message: any, source?: string | null, error?: Error | null): boolean => {
+      const messageStr = typeof message === 'string' ? message : String(message)
+      const errorMessage = error?.message || ''
+      const errorStack = error?.stack || ''
+      const sourceStr = source || ''
+      
+      return (
+        messageStr.includes('MetaMask') ||
+        messageStr.includes('Failed to connect') ||
+        messageStr.includes('ethereum') ||
+        messageStr.includes('web3') ||
+        messageStr.includes('nkbihfbeogaeaoehlefnkodbefgpgknn') || // MetaMask extension ID
+        errorMessage.includes('MetaMask') ||
+        errorMessage.includes('Failed to connect') ||
+        errorMessage.includes('ethereum') ||
+        errorMessage.includes('web3') ||
+        errorStack.includes('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn') ||
+        errorStack.includes('moz-extension://') ||
+        sourceStr.includes('chrome-extension://') ||
+        sourceStr.includes('moz-extension://')
+      )
+    }
+    
     // معالج أخطاء عام
     window.onerror = (message, source, lineno, colno, error) => {
       // تجاهل أخطاء MetaMask
-      if (
-        typeof message === 'string' &&
-        (message.includes('MetaMask') || 
-         message.includes('Failed to connect') ||
-         message.includes('ethereum') ||
-         message.includes('web3'))
-      ) {
+      if (isMetaMaskError(message, source, error)) {
         console.warn('Browser extension error ignored:', message)
         return true // منع عرض الخطأ
-      }
-      // تجاهل أخطاء من إضافات المتصفح
-      if (source?.includes('chrome-extension://') || source?.includes('moz-extension://')) {
-        console.warn('Browser extension error ignored:', source)
-        return true
       }
       // استدعاء المعالج الأصلي للأخطاء الأخرى
       if (originalError) {
@@ -50,6 +63,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     window.onunhandledrejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason
       const message = typeof reason === 'string' ? reason : reason?.message || ''
+      const stack = reason && typeof reason === 'object' && 'stack' in reason 
+        ? String(reason.stack) 
+        : ''
       
       // تجاهل أخطاء MetaMask في Promises
       if (
@@ -57,8 +73,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         message.includes('Failed to connect') ||
         message.includes('ethereum') ||
         message.includes('web3') ||
-        (reason && typeof reason === 'object' && 'stack' in reason && 
-         typeof reason.stack === 'string' && reason.stack.includes('chrome-extension://'))
+        message.includes('nkbihfbeogaeaoehlefnkodbefgpgknn') ||
+        stack.includes('chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn') ||
+        stack.includes('moz-extension://')
       ) {
         console.warn('Browser extension promise rejection ignored:', message)
         event.preventDefault() // منع عرض الخطأ
@@ -71,10 +88,22 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // اعتراض أخطاء React Error Boundary
+    const originalConsoleError = console.error
+    console.error = (...args: any[]) => {
+      const errorMessage = args.join(' ')
+      if (isMetaMaskError(errorMessage)) {
+        console.warn('Browser extension error ignored (console.error):', errorMessage)
+        return
+      }
+      originalConsoleError.apply(console, args)
+    }
+
     // تنظيف عند إلغاء التثبيت
     return () => {
       window.onerror = originalError
       window.onunhandledrejection = originalUnhandledRejection
+      console.error = originalConsoleError
     }
   }, [])
 

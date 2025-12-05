@@ -14,6 +14,21 @@ const nextConfig = {
     output: 'export',
     trailingSlash: true,
   }),
+  // إخفاء overlay الأخطاء في وضع التطوير لأخطاء MetaMask
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  // تعطيل overlay الأخطاء في وضع التطوير (اختياري - يمكن تفعيله لاحقاً)
+  // webpack: (config, { dev, isServer }) => {
+  //   if (dev && !isServer) {
+  //     config.optimization = {
+  //       ...config.optimization,
+  //       minimize: false,
+  //     }
+  //   }
+  //   return config
+  // },
 }
 
 module.exports = nextConfig
