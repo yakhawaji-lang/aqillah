@@ -12,15 +12,35 @@ export default function Error({
 }) {
   useEffect(() => {
     // تجاهل أخطاء إضافات المتصفح مثل MetaMask
-    if (error.message?.includes('MetaMask') || error.message?.includes('Failed to connect')) {
-      console.warn('Browser extension error ignored:', error.message)
+    const errorMessage = error.message || error.toString() || ''
+    const errorStack = error.stack || ''
+    
+    if (
+      errorMessage.includes('MetaMask') ||
+      errorMessage.includes('Failed to connect') ||
+      errorMessage.includes('ethereum') ||
+      errorMessage.includes('web3') ||
+      errorStack.includes('chrome-extension://') ||
+      errorStack.includes('moz-extension://')
+    ) {
+      console.warn('Browser extension error ignored:', errorMessage)
       return
     }
     console.error(error)
   }, [error])
 
   // تجاهل أخطاء MetaMask - لا تعرض رسالة خطأ للمستخدم
-  if (error.message?.includes('MetaMask') || error.message?.includes('Failed to connect')) {
+  const errorMessage = error.message || error.toString() || ''
+  const errorStack = error.stack || ''
+  
+  if (
+    errorMessage.includes('MetaMask') ||
+    errorMessage.includes('Failed to connect') ||
+    errorMessage.includes('ethereum') ||
+    errorMessage.includes('web3') ||
+    errorStack.includes('chrome-extension://') ||
+    errorStack.includes('moz-extension://')
+  ) {
     return null
   }
 

@@ -308,7 +308,8 @@ class WeatherService {
       windSpeed: (currentData.speed || 0) * 3.6, // Convert m/s to km/h
       windDirection: currentData.deg || 0,
       // Use real visibility from current weather API if available, otherwise use default
-      visibility: currentVisibility !== undefined ? currentVisibility / 1000 : 10000, // Convert m to km, default 10km if not available
+      // Keep visibility in meters (not km) for consistency with alert thresholds
+      visibility: currentVisibility !== undefined ? currentVisibility : 10000, // meters, default 10km = 10000m
       pressure: currentData.pressure || 1013,
       precipitation: currentData.rain || currentData.snow || 0,
       rainRate: currentData.rain || 0,
@@ -354,7 +355,7 @@ class WeatherService {
         humidity: data.main.humidity,
         windSpeed: (data.wind?.speed || 0) * 3.6, // Convert m/s to km/h
         windDirection: data.wind?.deg || 0,
-        visibility: (data.visibility || 10000) / 1000, // Convert m to km
+        visibility: data.visibility || 10000, // meters (OpenWeatherMap provides visibility in meters)
         pressure: data.main.pressure,
         precipitation: data.rain?.['1h'] || 0,
         rainRate: data.rain?.['1h'] || 0,
@@ -386,7 +387,7 @@ class WeatherService {
         humidity: data.RelativeHumidity || 0,
         windSpeed: (data.Wind?.Speed?.Metric?.Value || 0) * 3.6,
         windDirection: data.Wind?.Direction?.Degrees || 0,
-        visibility: (data.Visibility?.Metric?.Value || 10) * 1000,
+        visibility: (data.Visibility?.Metric?.Value || 10) * 1000, // AccuWeather provides in km, convert to meters
         pressure: data.Pressure?.Metric?.Value || 1013,
         precipitation: data.Precip1hr?.Metric?.Value || 0,
         rainRate: data.Precip1hr?.Metric?.Value || 0,
