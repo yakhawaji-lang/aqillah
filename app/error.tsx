@@ -11,8 +11,18 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
+    // تجاهل أخطاء إضافات المتصفح مثل MetaMask
+    if (error.message?.includes('MetaMask') || error.message?.includes('Failed to connect')) {
+      console.warn('Browser extension error ignored:', error.message)
+      return
+    }
     console.error(error)
   }, [error])
+
+  // تجاهل أخطاء MetaMask - لا تعرض رسالة خطأ للمستخدم
+  if (error.message?.includes('MetaMask') || error.message?.includes('Failed to connect')) {
+    return null
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
