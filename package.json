@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "نظام وطني ذكي لتحليل الازدحام المروري - عَقِلْها",
   "private": true,
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,12 +13,8 @@
     "clean:win": "powershell -Command \"if (Test-Path .next) { Remove-Item -Recurse -Force .next }; if (Test-Path node_modules\\.cache) { Remove-Item -Recurse -Force node_modules\\.cache }\"",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "tsx scripts/seed.ts",
-    "db:live": "tsx scripts/live-data.ts",
-    "db:historical": "tsx scripts/generate-historical-data.ts",
     "android:setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-android.ps1",
     "android:build": "node scripts/build-android.js",
     "android:sync": "npx cap sync android",

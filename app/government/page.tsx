@@ -100,296 +100,38 @@ export default function GovernmentDashboardPage() {
     }
   }, [trafficData, trafficLoading])
 
-  // بيانات وهمية شاملة للإحصائيات
-  const mockStats = useMemo(() => ({
-    avgCongestion: 68,
-    activeAlerts: 47,
-    highCongestionCount: 23,
-    totalSegments: 1247,
-    activePredictions: 89,
-    totalUsers: 45678,
-    avgResponseTime: 2.3,
-    costSavings: 1250000,
-    emissionsReduced: 450,
-    accidentsPrevented: 12,
-    routesOptimized: 234,
-    avgDelayReduction: 18.5,
-    systemUptime: 99.7,
-    dataAccuracy: 94.2,
-    lastUpdate: new Date(),
-  }), [])
-
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['stats'],
     queryFn: async () => {
-      try {
-        const res = await axios.get('/api/stats')
-        return { ...mockStats, ...res.data }
-      } catch {
-        return mockStats
-      }
+      const res = await axios.get('/api/stats')
+      return res.data
     },
     refetchInterval: 30000,
   })
 
-  // بيانات وهمية شاملة للتنبؤات
-  const mockPredictions = useMemo(() => [
-    {
-      id: 'pred-1',
-      roadName: 'طريق الملك فهد',
-      city: 'الرياض',
-      direction: 'شمال-جنوب',
-      predictedIndex: 85,
-      confidence: 0.92,
-      predictedFor: new Date(Date.now() + 15 * 60000),
-      predictedDelayMinutes: 18.5,
-      factors: ['ساعة الذروة', 'حدث قريب', 'أعمال صيانة'],
-    },
-    {
-      id: 'pred-2',
-      roadName: 'طريق الدائري الشرقي',
-      city: 'الرياض',
-      direction: 'شرق-غرب',
-      predictedIndex: 78,
-      confidence: 0.88,
-      predictedFor: new Date(Date.now() + 25 * 60000),
-      predictedDelayMinutes: 14.2,
-      factors: ['ازدحام متوقع', 'طقس سيئ'],
-    },
-    {
-      id: 'pred-3',
-      roadName: 'طريق العليا',
-      city: 'الرياض',
-      direction: 'شمال-جنوب',
-      predictedIndex: 72,
-      confidence: 0.85,
-      predictedFor: new Date(Date.now() + 35 * 60000),
-      predictedDelayMinutes: 11.8,
-      factors: ['نهاية الأسبوع', 'فعاليات'],
-    },
-    {
-      id: 'pred-4',
-      roadName: 'طريق الأمير سلطان',
-      city: 'الرياض',
-      direction: 'شرق-غرب',
-      predictedIndex: 65,
-      confidence: 0.79,
-      predictedFor: new Date(Date.now() + 45 * 60000),
-      predictedDelayMinutes: 9.3,
-      factors: ['ازدحام عادي'],
-    },
-    {
-      id: 'pred-5',
-      roadName: 'طريق الملك عبدالعزيز',
-      city: 'جدة',
-      direction: 'شمال-جنوب',
-      predictedIndex: 81,
-      confidence: 0.91,
-      predictedFor: new Date(Date.now() + 20 * 60000),
-      predictedDelayMinutes: 16.7,
-      factors: ['ساعة الذروة', 'حادث سابق'],
-    },
-    {
-      id: 'pred-6',
-      roadName: 'طريق الكورنيش',
-      city: 'جدة',
-      direction: 'شرق-غرب',
-      predictedIndex: 58,
-      confidence: 0.76,
-      predictedFor: new Date(Date.now() + 50 * 60000),
-      predictedDelayMinutes: 7.2,
-      factors: ['ازدحام خفيف'],
-    },
-    {
-      id: 'pred-7',
-      roadName: 'طريق الخليج',
-      city: 'الدمام',
-      direction: 'شمال-جنوب',
-      predictedIndex: 69,
-      confidence: 0.83,
-      predictedFor: new Date(Date.now() + 30 * 60000),
-      predictedDelayMinutes: 10.5,
-      factors: ['ازدحام متوقع'],
-    },
-    {
-      id: 'pred-8',
-      roadName: 'طريق الملك خالد',
-      city: 'أبها',
-      direction: 'شرق-غرب',
-      predictedIndex: 54,
-      confidence: 0.71,
-      predictedFor: new Date(Date.now() + 55 * 60000),
-      predictedDelayMinutes: 6.1,
-      factors: ['ازدحام خفيف'],
-    },
-  ], [])
-
   const { data: predictions, refetch: refetchPredictions } = useQuery({
     queryKey: ['predictions', selectedCity],
     queryFn: async () => {
-      try {
-        const res = await axios.get(`/api/predictions?minutesAhead=60`)
-        const apiData = res.data.data || []
-        return apiData.length > 0 ? apiData : mockPredictions.filter(p => p.city === selectedCity || selectedCity === 'الرياض')
-      } catch {
-        return mockPredictions.filter(p => p.city === selectedCity || selectedCity === 'الرياض')
-      }
+      const res = await axios.get(`/api/predictions?minutesAhead=60`)
+      return res.data.data || []
     },
     refetchInterval: 60000,
   })
-
-  // بيانات وهمية شاملة للقرارات المرورية
-  const mockDecisions = useMemo(() => [
-    {
-      id: 'dec-1',
-      decisionType: 'diversion',
-      roadName: 'طريق الملك فهد',
-      city: 'الرياض',
-      expectedDelayReduction: 12.5,
-      expectedBenefitScore: 87,
-      priority: 'high',
-      status: 'pending',
-      estimatedImpact: 4500,
-      cost: 0,
-      createdAt: new Date(Date.now() - 30 * 60000),
-    },
-    {
-      id: 'dec-2',
-      decisionType: 'signal_adjustment',
-      roadName: 'طريق العليا',
-      city: 'الرياض',
-      expectedDelayReduction: 8.3,
-      expectedBenefitScore: 72,
-      priority: 'medium',
-      status: 'pending',
-      estimatedImpact: 3200,
-      cost: 500,
-      createdAt: new Date(Date.now() - 45 * 60000),
-    },
-    {
-      id: 'dec-3',
-      decisionType: 'intervention',
-      roadName: 'طريق الدائري الشرقي',
-      city: 'الرياض',
-      expectedDelayReduction: 15.7,
-      expectedBenefitScore: 91,
-      priority: 'critical',
-      status: 'pending',
-      estimatedImpact: 6800,
-      cost: 2000,
-      createdAt: new Date(Date.now() - 15 * 60000),
-    },
-    {
-      id: 'dec-4',
-      decisionType: 'route_optimization',
-      roadName: 'طريق الأمير سلطان',
-      city: 'الرياض',
-      expectedDelayReduction: 6.2,
-      expectedBenefitScore: 65,
-      priority: 'low',
-      status: 'pending',
-      estimatedImpact: 2100,
-      cost: 0,
-      createdAt: new Date(Date.now() - 60 * 60000),
-    },
-    {
-      id: 'dec-5',
-      decisionType: 'diversion',
-      roadName: 'طريق الملك عبدالعزيز',
-      city: 'جدة',
-      expectedDelayReduction: 10.8,
-      expectedBenefitScore: 79,
-      priority: 'high',
-      status: 'pending',
-      estimatedImpact: 3800,
-      cost: 0,
-      createdAt: new Date(Date.now() - 20 * 60000),
-    },
-  ], [])
 
   const { data: decisions } = useQuery({
     queryKey: ['decisions', selectedCity],
     queryFn: async () => {
-      try {
-        const res = await axios.get(`/api/decisions?status=pending`)
-        const apiData = res.data.data || []
-        return apiData.length > 0 ? apiData : mockDecisions.filter(d => d.city === selectedCity || selectedCity === 'الرياض')
-      } catch {
-        return mockDecisions.filter(d => d.city === selectedCity || selectedCity === 'الرياض')
-      }
+      const res = await axios.get(`/api/decisions?status=pending`)
+      return res.data.data || []
     },
     refetchInterval: 60000,
   })
 
-  // بيانات وهمية شاملة لنقاط الازدحام
-  const mockBottlenecks = useMemo(() => [
-    {
-      id: 'bot-1',
-      segmentId: 'seg-1',
-      roadName: 'طريق الملك فهد - تقاطع العليا',
-      city: 'الرياض',
-      severity: 'critical',
-      avgDelay: 22.5,
-      affectedVehicles: 4500,
-      duration: 180,
-      lastDetected: new Date(Date.now() - 5 * 60000),
-    },
-    {
-      id: 'bot-2',
-      segmentId: 'seg-2',
-      roadName: 'طريق الدائري الشرقي - تقاطع الملك خالد',
-      city: 'الرياض',
-      severity: 'high',
-      avgDelay: 18.3,
-      affectedVehicles: 3200,
-      duration: 145,
-      lastDetected: new Date(Date.now() - 8 * 60000),
-    },
-    {
-      id: 'bot-3',
-      segmentId: 'seg-3',
-      roadName: 'طريق العليا - تقاطع الأمير سلطان',
-      city: 'الرياض',
-      severity: 'medium',
-      avgDelay: 12.7,
-      affectedVehicles: 2100,
-      duration: 95,
-      lastDetected: new Date(Date.now() - 12 * 60000),
-    },
-    {
-      id: 'bot-4',
-      segmentId: 'seg-4',
-      roadName: 'طريق الملك عبدالعزيز - تقاطع الكورنيش',
-      city: 'جدة',
-      severity: 'high',
-      avgDelay: 16.9,
-      affectedVehicles: 2800,
-      duration: 120,
-      lastDetected: new Date(Date.now() - 10 * 60000),
-    },
-    {
-      id: 'bot-5',
-      segmentId: 'seg-5',
-      roadName: 'طريق الخليج - تقاطع الدائري',
-      city: 'الدمام',
-      severity: 'medium',
-      avgDelay: 11.4,
-      affectedVehicles: 1800,
-      duration: 85,
-      lastDetected: new Date(Date.now() - 15 * 60000),
-    },
-  ], [])
-
   const { data: bottlenecks } = useQuery({
     queryKey: ['bottlenecks', selectedCity],
     queryFn: async () => {
-      try {
-        const res = await axios.get(`/api/bottlenecks?activeOnly=true`)
-        const apiData = res.data.data || []
-        return apiData.length > 0 ? apiData : mockBottlenecks.filter(b => b.city === selectedCity || selectedCity === 'الرياض')
-      } catch {
-        return mockBottlenecks.filter(b => b.city === selectedCity || selectedCity === 'الرياض')
-      }
+      const res = await axios.get(`/api/bottlenecks?activeOnly=true`)
+      return res.data.data || []
     },
     refetchInterval: 60000,
   })
@@ -415,53 +157,10 @@ export default function GovernmentDashboardPage() {
     }
   }, [filteredTrafficData])
 
-  // بيانات وهمية شاملة للرسوم البيانية
+  // بيانات الرسوم البيانية من البيانات الفعلية فقط
   const chartData = useMemo(() => {
-    // بيانات مفصلة لكل ساعة مع اتجاهات واقعية
-    const generateDetailedData = () => {
-      const hours = []
-      const basePattern = [
-        { hour: 0, congestion: 12, delay: 0.8, vehicles: 450, accidents: 0 },
-        { hour: 1, congestion: 10, delay: 0.5, vehicles: 320, accidents: 0 },
-        { hour: 2, congestion: 8, delay: 0.3, vehicles: 210, accidents: 0 },
-        { hour: 3, congestion: 7, delay: 0.2, vehicles: 180, accidents: 0 },
-        { hour: 4, congestion: 9, delay: 0.4, vehicles: 250, accidents: 0 },
-        { hour: 5, congestion: 15, delay: 1.2, vehicles: 580, accidents: 0 },
-        { hour: 6, congestion: 28, delay: 2.5, vehicles: 1200, accidents: 1 },
-        { hour: 7, congestion: 52, delay: 6.8, vehicles: 3200, accidents: 2 },
-        { hour: 8, congestion: 78, delay: 14.2, vehicles: 6800, accidents: 3 },
-        { hour: 9, congestion: 72, delay: 11.5, vehicles: 5200, accidents: 1 },
-        { hour: 10, congestion: 58, delay: 7.8, vehicles: 3800, accidents: 1 },
-        { hour: 11, congestion: 55, delay: 6.5, vehicles: 3500, accidents: 1 },
-        { hour: 12, congestion: 62, delay: 8.2, vehicles: 4200, accidents: 2 },
-        { hour: 13, congestion: 68, delay: 9.5, vehicles: 4800, accidents: 2 },
-        { hour: 14, congestion: 65, delay: 8.8, vehicles: 4500, accidents: 1 },
-        { hour: 15, congestion: 70, delay: 10.2, vehicles: 5200, accidents: 2 },
-        { hour: 16, congestion: 82, delay: 16.5, vehicles: 7200, accidents: 4 },
-        { hour: 17, congestion: 88, delay: 19.8, vehicles: 8500, accidents: 5 },
-        { hour: 18, congestion: 92, delay: 22.3, vehicles: 9200, accidents: 6 },
-        { hour: 19, congestion: 85, delay: 17.5, vehicles: 7800, accidents: 4 },
-        { hour: 20, congestion: 72, delay: 11.2, vehicles: 5800, accidents: 2 },
-        { hour: 21, congestion: 58, delay: 7.5, vehicles: 4200, accidents: 1 },
-        { hour: 22, congestion: 42, delay: 4.2, vehicles: 2800, accidents: 0 },
-        { hour: 23, congestion: 28, delay: 2.1, vehicles: 1500, accidents: 0 },
-      ]
-      
-      return basePattern.map(h => ({
-        name: `${h.hour.toString().padStart(2, '0')}:00`,
-        congestion: h.congestion,
-        delay: h.delay,
-        value: h.congestion,
-        vehicles: h.vehicles,
-        accidents: h.accidents,
-        efficiency: Math.max(0, 100 - h.congestion),
-      }))
-    }
-
-    const defaultData = generateDetailedData()
-
     if (!trafficData || trafficData.length === 0) {
-      return defaultData
+      return []
     }
 
     // تجميع البيانات حسب الساعات
@@ -490,13 +189,6 @@ export default function GovernmentDashboardPage() {
       if (hourData && hourData.congestion.length > 0) {
         avgCongestion = hourData.congestion.reduce((a, b) => a + b, 0) / hourData.congestion.length
         avgDelay = hourData.delay.reduce((a, b) => a + b, 0) / hourData.delay.length
-      } else {
-        // استخدام بيانات افتراضية إذا لم تكن هناك بيانات
-        const defaultHour = defaultData.find(d => parseInt(d.name.split(':')[0]) === hour)
-        if (defaultHour) {
-          avgCongestion = defaultHour.congestion
-          avgDelay = defaultHour.delay
-        }
       }
       
       result.push({
@@ -507,15 +199,7 @@ export default function GovernmentDashboardPage() {
       })
     }
 
-    // التأكد من وجود بيانات
-    if (result.length === 0) {
-      return defaultData
-    }
-
-    // إذا كانت البيانات قليلة، نضيف بيانات افتراضية للفجوات
-    const finalResult = result.length < 12 ? defaultData : result
-    
-    return finalResult
+    return result
   }, [trafficData, timeRange])
 
   const cities = ['الرياض', 'جدة', 'الدمام', 'المدينة المنورة', 'الخبر', 'أبها', 'خميس مشيط']
@@ -622,7 +306,7 @@ export default function GovernmentDashboardPage() {
             </div>
             <h3 className="text-sm font-medium text-primary-100 mb-2">متوسط الازدحام الوطني</h3>
             <div className="text-3xl font-bold mb-1">
-              <AnimatedCounter value={stats?.avgCongestion || 68} suffix="%" />
+              <AnimatedCounter value={stats?.avgCongestion || 0} suffix="%" />
             </div>
             <p className="text-xs text-primary-200">تحسن عن الأسبوع الماضي</p>
           </div>
@@ -639,7 +323,7 @@ export default function GovernmentDashboardPage() {
             </div>
             <h3 className="text-sm font-medium text-red-100 mb-2">تنبيهات نشطة</h3>
             <div className="text-3xl font-bold mb-1">
-              <AnimatedCounter value={stats?.activeAlerts || 47} />
+              <AnimatedCounter value={stats?.activeAlerts || 0} />
             </div>
             <p className="text-xs text-red-200">يتطلب مراجعة فورية</p>
           </div>
@@ -656,7 +340,7 @@ export default function GovernmentDashboardPage() {
             </div>
             <h3 className="text-sm font-medium text-orange-100 mb-2">نقاط ازدحام عالي</h3>
             <div className="text-3xl font-bold mb-1">
-              <AnimatedCounter value={stats?.highCongestionCount || 23} />
+              <AnimatedCounter value={stats?.highCongestionCount || 0} />
             </div>
             <p className="text-xs text-orange-200">يتطلب تدخل فوري</p>
           </div>
@@ -673,7 +357,7 @@ export default function GovernmentDashboardPage() {
             </div>
             <h3 className="text-sm font-medium text-blue-100 mb-2">مقاطع مراقبة</h3>
             <div className="text-3xl font-bold mb-1">
-              <AnimatedCounter value={stats?.totalSegments || 1247} />
+              <AnimatedCounter value={stats?.totalSegments || 0} />
             </div>
             <p className="text-xs text-blue-200">مراقبة مستمرة 24/7</p>
           </div>
@@ -742,7 +426,7 @@ export default function GovernmentDashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-600">حوادث منعتها</p>
-                <p className="text-lg font-bold text-gray-900">{stats?.accidentsPrevented || 12}</p>
+                <p className="text-lg font-bold text-gray-900">{stats?.accidentsPrevented || 0}</p>
               </div>
             </div>
           </div>
@@ -753,7 +437,7 @@ export default function GovernmentDashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-600">مسارات محسّنة</p>
-                <p className="text-lg font-bold text-gray-900">{stats?.routesOptimized || 234}</p>
+                <p className="text-lg font-bold text-gray-900">{stats?.routesOptimized || 0}</p>
               </div>
             </div>
           </div>
@@ -764,7 +448,7 @@ export default function GovernmentDashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-600">تقليل التأخير</p>
-                <p className="text-lg font-bold text-gray-900">{stats?.avgDelayReduction?.toFixed(1) || '18.5'}%</p>
+                <p className="text-lg font-bold text-gray-900">{stats?.avgDelayReduction?.toFixed(1) || '0.0'}%</p>
               </div>
             </div>
           </div>
@@ -775,7 +459,7 @@ export default function GovernmentDashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-600">دقة البيانات</p>
-                <p className="text-lg font-bold text-gray-900">{stats?.dataAccuracy?.toFixed(1) || '94.2'}%</p>
+                <p className="text-lg font-bold text-gray-900">{stats?.dataAccuracy?.toFixed(1) || '0.0'}%</p>
               </div>
             </div>
           </div>

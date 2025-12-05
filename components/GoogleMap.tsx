@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader } from '@googlemaps/js-api-loader'
 
+// تعريف الأنواع لـ Google Maps
+declare const google: any
+
 interface GoogleMapProps {
   center?: { lat: number; lng: number }
   zoom?: number
@@ -30,9 +33,9 @@ export default function GoogleMap({
   className = 'w-full h-96',
 }: GoogleMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
-  const [map, setMap] = useState<google.maps.Map | null>(null)
-  const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService | null>(null)
-  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null)
+  const [map, setMap] = useState<any>(null)
+  const [directionsService, setDirectionsService] = useState<any>(null)
+  const [directionsRenderer, setDirectionsRenderer] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -53,11 +56,11 @@ export default function GoogleMap({
 
     loader
       .load()
-      .then((google) => {
+      .then(() => {
         if (!mapRef.current) return
 
         // Create map
-        const mapInstance = new google.maps.Map(mapRef.current, {
+        const mapInstance = new (window as any).google.maps.Map(mapRef.current, {
           center,
           zoom,
           mapTypeControl: true,
@@ -68,8 +71,8 @@ export default function GoogleMap({
         setMap(mapInstance)
 
         // Create directions service
-        const directionsServiceInstance = new google.maps.DirectionsService()
-        const directionsRendererInstance = new google.maps.DirectionsRenderer({
+        const directionsServiceInstance = new (window as any).google.maps.DirectionsService()
+        const directionsRendererInstance = new (window as any).google.maps.DirectionsRenderer({
           map: mapInstance,
           suppressMarkers: false,
         })
@@ -79,7 +82,7 @@ export default function GoogleMap({
 
         // Add click listener
         if (onMapClick) {
-          mapInstance.addListener('click', (e: google.maps.MapMouseEvent) => {
+          mapInstance.addListener('click', (e: any) => {
             if (e.latLng) {
               onMapClick({
                 lat: e.latLng.lat(),
@@ -110,10 +113,10 @@ export default function GoogleMap({
   useEffect(() => {
     if (!map) return
 
-    const googleMarkers: google.maps.Marker[] = []
+    const googleMarkers: any[] = []
 
     markers.forEach((marker) => {
-      const googleMarker = new google.maps.Marker({
+      const googleMarker = new (window as any).google.maps.Marker({
         position: { lat: marker.lat, lng: marker.lng },
         map,
         title: marker.title,
@@ -132,10 +135,10 @@ export default function GoogleMap({
   useEffect(() => {
     if (!directionsService || !directionsRenderer || !route) return
 
-    const request: google.maps.DirectionsRequest = {
+    const request: any = {
       origin: { lat: route.origin.lat, lng: route.origin.lng },
       destination: { lat: route.destination.lat, lng: route.destination.lng },
-      travelMode: google.maps.TravelMode.DRIVING,
+      travelMode: 'DRIVING' as any,
       ...(route.waypoints && route.waypoints.length > 0 && {
         waypoints: route.waypoints.map((wp) => ({
           location: { lat: wp.lat, lng: wp.lng },
@@ -143,8 +146,8 @@ export default function GoogleMap({
       }),
     }
 
-    directionsService.route(request, (result, status) => {
-      if (status === google.maps.DirectionsStatus.OK && result) {
+    directionsService.route(request, (result: any, status: string) => {
+      if (status === 'OK' && result) {
         directionsRenderer.setDirections(result)
       } else {
         console.error('Directions request failed:', status)

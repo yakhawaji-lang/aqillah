@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { RoutePlanner } from '@/components/user/RoutePlanner'
+import RoutePlanner from '@/components/user/RoutePlanner'
 import GoogleTrafficMap from '@/components/GoogleTrafficMap'
 import WeatherLayer from '@/components/user/WeatherLayer'
 import { Header } from '@/components/Header'

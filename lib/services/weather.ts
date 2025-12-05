@@ -307,8 +307,8 @@ class WeatherService {
       humidity: currentData.humidity || 60,
       windSpeed: (currentData.speed || 0) * 3.6, // Convert m/s to km/h
       windDirection: currentData.deg || 0,
-      // Use real visibility from current weather API if available, otherwise undefined
-      visibility: currentVisibility !== undefined ? currentVisibility / 1000 : undefined, // Convert m to km
+      // Use real visibility from current weather API if available, otherwise use default
+      visibility: currentVisibility !== undefined ? currentVisibility / 1000 : 10000, // Convert m to km, default 10km if not available
       pressure: currentData.pressure || 1013,
       precipitation: currentData.rain || currentData.snow || 0,
       rainRate: currentData.rain || 0,
@@ -329,7 +329,7 @@ class WeatherService {
         low: item.temp?.min || item.temp?.night || current.temperature - 5,
         condition: condition,
         precipitation: item.rain || item.snow || 0,
-        visibility: undefined, // Not provided by OpenWeatherMap Forecast API - only use real data
+        // visibility not provided by OpenWeatherMap Forecast API - omitted from response
         windSpeed: (item.speed || 0) * 3.6, // Convert m/s to km/h - real data from API
       }
     })

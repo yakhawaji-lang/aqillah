@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
           pressure: weather.current.pressure,
           precipitation: weather.current.precipitation,
           rainRate: weather.current.rainRate,
-          snowRate: weather.current.snowRate || 0,
           condition: weather.current.condition,
           cloudCover: weather.current.cloudCover,
           alerts: alerts,

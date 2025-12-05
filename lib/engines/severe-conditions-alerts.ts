@@ -24,13 +24,14 @@ class SevereConditionsAlerts {
     // Check weather alerts from API
     if (alerts && alerts.length > 0) {
       alerts.forEach((alert) => {
+        const mappedSeverity = this.mapSeverity(alert.severity)
         severeAlerts.push({
           type: this.mapAlertType(alert.severity),
-          severity: alert.severity,
+          severity: mappedSeverity,
           title: alert.title,
           message: alert.description,
-          impact: this.getImpact(alert.severity),
-          recommendations: this.getRecommendations(alert.severity),
+          impact: this.getImpact(mappedSeverity),
+          recommendations: this.getRecommendations(mappedSeverity),
           validUntil: alert.endTime,
         })
       })
@@ -89,6 +90,19 @@ class SevereConditionsAlerts {
     }
 
     return severeAlerts
+  }
+
+  /**
+   * Map severity from API format to internal format
+   */
+  private mapSeverity(severity: 'minor' | 'moderate' | 'severe' | 'extreme'): 'low' | 'medium' | 'high' | 'critical' {
+    const map: Record<'minor' | 'moderate' | 'severe' | 'extreme', 'low' | 'medium' | 'high' | 'critical'> = {
+      minor: 'low',
+      moderate: 'medium',
+      severe: 'high',
+      extreme: 'critical',
+    }
+    return map[severity] || 'medium'
   }
 
   /**

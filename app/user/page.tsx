@@ -16,7 +16,7 @@ import {
   BarChart3
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { RoutePlanner } from '@/components/user/RoutePlanner'
+import RoutePlanner from '@/components/user/RoutePlanner'
 import WeatherLayer from '@/components/user/WeatherLayer'
 import GoogleTrafficMap from '@/components/GoogleTrafficMap'
 import { CongestionIndicator } from '@/components/CongestionIndicator'
@@ -66,120 +66,8 @@ export default function UserAppPage() {
   // Notifications
   const { alerts: apiAlerts, hasNewAlerts, soundEnabled, setSoundEnabled } = useNotifications(true)
   
-  // بيانات وهمية للتنبيهات (fallback إذا لم تكن هناك بيانات من API)
-  const mockAlerts: Alert[] = [
-    {
-      id: 'mock-1',
-      segmentId: 'segment-1',
-      type: 'congestion',
-      severity: 'high',
-      message: 'ازدحام شديد على طريق الملك فهد - تأخير متوقع 15 دقيقة',
-      alternativeRoute: {
-        suggested: true,
-        distance: 12.5,
-        estimatedTime: 18,
-        coordinates: [[24.7136, 46.6753], [24.7200, 46.6800]],
-      },
-      createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-      isActive: true,
-    },
-    {
-      id: 'mock-2',
-      segmentId: 'segment-2',
-      type: 'accident',
-      severity: 'critical',
-      message: 'حادث مروري على طريق العليا - الطريق مغلق جزئياً',
-      alternativeRoute: {
-        suggested: true,
-        distance: 8.3,
-        estimatedTime: 12,
-        coordinates: [[24.6800, 46.6500], [24.6900, 46.6600]],
-      },
-      createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-      expiresAt: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
-      isActive: true,
-    },
-    {
-      id: 'mock-3',
-      segmentId: 'segment-3',
-      type: 'weather',
-      severity: 'medium',
-      message: 'ضباب كثيف على طريق الدائري الشرقي - انتبه للقيادة',
-      createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-      isActive: true,
-    },
-    {
-      id: 'mock-4',
-      segmentId: 'segment-4',
-      type: 'construction',
-      severity: 'medium',
-      message: 'أعمال صيانة على طريق الملك عبدالعزيز - حارة واحدة مغلقة',
-      alternativeRoute: {
-        suggested: true,
-        distance: 6.7,
-        estimatedTime: 10,
-      },
-      createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-      isActive: true,
-    },
-    {
-      id: 'mock-5',
-      segmentId: 'segment-5',
-      type: 'event',
-      severity: 'low',
-      message: 'فعالية في منطقة العليا - ازدحام متوقع حتى الساعة 10 مساءً',
-      createdAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
-      expiresAt: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-      isActive: true,
-    },
-    {
-      id: 'mock-6',
-      segmentId: 'segment-6',
-      type: 'congestion',
-      severity: 'high',
-      message: 'ازدحام على طريق الأمير سلطان بسبب حادث سابق - تأخير 10 دقائق',
-      alternativeRoute: {
-        suggested: true,
-        distance: 9.2,
-        estimatedTime: 14,
-      },
-      createdAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
-      expiresAt: new Date(Date.now() + 25 * 60 * 1000).toISOString(),
-      isActive: true,
-    },
-    {
-      id: 'mock-7',
-      segmentId: 'segment-7',
-      type: 'weather',
-      severity: 'high',
-      message: 'أمطار غزيرة على طريق الخليج - انتبه للقيادة',
-      createdAt: new Date(Date.now() - 3 * 60 * 1000).toISOString(),
-      expiresAt: new Date(Date.now() + 40 * 60 * 1000).toISOString(),
-      isActive: true,
-    },
-    {
-      id: 'mock-8',
-      segmentId: 'segment-8',
-      type: 'road_closed',
-      severity: 'critical',
-      message: 'إغلاق مؤقت لطريق العروبة بسبب أعمال طوارئ',
-      alternativeRoute: {
-        suggested: true,
-        distance: 11.8,
-        estimatedTime: 16,
-        coordinates: [[24.6850, 46.6650], [24.6950, 46.6750]],
-      },
-      createdAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
-      expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString(),
-      isActive: true,
-    },
-  ]
-  
-  // استخدام البيانات الوهمية إذا لم تكن هناك بيانات من API
-  const alerts = apiAlerts && apiAlerts.length > 0 ? apiAlerts : mockAlerts
+  // استخدام البيانات من API فقط
+  const alerts = apiAlerts || []
 
   // Search and filters
   const [searchQuery, setSearchQuery] = useState('')
