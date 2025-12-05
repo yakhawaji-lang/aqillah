@@ -1,5 +1,5 @@
 {
-  "buildCommand": "DATABASE_URL=\"mysql://user:pass@localhost:3306/db\" prisma generate && npm run build",
+  "buildCommand": "prisma generate && npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install --include=dev",
   "framework": "nextjs",
