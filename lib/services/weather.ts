@@ -381,13 +381,20 @@ class WeatherService {
     data: any,
     request: WeatherRequest
   ): WeatherResponse {
+    // AccuWeather Visibility.Metric.Value can be in km or meters depending on API version
+    // Check if value is reasonable for km (typically 0-50) or meters (typically 0-50000)
+    const visibilityValue = data.Visibility?.Metric?.Value || 10
+    // If value is less than 100, assume it's in km and convert to meters
+    // Otherwise, assume it's already in meters
+    const visibility = visibilityValue < 100 ? visibilityValue * 1000 : visibilityValue
+    
     return {
       current: {
         temperature: data.Temperature?.Metric?.Value || 0,
         humidity: data.RelativeHumidity || 0,
         windSpeed: (data.Wind?.Speed?.Metric?.Value || 0) * 3.6,
         windDirection: data.Wind?.Direction?.Degrees || 0,
-        visibility: (data.Visibility?.Metric?.Value || 10) * 1000, // AccuWeather provides in km, convert to meters
+        visibility: visibility, // Ensure visibility is always in meters
         pressure: data.Pressure?.Metric?.Value || 1013,
         precipitation: data.Precip1hr?.Metric?.Value || 0,
         rainRate: data.Precip1hr?.Metric?.Value || 0,
