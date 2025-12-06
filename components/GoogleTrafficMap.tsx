@@ -506,10 +506,24 @@ export default function GoogleTrafficMap({
 
     // Handle route as coordinate array
     if (Array.isArray(route) && route.length > 0) {
-      const path = route.map((coord) => ({
-        lat: coord[0],
-        lng: coord[1],
-      }))
+      // بناء المسار: إذا كان هناك موقع حالي، ابدأ منه، وإلا ابدأ من نقطة البداية
+      let path: Array<{ lat: number; lng: number }> = []
+      
+      // إذا كان هناك موقع حالي، أضفه في البداية
+      if (currentLocation && currentLocation.length === 2) {
+        path.push({
+          lat: currentLocation[0],
+          lng: currentLocation[1],
+        })
+      }
+      
+      // إضافة باقي نقاط المسار
+      route.forEach((coord) => {
+        path.push({
+          lat: coord[0],
+          lng: coord[1],
+        })
+      })
 
       // Clear previous markers
       if (originMarkerRef.current) {
@@ -548,10 +562,14 @@ export default function GoogleTrafficMap({
         map: mapInstanceRef.current,
       })
 
-      // إضافة علامة البداية (الأخضر)
+      // إضافة علامة البداية (الأخضر) - من موقع المستخدم الحالي إذا كان متاحاً
       if (path.length > 0) {
+        const startPosition = currentLocation && currentLocation.length === 2
+          ? { lat: currentLocation[0], lng: currentLocation[1] }
+          : path[0]
+        
         originMarkerRef.current = new (window as any).google.maps.Marker({
-          position: path[0],
+          position: startPosition,
           map: mapInstanceRef.current,
           icon: {
             path: (window as any).google.maps.SymbolPath.CIRCLE,
@@ -561,7 +579,7 @@ export default function GoogleTrafficMap({
             strokeColor: '#FFFFFF',
             strokeWeight: 3,
           },
-          title: 'نقطة البداية',
+          title: currentLocation ? 'موقعك الحالي' : 'نقطة البداية',
           zIndex: 1000,
         })
       }
@@ -622,9 +640,6 @@ export default function GoogleTrafficMap({
       // Fit bounds to show entire route
       const bounds = new (window as any).google.maps.LatLngBounds()
       path.forEach((point) => bounds.extend(point))
-      if (currentLocation && currentLocation.length === 2) {
-        bounds.extend({ lat: currentLocation[0], lng: currentLocation[1] })
-      }
       mapInstanceRef.current.fitBounds(bounds)
 
       return () => {
@@ -693,7 +708,7 @@ export default function GoogleTrafficMap({
         }
       }
     }
-  }, [directionsService, route, map])
+  }, [directionsService, route, map, currentLocation])
 
   // Render current location marker
   useEffect(() => {
