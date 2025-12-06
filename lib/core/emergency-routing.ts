@@ -27,6 +27,16 @@ export interface EmergencyRoute {
     congestionIndex: number
     delayMinutes: number
   }>
+  
+  // خطوات التوجيه
+  steps?: Array<{
+    instruction: string
+    distance: number // meters
+    duration: number // seconds
+    startLocation: [number, number]
+    endLocation: [number, number]
+    maneuver?: string
+  }>
 }
 
 const DEFAULT_UPDATE_INTERVAL = 30 // ثانية

@@ -148,6 +148,40 @@ export async function POST(request: NextRequest) {
       console.warn('Database not available, using empty congestion map:', dbError.message)
     }
 
+    // دوال مساعدة لحساب المسافة والزاوية
+    const calculateDistance = (point1: [number, number], point2: [number, number]): number => {
+      const R = 6371e3 // Earth radius in meters
+      const φ1 = point1[0] * Math.PI / 180
+      const φ2 = point2[0] * Math.PI / 180
+      const Δφ = (point2[0] - point1[0]) * Math.PI / 180
+      const Δλ = (point2[1] - point1[1]) * Math.PI / 180
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2)
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+
+      return R * c
+    }
+
+    const calculateBearing = (point1: [number, number], point2: [number, number]): number => {
+      const lat1 = point1[0] * Math.PI / 180
+      const lat2 = point2[0] * Math.PI / 180
+      const dLon = (point2[1] - point1[1]) * Math.PI / 180
+
+      const y = Math.sin(dLon) * Math.cos(lat2)
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon)
+
+      const bearing = Math.atan2(y, x)
+      return bearing * 180 / Math.PI
+    }
+
+    const calculateAngle = (point1: [number, number], point2: [number, number], point3: [number, number]): number => {
+      const bearing1 = calculateBearing(point2, point1)
+      const bearing2 = calculateBearing(point2, point3)
+      return bearing2 - bearing1
+    }
+
     // حساب المسار
     let route
     try {
@@ -157,6 +191,47 @@ export async function POST(request: NextRequest) {
         congestionMap
       )
       console.log('Route calculated:', { distance: route.distance, estimatedTime: route.estimatedTime })
+      
+      // تحويل المسار إلى خطوات للتوجيه
+      if (route.route && route.route.length > 0) {
+        const steps: any[] = []
+        const segmentLength = Math.max(1, Math.floor(route.route.length / 10)) // تقسيم المسار إلى 10 خطوات تقريباً
+        
+        for (let i = 0; i < route.route.length - 1; i += segmentLength) {
+          const startPoint = route.route[i]
+          const endPoint = route.route[Math.min(i + segmentLength, route.route.length - 1)]
+          
+          const distance = calculateDistance(startPoint, endPoint)
+          const duration = (distance / 1000 / 50) * 60 // افتراض سرعة 50 كم/س
+          
+          let instruction = 'تابع المسار'
+          if (i === 0) {
+            instruction = 'ابدأ المسار'
+          } else if (i + segmentLength >= route.route.length - 1) {
+            instruction = 'وصلت إلى الوجهة'
+          } else {
+            // تحديد نوع المنعطف بناءً على الزاوية
+            const angle = calculateAngle(startPoint, route.route[Math.max(0, i - 1)], endPoint)
+            if (angle > 30) {
+              instruction = 'استدر يميناً'
+            } else if (angle < -30) {
+              instruction = 'استدر يساراً'
+            } else {
+              instruction = 'تابع مباشرة'
+            }
+          }
+          
+          steps.push({
+            instruction,
+            distance: Math.round(distance),
+            duration: Math.round(duration),
+            startLocation: startPoint,
+            endLocation: endPoint,
+          })
+        }
+        
+        route.steps = steps
+      }
     } catch (routeError: any) {
       console.error('Error in calculateEmergencyRoute:', routeError)
       throw new Error(`فشل في حساب المسار: ${routeError?.message || 'خطأ غير معروف'}`)
@@ -205,7 +280,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: savedRoute,
+      data: {
+        ...savedRoute,
+        steps: route.steps || [],
+      },
     })
   } catch (error: any) {
     console.error('Error calculating emergency route:', error)

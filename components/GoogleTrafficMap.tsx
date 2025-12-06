@@ -26,7 +26,8 @@ interface GoogleTrafficMapProps {
     destination: { lat: number; lng: number }
     waypoints?: Array<{ lat: number; lng: number }>
     polyline?: string
-  }
+  } | Array<[number, number]> // Support both route object and coordinate array
+  currentLocation?: [number, number] | null // Current user location for navigation
   showTrafficLayer?: boolean
   showWeatherLayer?: boolean
   showVisibilityLayer?: boolean
@@ -55,6 +56,7 @@ export default function GoogleTrafficMap({
   zoom = 12,
   markers = [],
   route,
+  currentLocation,
   showTrafficLayer = true,
   showWeatherLayer = false,
   showVisibilityLayer = false,
@@ -69,6 +71,8 @@ export default function GoogleTrafficMap({
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const directionsRendererRef = useRef<any>(null)
+  const routePolylineRef = useRef<any>(null)
+  const currentLocationMarkerRef = useRef<any>(null)
   const weatherInfoWindowRef = useRef<any>(null)
   const weatherClickListenerRef = useRef<any>(null)
   const visibilityMarkersRef = useRef<any[]>([])
@@ -472,52 +476,129 @@ export default function GoogleTrafficMap({
 
   // Render route
   useEffect(() => {
-    if (!directionsService || !directionsRendererRef.current || !route || !(window as any).google || !mapInstanceRef.current) return
+    if (!(window as any).google || !mapInstanceRef.current) return
 
-    // Clear previous route first
-    if (directionsRendererRef.current) {
-      directionsRendererRef.current.setDirections({ routes: [] })
+    // Clear previous route polyline
+    if (routePolylineRef.current) {
+      routePolylineRef.current.setMap(null)
+      routePolylineRef.current = null
     }
 
-    const request: any = {
-      origin: { lat: route.origin.lat, lng: route.origin.lng },
-      destination: { lat: route.destination.lat, lng: route.destination.lng },
-      travelMode: (window as any).google.maps.TravelMode.DRIVING,
-      ...(route.waypoints && route.waypoints.length > 0 && {
-        waypoints: route.waypoints.map((wp: any) => ({
-          location: { lat: wp.lat, lng: wp.lng },
-        })),
-      }),
-      provideRouteAlternatives: true,
-    }
+    // Handle route as coordinate array
+    if (Array.isArray(route) && route.length > 0) {
+      const path = route.map((coord) => ({
+        lat: coord[0],
+        lng: coord[1],
+      }))
 
-    directionsService.route(request, (result: any, status: any) => {
-      if (status === (window as any).google.maps.DirectionsStatus.OK && result && directionsRendererRef.current && mapInstanceRef.current) {
-        try {
-          directionsRendererRef.current.setDirections(result)
-          
-          // Fit bounds to show entire route
-          const bounds = new (window as any).google.maps.LatLngBounds()
-          result.routes[0].legs.forEach((leg: any) => {
-            bounds.extend(leg.start_location)
-            bounds.extend(leg.end_location)
-          })
-          mapInstanceRef.current.fitBounds(bounds)
-        } catch (err) {
-          console.error('Error rendering route:', err)
+      routePolylineRef.current = new (window as any).google.maps.Polyline({
+        path: path,
+        geodesic: true,
+        strokeColor: '#4285F4',
+        strokeOpacity: 1.0,
+        strokeWeight: 5,
+        map: mapInstanceRef.current,
+      })
+
+      // Fit bounds to show entire route
+      const bounds = new (window as any).google.maps.LatLngBounds()
+      path.forEach((point) => bounds.extend(point))
+      mapInstanceRef.current.fitBounds(bounds)
+
+      return () => {
+        if (routePolylineRef.current) {
+          routePolylineRef.current.setMap(null)
+          routePolylineRef.current = null
         }
-      } else {
-        console.error('Directions request failed:', status)
       }
-    })
+    }
 
-    return () => {
-      // Clear route on cleanup
+    // Handle route as object (original format)
+    if (route && typeof route === 'object' && 'origin' in route && directionsService && directionsRendererRef.current) {
+      // Clear previous route first
       if (directionsRendererRef.current) {
         directionsRendererRef.current.setDirections({ routes: [] })
       }
+
+      const request: any = {
+        origin: { lat: route.origin.lat, lng: route.origin.lng },
+        destination: { lat: route.destination.lat, lng: route.destination.lng },
+        travelMode: (window as any).google.maps.TravelMode.DRIVING,
+        ...(route.waypoints && route.waypoints.length > 0 && {
+          waypoints: route.waypoints.map((wp: any) => ({
+            location: { lat: wp.lat, lng: wp.lng },
+          })),
+        }),
+        provideRouteAlternatives: true,
+      }
+
+      directionsService.route(request, (result: any, status: any) => {
+        if (status === (window as any).google.maps.DirectionsStatus.OK && result && directionsRendererRef.current && mapInstanceRef.current) {
+          try {
+            directionsRendererRef.current.setDirections(result)
+            
+            // Fit bounds to show entire route
+            const bounds = new (window as any).google.maps.LatLngBounds()
+            result.routes[0].legs.forEach((leg: any) => {
+              bounds.extend(leg.start_location)
+              bounds.extend(leg.end_location)
+            })
+            mapInstanceRef.current.fitBounds(bounds)
+          } catch (err) {
+            console.error('Error rendering route:', err)
+          }
+        } else {
+          console.error('Directions request failed:', status)
+        }
+      })
+
+      return () => {
+        // Clear route on cleanup
+        if (directionsRendererRef.current) {
+          directionsRendererRef.current.setDirections({ routes: [] })
+        }
+      }
     }
-  }, [directionsService, route])
+  }, [directionsService, route, map])
+
+  // Render current location marker
+  useEffect(() => {
+    if (!(window as any).google || !mapInstanceRef.current) return
+
+    // Clear previous current location marker
+    if (currentLocationMarkerRef.current) {
+      currentLocationMarkerRef.current.setMap(null)
+      currentLocationMarkerRef.current = null
+    }
+
+    if (currentLocation && currentLocation.length === 2) {
+      currentLocationMarkerRef.current = new (window as any).google.maps.Marker({
+        position: { lat: currentLocation[0], lng: currentLocation[1] },
+        map: mapInstanceRef.current,
+        icon: {
+          path: (window as any).google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: '#4285F4',
+          fillOpacity: 1,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 3,
+        },
+        title: 'موقعك الحالي',
+        zIndex: 1000,
+      })
+
+      // Center map on current location
+      mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
+      mapInstanceRef.current.setZoom(16)
+    }
+
+    return () => {
+      if (currentLocationMarkerRef.current) {
+        currentLocationMarkerRef.current.setMap(null)
+        currentLocationMarkerRef.current = null
+      }
+    }
+  }, [currentLocation, map])
 
   // Toggle traffic layer
   useEffect(() => {

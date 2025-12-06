@@ -448,6 +448,11 @@ export default function UserAppPage() {
                           setSelectedRoute(routeData)
                           console.log('Route set successfully:', routeData)
                           toast.success('تم حساب المسار بنجاح')
+                          
+                          // الانتقال إلى صفحة التوجيه بعد ثانية واحدة
+                          setTimeout(() => {
+                            router.push(`/user/navigation?routeId=${routeData.id || 'temp'}`)
+                          }, 1000)
                         } else {
                           console.error('Incomplete route data:', routeData)
                           throw new Error('البيانات المستلمة غير كاملة')
