@@ -447,6 +447,14 @@ export default function UserAppPage() {
                         if (routeData.distance !== undefined && routeData.estimatedTime !== undefined) {
                           setSelectedRoute(routeData)
                           console.log('Route set successfully:', routeData)
+                          
+                          // حفظ المسار في localStorage قبل الانتقال
+                          try {
+                            localStorage.setItem('currentRoute', JSON.stringify(routeData))
+                          } catch (e) {
+                            console.error('Error saving route to localStorage:', e)
+                          }
+                          
                           toast.success('تم حساب المسار بنجاح')
                           
                           // الانتقال إلى صفحة التوجيه بعد ثانية واحدة

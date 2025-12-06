@@ -60,19 +60,61 @@ export default function NavigationPage() {
 
   // جلب بيانات المسار
   useEffect(() => {
-    if (routeId) {
-      fetchRoute()
-    } else {
-      // إذا لم يكن هناك routeId، جرب جلب المسار من localStorage
+    const loadRoute = async () => {
+      // أولاً: جرب جلب المسار من localStorage (للمسارات المؤقتة)
       const savedRoute = localStorage.getItem('currentRoute')
       if (savedRoute) {
         try {
-          setRoute(JSON.parse(savedRoute))
+          const parsedRoute = JSON.parse(savedRoute)
+          // إذا كان routeId يطابق أو كان المسار محفوظاً مؤخراً، استخدمه
+          if (!routeId || parsedRoute.id === routeId || parsedRoute.id?.startsWith('temp-') || parsedRoute.id?.startsWith('emergency-')) {
+            setRoute(parsedRoute)
+            return
+          }
         } catch (e) {
           console.error('Error parsing saved route:', e)
         }
       }
+
+      // ثانياً: إذا كان هناك routeId ولا يبدأ بـ temp- أو emergency-، جرب جلب من API
+      if (routeId && !routeId.startsWith('temp-') && !routeId.startsWith('emergency-')) {
+        try {
+          const res = await axios.get(`/api/emergency-route?routeId=${routeId}`)
+          if (res.data.data) {
+            setRoute(res.data.data)
+            // حفظ في localStorage
+            localStorage.setItem('currentRoute', JSON.stringify(res.data.data))
+          }
+        } catch (error: any) {
+          console.error('Error fetching route:', error)
+          // إذا فشل جلب من API، جرب localStorage مرة أخرى
+          if (savedRoute) {
+            try {
+              setRoute(JSON.parse(savedRoute))
+            } catch (e) {
+              console.error('Error parsing saved route:', e)
+              toast.error('فشل في جلب بيانات المسار')
+            }
+          } else {
+            toast.error('فشل في جلب بيانات المسار')
+          }
+        }
+      } else if (routeId) {
+        // إذا كان routeId مؤقت، استخدم localStorage فقط
+        if (savedRoute) {
+          try {
+            setRoute(JSON.parse(savedRoute))
+          } catch (e) {
+            console.error('Error parsing saved route:', e)
+            toast.error('فشل في جلب بيانات المسار')
+          }
+        } else {
+          toast.error('لم يتم العثور على بيانات المسار')
+        }
+      }
     }
+
+    loadRoute()
   }, [routeId])
 
   // حفظ المسار في localStorage
@@ -81,18 +123,6 @@ export default function NavigationPage() {
       localStorage.setItem('currentRoute', JSON.stringify(route))
     }
   }, [route])
-
-  const fetchRoute = async () => {
-    try {
-      const res = await axios.get(`/api/emergency-route?routeId=${routeId}`)
-      if (res.data.data) {
-        setRoute(res.data.data)
-      }
-    } catch (error: any) {
-      console.error('Error fetching route:', error)
-      toast.error('فشل في جلب بيانات المسار')
-    }
-  }
 
   // تتبع الموقع الحالي
   useEffect(() => {
