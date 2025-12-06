@@ -466,11 +466,27 @@ export default function UserAppPage() {
                           
                           toast.success('تم حساب المسار بنجاح')
                           
-                          // الانتقال إلى صفحة التوجيه بعد ثانية واحدة
-                          setTimeout(() => {
+                          // الانتقال إلى صفحة التوجيه مباشرة بدون تأخير
+                          try {
                             const routeId = routeData.id || `emergency-${Date.now()}`
-                            router.push(`/user/navigation?routeId=${routeId}`)
-                          }, 1000)
+                            // استخدام window.location بدلاً من router.push لتجنب أخطاء React
+                            window.location.href = `/user/navigation?routeId=${routeId}`
+                          } catch (navError: any) {
+                            console.error('Error navigating to navigation page:', navError)
+                            // إذا فشل الانتقال، جرب router.push كبديل
+                            try {
+                              const routeId = routeData.id || `emergency-${Date.now()}`
+                              router.push(`/user/navigation?routeId=${routeId}`)
+                            } catch (e) {
+                              console.error('Error with router.push:', e)
+                              // إذا فشل كلاهما، أظهر رسالة للمستخدم
+                              toast.error('تم حساب المسار بنجاح. سيتم الانتقال تلقائياً...', { duration: 3000 })
+                              setTimeout(() => {
+                                const routeId = routeData.id || `emergency-${Date.now()}`
+                                window.location.href = `/user/navigation?routeId=${routeId}`
+                              }, 2000)
+                            }
+                          }
                         } else {
                           console.error('Incomplete route data:', routeData)
                           throw new Error('البيانات المستلمة غير كاملة. تأكد من وجود المسار والإحداثيات.')
@@ -486,11 +502,17 @@ export default function UserAppPage() {
                         response: error.response?.data,
                         status: error.response?.status,
                       })
+                      
+                      // منع إلقاء الخطأ لتجنب ظهور صفحة الخطأ
                       const errorMessage = error.response?.data?.error || error.message || 'حدث خطأ أثناء حساب المسار'
                       toast.error(errorMessage)
-                    } finally {
                       setIsCalculatingRoute(false)
+                      
+                      // لا نرمي الخطأ مرة أخرى لتجنب Error Boundary
+                      return
                     }
+                    
+                    setIsCalculatingRoute(false)
                   }}
                   disabled={!userLocation || !destination || isCalculatingRoute}
                   className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

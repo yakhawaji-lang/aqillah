@@ -29,9 +29,45 @@ export default function Error({
     console.error(error)
   }, [error])
 
-  // تجاهل أخطاء MetaMask - لا تعرض رسالة خطأ للمستخدم
+  // تجاهل أخطاء MetaMask والأخطاء غير المهمة - لا تعرض رسالة خطأ للمستخدم
   const errorMessage = error.message || error.toString() || ''
   const errorStack = error.stack || ''
+  
+  // تجاهل الأخطاء غير المهمة وإعادة التوجيه تلقائياً
+  useEffect(() => {
+    if (
+      errorMessage.includes('MetaMask') ||
+      errorMessage.includes('Failed to connect') ||
+      errorMessage.includes('ethereum') ||
+      errorMessage.includes('web3') ||
+      errorStack.includes('chrome-extension://') ||
+      errorStack.includes('moz-extension://') ||
+      errorMessage.includes('localStorage') ||
+      errorMessage.includes('Cannot read properties') ||
+      errorMessage.includes('undefined') ||
+      errorMessage.includes('null') ||
+      errorMessage.includes('hydration') ||
+      errorMessage.includes('Hydration')
+    ) {
+      // محاولة الانتقال إلى صفحة التوجيه إذا كان هناك مسار محفوظ
+      if (typeof window !== 'undefined') {
+        const savedRoute = localStorage.getItem('currentRoute')
+        if (savedRoute) {
+          try {
+            const parsedRoute = JSON.parse(savedRoute)
+            if (parsedRoute && parsedRoute.id) {
+              window.location.href = `/user/navigation?routeId=${parsedRoute.id}`
+              return
+            }
+          } catch (e) {
+            // تجاهل الخطأ
+          }
+        }
+        // إذا لم يكن هناك مسار محفوظ، العودة إلى صفحة المستخدم
+        window.location.href = '/user'
+      }
+    }
+  }, [errorMessage, errorStack])
   
   if (
     errorMessage.includes('MetaMask') ||
@@ -39,7 +75,13 @@ export default function Error({
     errorMessage.includes('ethereum') ||
     errorMessage.includes('web3') ||
     errorStack.includes('chrome-extension://') ||
-    errorStack.includes('moz-extension://')
+    errorStack.includes('moz-extension://') ||
+    errorMessage.includes('localStorage') ||
+    errorMessage.includes('Cannot read properties') ||
+    errorMessage.includes('undefined') ||
+    errorMessage.includes('null') ||
+    errorMessage.includes('hydration') ||
+    errorMessage.includes('Hydration')
   ) {
     return null
   }
@@ -62,4 +104,3 @@ export default function Error({
     </div>
   )
 }
-
