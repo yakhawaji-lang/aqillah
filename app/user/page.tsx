@@ -444,26 +444,36 @@ export default function UserAppPage() {
                         console.log('Route Data:', routeData)
                         
                         // التحقق من وجود البيانات المطلوبة
-                        if (routeData.distance !== undefined && routeData.estimatedTime !== undefined) {
+                        if (routeData.distance !== undefined && routeData.estimatedTime !== undefined && routeData.route && Array.isArray(routeData.route) && routeData.route.length > 0) {
                           setSelectedRoute(routeData)
                           console.log('Route set successfully:', routeData)
                           
                           // حفظ المسار في localStorage قبل الانتقال
                           try {
-                            localStorage.setItem('currentRoute', JSON.stringify(routeData))
+                            // التأكد من أن البيانات كاملة قبل الحفظ
+                            const routeToSave = {
+                              ...routeData,
+                              id: routeData.id || `emergency-${Date.now()}`,
+                              route: routeData.route || [],
+                              steps: routeData.steps || [],
+                            }
+                            localStorage.setItem('currentRoute', JSON.stringify(routeToSave))
+                            console.log('Route saved to localStorage')
                           } catch (e) {
                             console.error('Error saving route to localStorage:', e)
+                            toast.error('فشل في حفظ المسار محلياً')
                           }
                           
                           toast.success('تم حساب المسار بنجاح')
                           
                           // الانتقال إلى صفحة التوجيه بعد ثانية واحدة
                           setTimeout(() => {
-                            router.push(`/user/navigation?routeId=${routeData.id || 'temp'}`)
+                            const routeId = routeData.id || `emergency-${Date.now()}`
+                            router.push(`/user/navigation?routeId=${routeId}`)
                           }, 1000)
                         } else {
                           console.error('Incomplete route data:', routeData)
-                          throw new Error('البيانات المستلمة غير كاملة')
+                          throw new Error('البيانات المستلمة غير كاملة. تأكد من وجود المسار والإحداثيات.')
                         }
                       } else {
                         console.error('API Error:', res.data.error)

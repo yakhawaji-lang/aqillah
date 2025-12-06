@@ -53,6 +53,8 @@ export default function NavigationPage() {
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null)
   const [distanceToNextTurn, setDistanceToNextTurn] = useState<number | null>(null)
   const [isPaused, setIsPaused] = useState(false)
+  const [isLoadingRoute, setIsLoadingRoute] = useState(true)
+  const [routeError, setRouteError] = useState<string | null>(null)
   
   const watchIdRef = useRef<number | null>(null)
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null)
@@ -61,56 +63,100 @@ export default function NavigationPage() {
   // جلب بيانات المسار
   useEffect(() => {
     const loadRoute = async () => {
-      // أولاً: جرب جلب المسار من localStorage (للمسارات المؤقتة)
-      const savedRoute = localStorage.getItem('currentRoute')
-      if (savedRoute) {
-        try {
-          const parsedRoute = JSON.parse(savedRoute)
-          // إذا كان routeId يطابق أو كان المسار محفوظاً مؤخراً، استخدمه
-          if (!routeId || parsedRoute.id === routeId || parsedRoute.id?.startsWith('temp-') || parsedRoute.id?.startsWith('emergency-')) {
-            setRoute(parsedRoute)
-            return
-          }
-        } catch (e) {
-          console.error('Error parsing saved route:', e)
-        }
-      }
+      setIsLoadingRoute(true)
+      setRouteError(null)
 
-      // ثانياً: إذا كان هناك routeId ولا يبدأ بـ temp- أو emergency-، جرب جلب من API
-      if (routeId && !routeId.startsWith('temp-') && !routeId.startsWith('emergency-')) {
-        try {
-          const res = await axios.get(`/api/emergency-route?routeId=${routeId}`)
-          if (res.data.data) {
-            setRoute(res.data.data)
-            // حفظ في localStorage
-            localStorage.setItem('currentRoute', JSON.stringify(res.data.data))
-          }
-        } catch (error: any) {
-          console.error('Error fetching route:', error)
-          // إذا فشل جلب من API، جرب localStorage مرة أخرى
-          if (savedRoute) {
-            try {
-              setRoute(JSON.parse(savedRoute))
-            } catch (e) {
-              console.error('Error parsing saved route:', e)
-              toast.error('فشل في جلب بيانات المسار')
-            }
-          } else {
-            toast.error('فشل في جلب بيانات المسار')
-          }
-        }
-      } else if (routeId) {
-        // إذا كان routeId مؤقت، استخدم localStorage فقط
+      try {
+        // أولاً: جرب جلب المسار من localStorage (للمسارات المؤقتة)
+        const savedRoute = localStorage.getItem('currentRoute')
         if (savedRoute) {
           try {
-            setRoute(JSON.parse(savedRoute))
+            const parsedRoute = JSON.parse(savedRoute)
+            
+            // التحقق من صحة البيانات
+            if (parsedRoute && parsedRoute.route && Array.isArray(parsedRoute.route) && parsedRoute.route.length > 0) {
+              // إذا كان routeId يطابق أو كان المسار محفوظاً مؤخراً، استخدمه
+              if (!routeId || parsedRoute.id === routeId || parsedRoute.id?.startsWith('temp-') || parsedRoute.id?.startsWith('emergency-')) {
+                setRoute(parsedRoute)
+                setIsLoadingRoute(false)
+                return
+              }
+            } else {
+              console.warn('Invalid route data in localStorage:', parsedRoute)
+            }
           } catch (e) {
             console.error('Error parsing saved route:', e)
-            toast.error('فشل في جلب بيانات المسار')
+            localStorage.removeItem('currentRoute') // حذف البيانات التالفة
+          }
+        }
+
+        // ثانياً: إذا كان هناك routeId ولا يبدأ بـ temp- أو emergency-، جرب جلب من API
+        if (routeId && !routeId.startsWith('temp-') && !routeId.startsWith('emergency-')) {
+          try {
+            const res = await axios.get(`/api/emergency-route?routeId=${routeId}`)
+            if (res.data && res.data.data) {
+              const routeData = res.data.data
+              // التحقق من صحة البيانات
+              if (routeData.route && Array.isArray(routeData.route) && routeData.route.length > 0) {
+                setRoute(routeData)
+                // حفظ في localStorage
+                localStorage.setItem('currentRoute', JSON.stringify(routeData))
+                setIsLoadingRoute(false)
+                return
+              } else {
+                throw new Error('بيانات المسار غير صحيحة')
+              }
+            } else {
+              throw new Error('لم يتم العثور على بيانات المسار')
+            }
+          } catch (error: any) {
+            console.error('Error fetching route:', error)
+            // إذا فشل جلب من API، جرب localStorage مرة أخرى
+            if (savedRoute) {
+              try {
+                const parsedRoute = JSON.parse(savedRoute)
+                if (parsedRoute && parsedRoute.route && Array.isArray(parsedRoute.route)) {
+                  setRoute(parsedRoute)
+                  setIsLoadingRoute(false)
+                  return
+                }
+              } catch (e) {
+                console.error('Error parsing saved route:', e)
+              }
+            }
+            setRouteError(error.response?.data?.error || error.message || 'فشل في جلب بيانات المسار')
+            setIsLoadingRoute(false)
+          }
+        } else if (routeId) {
+          // إذا كان routeId مؤقت، استخدم localStorage فقط
+          if (savedRoute) {
+            try {
+              const parsedRoute = JSON.parse(savedRoute)
+              if (parsedRoute && parsedRoute.route && Array.isArray(parsedRoute.route) && parsedRoute.route.length > 0) {
+                setRoute(parsedRoute)
+                setIsLoadingRoute(false)
+                return
+              } else {
+                throw new Error('بيانات المسار في localStorage غير صحيحة')
+              }
+            } catch (e) {
+              console.error('Error parsing saved route:', e)
+              setRouteError('فشل في تحميل بيانات المسار المحفوظة')
+              setIsLoadingRoute(false)
+            }
+          } else {
+            setRouteError('لم يتم العثور على بيانات المسار')
+            setIsLoadingRoute(false)
           }
         } else {
-          toast.error('لم يتم العثور على بيانات المسار')
+          // لا يوجد routeId
+          setRouteError('لم يتم تحديد مسار')
+          setIsLoadingRoute(false)
         }
+      } catch (error: any) {
+        console.error('Unexpected error loading route:', error)
+        setRouteError(error.message || 'حدث خطأ غير متوقع')
+        setIsLoadingRoute(false)
       }
     }
 
@@ -311,7 +357,27 @@ export default function NavigationPage() {
     return `${minutes} د`
   }
 
-  if (!route) {
+  // تحديث حالة التحميل
+  useEffect(() => {
+    if (route) {
+      setIsLoadingRoute(false)
+      setRouteError(null)
+    }
+  }, [route])
+
+  // إضافة timeout للتحميل
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!route && isLoadingRoute) {
+        setIsLoadingRoute(false)
+        setRouteError('انتهى وقت انتظار تحميل المسار. يرجى المحاولة مرة أخرى.')
+      }
+    }, 10000) // 10 ثواني
+
+    return () => clearTimeout(timer)
+  }, [route, isLoadingRoute])
+
+  if (!route && isLoadingRoute) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -324,7 +390,39 @@ export default function NavigationPage() {
             العودة
           </button>
           <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
             <p className="text-gray-600">جاري تحميل المسار...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!route || routeError) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-6">
+          <button
+            onClick={() => router.back()}
+            className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            العودة
+          </button>
+          <div className="text-center py-12">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+              <p className="text-red-800 font-bold mb-2">فشل في تحميل المسار</p>
+              <p className="text-red-600 text-sm mb-4">{routeError || 'لم يتم العثور على بيانات المسار'}</p>
+              <button
+                onClick={() => {
+                  router.push('/user')
+                }}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+              >
+                العودة إلى صفحة المستخدم
+              </button>
+            </div>
           </div>
         </div>
       </div>
