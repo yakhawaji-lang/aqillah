@@ -48,7 +48,7 @@ const CITY_ROUTES: Record<string, Array<{
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const city = searchParams.get('city') || 'الرياض'
 
     const routes = CITY_ROUTES[city] || CITY_ROUTES['الرياض']

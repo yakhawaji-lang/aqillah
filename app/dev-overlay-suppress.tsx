@@ -74,7 +74,7 @@ export function DevOverlaySuppress() {
         }
         
         if (originalUnhandledRejection) {
-          originalUnhandledRejection(event)
+          originalUnhandledRejection.call(window, event)
         }
       }
       

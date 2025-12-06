@@ -11,7 +11,7 @@ const POOR_VISIBILITY_THRESHOLD = 500 // متر
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const city = searchParams.get('city')
     const daysAhead = parseInt(searchParams.get('days') || '16') // افتراضياً 16 يوم (حد OpenWeatherMap)
     const dayIndex = parseInt(searchParams.get('dayIndex') || '-1') // -1 for all days, 0-15 for specific day

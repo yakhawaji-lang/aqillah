@@ -5,7 +5,7 @@ import { analyzeTraffic } from '@/lib/core/traffic-intelligence'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const segmentId = searchParams.get('segmentId')
     const activeOnly = searchParams.get('activeOnly') !== 'false'
 

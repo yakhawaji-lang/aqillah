@@ -10,6 +10,9 @@ import { WeatherAlertsChecker, WeatherDayData } from '@/lib/services/weather-ale
 // عدد الأيام للتنبؤ
 const FORECAST_DAYS = 16
 
+// Force dynamic rendering because we use searchParams
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const city = request.nextUrl.searchParams.get('city')

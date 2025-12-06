@@ -84,7 +84,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       
       // استدعاء المعالج الأصلي للأخطاء الأخرى
       if (originalUnhandledRejection) {
-        originalUnhandledRejection(event)
+        originalUnhandledRejection.call(window, event)
       }
     }
 

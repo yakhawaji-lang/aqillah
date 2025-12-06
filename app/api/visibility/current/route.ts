@@ -11,7 +11,7 @@ const POOR_VISIBILITY_THRESHOLD = 500 // متر
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const searchParams = request.nextUrl.searchParams
     const city = searchParams.get('city')
 
     // جلب جميع المقاطع الطرقية
