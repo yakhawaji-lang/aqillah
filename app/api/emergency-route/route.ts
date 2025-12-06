@@ -41,20 +41,26 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // جلب بيانات الازدحام الحالية
+      // جلب بيانات الازدحام الحالية (مع التعامل مع عدم توفر قاعدة البيانات)
       const congestionMap = new Map<string, { index: number; delay: number }>()
-      const trafficData = await prisma.trafficData.findMany({
-        take: 100,
-        orderBy: { timestamp: 'desc' },
-        include: { segment: true },
-      })
-
-      trafficData.forEach(data => {
-        congestionMap.set(data.segmentId, {
-          index: data.congestionIndex,
-          delay: data.delayMinutes,
+      try {
+        const trafficData = await prisma.trafficData.findMany({
+          take: 100,
+          orderBy: { timestamp: 'desc' },
+          include: { segment: true },
         })
-      })
+
+        trafficData.forEach(data => {
+          congestionMap.set(data.segmentId, {
+            index: data.congestionIndex,
+            delay: data.delayMinutes,
+          })
+        })
+      } catch (dbError: any) {
+        // إذا فشل الاتصال بقاعدة البيانات، نستخدم congestionMap فارغ
+        // سيتم حساب المسار بدون بيانات ازدحام محلية
+        console.warn('Database not available, using empty congestion map:', dbError.message)
+      }
 
       // تحديث المسار
       const updatedRoute = updateEmergencyRoute(
@@ -62,17 +68,27 @@ export async function POST(request: NextRequest) {
         congestionMap
       )
 
-      // حفظ التحديث
-      const savedRoute = await prisma.emergencyRoute.update({
-        where: { id: routeId },
-        data: {
-          route: updatedRoute.route,
-          distance: updatedRoute.distance,
-          estimatedTime: updatedRoute.estimatedTime,
-          lastUpdate: updatedRoute.lastUpdate,
-          congestionAlongRoute: updatedRoute.congestionAlongRoute,
-        },
-      })
+      // حفظ التحديث (مع التعامل مع عدم توفر قاعدة البيانات)
+      let savedRoute
+      try {
+        savedRoute = await prisma.emergencyRoute.update({
+          where: { id: routeId },
+          data: {
+            route: updatedRoute.route,
+            distance: updatedRoute.distance,
+            estimatedTime: updatedRoute.estimatedTime,
+            lastUpdate: updatedRoute.lastUpdate,
+            congestionAlongRoute: updatedRoute.congestionAlongRoute,
+          },
+        })
+      } catch (dbError: any) {
+        // إذا فشل التحديث في قاعدة البيانات، نعيد المسار المحدث بدون حفظ
+        console.warn('Database not available, returning updated route without saving:', dbError.message)
+        savedRoute = {
+          ...existingRoute,
+          ...updatedRoute,
+        }
+      }
 
       return NextResponse.json({
         success: true,
@@ -102,20 +118,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // جلب بيانات الازدحام الحالية
+    // جلب بيانات الازدحام الحالية (مع التعامل مع عدم توفر قاعدة البيانات)
     const congestionMap = new Map<string, { index: number; delay: number }>()
-    const trafficData = await prisma.trafficData.findMany({
-      take: 100,
-      orderBy: { timestamp: 'desc' },
-      include: { segment: true },
-    })
-
-    trafficData.forEach(data => {
-      congestionMap.set(data.segmentId, {
-        index: data.congestionIndex,
-        delay: data.delayMinutes,
+    try {
+      const trafficData = await prisma.trafficData.findMany({
+        take: 100,
+        orderBy: { timestamp: 'desc' },
+        include: { segment: true },
       })
-    })
+
+      trafficData.forEach(data => {
+        congestionMap.set(data.segmentId, {
+          index: data.congestionIndex,
+          delay: data.delayMinutes,
+        })
+      })
+    } catch (dbError: any) {
+      // إذا فشل الاتصال بقاعدة البيانات، نستخدم congestionMap فارغ
+      // سيتم حساب المسار بدون بيانات ازدحام محلية
+      console.warn('Database not available, using empty congestion map:', dbError.message)
+    }
 
     // حساب المسار
     let route
@@ -131,7 +153,7 @@ export async function POST(request: NextRequest) {
       throw new Error(`فشل في حساب المسار: ${routeError?.message || 'خطأ غير معروف'}`)
     }
 
-    // حفظ المسار
+    // حفظ المسار (مع التعامل مع عدم توفر قاعدة البيانات)
     let savedRoute
     try {
       savedRoute = await prisma.emergencyRoute.create({
@@ -151,8 +173,12 @@ export async function POST(request: NextRequest) {
       })
       console.log('Route saved:', savedRoute.id)
     } catch (dbError: any) {
-      console.error('Database error:', dbError)
-      throw new Error(`فشل في حفظ المسار: ${dbError?.message || 'خطأ في قاعدة البيانات'}`)
+      // إذا فشل حفظ المسار في قاعدة البيانات، نعيد المسار المحسوب بدون حفظ
+      console.warn('Database not available, returning route without saving:', dbError.message)
+      savedRoute = {
+        ...route,
+        requestedAt: new Date(),
+      } as any
     }
 
     return NextResponse.json({
