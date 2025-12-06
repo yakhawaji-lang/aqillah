@@ -13,9 +13,18 @@ export async function POST(request: NextRequest) {
 
     // إذا كان هناك routeId، تحديث المسار الموجود
     if (routeId) {
-      const existingRoute = await prisma.emergencyRoute.findUnique({
-        where: { id: routeId },
-      })
+      let existingRoute
+      try {
+        existingRoute = await prisma.emergencyRoute.findUnique({
+          where: { id: routeId },
+        })
+      } catch (dbError: any) {
+        console.warn('Database not available, cannot update existing route:', dbError.message)
+        return NextResponse.json(
+          { error: 'قاعدة البيانات غير متاحة. لا يمكن تحديث المسار الموجود.' },
+          { status: 503 }
+        )
+      }
 
       if (!existingRoute) {
         return NextResponse.json(
@@ -176,8 +185,21 @@ export async function POST(request: NextRequest) {
       // إذا فشل حفظ المسار في قاعدة البيانات، نعيد المسار المحسوب بدون حفظ
       console.warn('Database not available, returning route without saving:', dbError.message)
       savedRoute = {
-        ...route,
+        id: route.id,
+        originLat: route.originLat,
+        originLng: route.originLng,
+        destinationLat: route.destinationLat,
+        destinationLng: route.destinationLng,
+        route: route.route,
+        distance: route.distance,
+        estimatedTime: route.estimatedTime,
+        lastUpdate: route.lastUpdate,
+        updateInterval: route.updateInterval,
+        isActive: route.isActive,
+        congestionAlongRoute: route.congestionAlongRoute,
         requestedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as any
     }
 
@@ -206,9 +228,18 @@ export async function GET(request: NextRequest) {
     const routeId = searchParams.get('routeId')
 
     if (routeId) {
-      const route = await prisma.emergencyRoute.findUnique({
-        where: { id: routeId },
-      })
+      let route
+      try {
+        route = await prisma.emergencyRoute.findUnique({
+          where: { id: routeId },
+        })
+      } catch (dbError: any) {
+        console.warn('Database not available, cannot fetch route:', dbError.message)
+        return NextResponse.json(
+          { error: 'قاعدة البيانات غير متاحة. لا يمكن جلب المسار.' },
+          { status: 503 }
+        )
+      }
 
       if (!route) {
         return NextResponse.json(
@@ -221,11 +252,18 @@ export async function GET(request: NextRequest) {
     }
 
     // جلب جميع المسارات النشطة
-    const routes = await prisma.emergencyRoute.findMany({
-      where: { isActive: true },
-      orderBy: { requestedAt: 'desc' },
-      take: 50,
-    })
+    let routes
+    try {
+      routes = await prisma.emergencyRoute.findMany({
+        where: { isActive: true },
+        orderBy: { requestedAt: 'desc' },
+        take: 50,
+      })
+    } catch (dbError: any) {
+      console.warn('Database not available, returning empty routes list:', dbError.message)
+      // إرجاع قائمة فارغة بدلاً من خطأ
+      return NextResponse.json({ data: [] })
+    }
 
     return NextResponse.json({ data: routes })
   } catch (error) {
