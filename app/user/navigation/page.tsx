@@ -12,20 +12,17 @@ import {
   MapPin, 
   Clock,
   Route,
-  ChevronRight,
   Play,
   Pause,
-  RotateCcw,
-  Target,
-  ArrowRight
+  RotateCcw
 } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
 interface RouteStep {
   instruction: string
-  distance: number // meters
-  duration: number // seconds
+  distance: number
+  duration: number
   startLocation: [number, number]
   endLocation: [number, number]
   maneuver?: string
@@ -38,8 +35,8 @@ interface NavigationRoute {
   destinationLat: number
   destinationLng: number
   route: Array<[number, number]>
-  distance: number // km
-  estimatedTime: number // minutes
+  distance: number
+  estimatedTime: number
   steps?: RouteStep[]
 }
 
@@ -57,13 +54,11 @@ export default function NavigationPage() {
   const [isPaused, setIsPaused] = useState(false)
   const [isLoadingRoute, setIsLoadingRoute] = useState(true)
   const [routeError, setRouteError] = useState<string | null>(null)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   
   const watchIdRef = useRef<number | null>(null)
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null)
   const lastAnnouncementRef = useRef<number>(0)
 
-  // جلب بيانات المسار
   useEffect(() => {
     const loadRoute = async () => {
       setIsLoadingRoute(true)
@@ -154,7 +149,6 @@ export default function NavigationPage() {
     }
   }, [route])
 
-  // تتبع الموقع الحالي
   useEffect(() => {
     if (!isNavigating || isPaused) return
 
@@ -338,22 +332,19 @@ export default function NavigationPage() {
 
   if (!route && isLoadingRoute) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4 mb-6">
-            <button
-              onClick={() => router.back()}
-              className="p-2 rounded-lg bg-white shadow-sm hover:bg-gray-50 transition"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
-            </button>
-          </div>
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary-600 border-t-transparent mx-auto mb-4"></div>
-              <p className="text-gray-600 text-lg">جاري تحميل المسار...</p>
-            </div>
+          <button
+            onClick={() => router.back()}
+            className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            العودة
+          </button>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">جاري تحميل المسار...</p>
           </div>
         </div>
       </div>
@@ -362,32 +353,26 @@ export default function NavigationPage() {
 
   if (!route || routeError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4 mb-6">
-            <button
-              onClick={() => router.back()}
-              className="p-2 rounded-lg bg-white shadow-sm hover:bg-gray-50 transition"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
-            </button>
-          </div>
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Target className="w-8 h-8 text-red-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">فشل في تحميل المسار</h3>
-                <p className="text-gray-600 mb-6">{routeError || 'لم يتم العثور على بيانات المسار'}</p>
-                <button
-                  onClick={() => router.push('/user')}
-                  className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition shadow-lg"
-                >
-                  العودة إلى صفحة المستخدم
-                </button>
-              </div>
+          <button
+            onClick={() => router.back()}
+            className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            العودة
+          </button>
+          <div className="text-center py-12">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+              <p className="text-red-800 font-bold mb-2">فشل في تحميل المسار</p>
+              <p className="text-red-600 text-sm mb-4">{routeError || 'لم يتم العثور على بيانات المسار'}</p>
+              <button
+                onClick={() => router.push('/user')}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+              >
+                العودة إلى صفحة المستخدم
+              </button>
             </div>
           </div>
         </div>
@@ -399,255 +384,232 @@ export default function NavigationPage() {
   const progress = route.steps ? ((currentStepIndex + 1) / route.steps.length) * 100 : 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="relative">
-        {/* زر إخفاء/إظهار الشريط الجانبي */}
-        <button
-          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className={`fixed top-20 z-30 ${isSidebarCollapsed ? 'right-4' : 'right-[calc(33.333%+1rem)]'} transition-all duration-300 bg-white shadow-lg rounded-full p-2 hover:bg-gray-50`}
-        >
-          <ChevronRight className={`w-5 h-5 text-gray-700 transition-transform ${isSidebarCollapsed ? 'rotate-180' : ''}`} />
-        </button>
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)]">
+        {/* الشريط الجانبي */}
+        <div className="w-full lg:w-96 bg-white shadow-lg overflow-y-auto">
+          <div className="p-4 space-y-4">
+            {/* زر العودة */}
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition mb-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>العودة</span>
+            </button>
 
-        <div className="flex h-[calc(100vh-64px)]">
-          {/* الشريط الجانبي */}
-          <div className={`${isSidebarCollapsed ? 'w-0 overflow-hidden' : 'w-full lg:w-96'} transition-all duration-300 bg-white shadow-xl overflow-y-auto`}>
-            <div className="p-4 space-y-4">
-              {/* زر العودة */}
-              <button
-                onClick={() => router.back()}
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition mb-2"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span className="font-medium">العودة</span>
-              </button>
-
-              {/* معلومات المسار - بطاقة كبيرة */}
-              <div className="bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl p-6 text-white shadow-lg">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <Route className="w-5 h-5" />
-                  معلومات المسار
-                </h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MapPin className="w-4 h-4" />
-                      <span className="text-sm opacity-90">المسافة</span>
-                    </div>
-                    <p className="text-2xl font-bold">{route.distance.toFixed(1)} كم</p>
+            {/* معلومات المسار */}
+            <div className="bg-primary-600 text-white rounded-lg p-4">
+              <h3 className="font-bold mb-3 flex items-center gap-2">
+                <Route className="w-5 h-5" />
+                معلومات المسار
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-sm">المسافة</span>
                   </div>
+                  <p className="text-xl font-bold">{route.distance.toFixed(1)} كم</p>
+                </div>
 
-                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="w-4 h-4" />
-                      <span className="text-sm opacity-90">الوقت</span>
-                    </div>
-                    <p className="text-2xl font-bold">{Math.round(route.estimatedTime)} د</p>
+                <div className="bg-white/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm">الوقت</span>
                   </div>
+                  <p className="text-xl font-bold">{Math.round(route.estimatedTime)} د</p>
                 </div>
               </div>
+            </div>
 
-              {/* أزرار التحكم الرئيسية */}
-              <div className="bg-white rounded-xl p-4 shadow-md">
-                <div className="flex gap-2 mb-4">
-                  <button
-                    onClick={toggleNavigation}
-                    className={`flex-1 py-4 rounded-xl font-semibold transition-all shadow-lg transform hover:scale-105 ${
-                      isNavigating
-                        ? 'bg-red-600 text-white hover:bg-red-700'
-                        : 'bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800'
-                    }`}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      {isNavigating ? (
-                        <>
-                          <Pause className="h-5 w-5" />
-                          <span>إيقاف</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-5 w-5" />
-                          <span>بدء التوجيه</span>
-                        </>
-                      )}
-                    </div>
-                  </button>
-                  
-                  <button
-                    onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
-                    className={`p-4 rounded-xl transition-all shadow-md ${
-                      isVoiceEnabled
-                        ? 'bg-primary-100 text-primary-700'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                    title={isVoiceEnabled ? 'إيقاف الصوت' : 'تفعيل الصوت'}
-                  >
-                    {isVoiceEnabled ? (
-                      <Volume2 className="h-5 w-5" />
+            {/* أزرار التحكم */}
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={toggleNavigation}
+                  className={`flex-1 py-3 rounded-lg font-medium transition ${
+                    isNavigating
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-primary-600 text-white hover:bg-primary-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    {isNavigating ? (
+                      <>
+                        <Pause className="h-5 w-5" />
+                        <span>إيقاف</span>
+                      </>
                     ) : (
-                      <VolumeX className="h-5 w-5" />
+                      <>
+                        <Play className="h-5 w-5" />
+                        <span>بدء التوجيه</span>
+                      </>
                     )}
-                  </button>
-
-                  <button
-                    onClick={resetNavigation}
-                    className="p-4 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all shadow-md"
-                    title="إعادة تعيين"
-                  >
-                    <RotateCcw className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {/* شريط التقدم */}
-                {route.steps && (
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-2">
-                      <span className="font-medium">التقدم</span>
-                      <span className="font-bold">{currentStepIndex + 1} / {route.steps.length}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-primary-600 to-primary-700 h-3 rounded-full transition-all duration-500 shadow-sm"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
                   </div>
-                )}
+                </button>
+                
+                <button
+                  onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
+                  className={`p-3 rounded-lg transition ${
+                    isVoiceEnabled
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {isVoiceEnabled ? (
+                    <Volume2 className="h-5 w-5" />
+                  ) : (
+                    <VolumeX className="h-5 w-5" />
+                  )}
+                </button>
 
-                {/* المسافة إلى المنعطف التالي */}
-                {isNavigating && distanceToNextTurn !== null && (
-                  <div className="bg-gradient-to-r from-blue-50 to-primary-50 rounded-xl p-4 border-2 border-primary-200">
-                    <p className="text-sm text-gray-600 mb-2 font-medium">المسافة إلى المنعطف التالي</p>
-                    <p className="text-3xl font-bold text-primary-700">
-                      {formatDistance(distanceToNextTurn)}
-                    </p>
-                  </div>
-                )}
+                <button
+                  onClick={resetNavigation}
+                  className="p-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                >
+                  <RotateCcw className="h-5 w-5" />
+                </button>
               </div>
 
-              {/* التوجيه الحالي */}
-              {currentStep && (
-                <div className="bg-white rounded-xl p-5 shadow-md border-2 border-primary-200">
-                  <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <Navigation className="w-5 h-5 text-primary-600" />
-                    التوجيه الحالي
-                  </h3>
-                  <div className="space-y-3">
-                    <p className="text-xl font-bold text-gray-900 leading-relaxed">
-                      {currentStep.instruction || 'تابع المسار'}
-                    </p>
-                    <div className="flex items-center justify-between text-sm text-gray-600 pt-2 border-t border-gray-200">
-                      <span className="flex items-center gap-1">
-                        <Route className="w-4 h-4" />
-                        {formatDistance(currentStep.distance)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {formatTime(currentStep.duration)}
-                      </span>
-                    </div>
+              {/* شريط التقدم */}
+              {route.steps && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>التقدم</span>
+                    <span className="font-bold">{currentStepIndex + 1} / {route.steps.length}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
                   </div>
                 </div>
               )}
 
-              {/* قائمة الخطوات */}
-              {route.steps && route.steps.length > 0 && (
-                <div className="bg-white rounded-xl p-4 shadow-md">
-                  <h3 className="font-bold text-gray-900 mb-4">خطوات المسار</h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {route.steps.map((step, index) => (
-                      <div
-                        key={index}
-                        className={`p-4 rounded-xl transition-all cursor-pointer ${
-                          index === currentStepIndex
-                            ? 'bg-gradient-to-r from-primary-50 to-blue-50 border-2 border-primary-500 shadow-md'
-                            : 'bg-gray-50 border-2 border-transparent hover:border-gray-200'
-                        }`}
-                        onClick={() => {
-                          if (!isNavigating) {
-                            setCurrentStepIndex(index)
-                          }
-                        }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${
-                            index === currentStepIndex
-                              ? 'bg-primary-600 text-white'
-                              : 'bg-gray-300 text-gray-700'
-                          }`}>
-                            {index + 1}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm leading-relaxed ${
-                              index === currentStepIndex ? 'font-bold text-gray-900' : 'text-gray-700'
-                            }`}>
-                              {step.instruction || 'تابع المسار'}
-                            </p>
-                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <Route className="w-3 h-3" />
-                                {formatDistance(step.distance)}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {formatTime(step.duration)}
-                              </span>
-                            </div>
-                          </div>
-                          {index === currentStepIndex && (
-                            <ArrowRight className="w-5 h-5 text-primary-600 flex-shrink-0" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {/* المسافة إلى المنعطف التالي */}
+              {isNavigating && distanceToNextTurn !== null && (
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                  <p className="text-sm text-gray-600 mb-1">المسافة إلى المنعطف التالي</p>
+                  <p className="text-2xl font-bold text-primary-600">
+                    {formatDistance(distanceToNextTurn)}
+                  </p>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* الخريطة */}
-          <div className="flex-1 relative">
-            <div className="absolute inset-0 bg-white rounded-l-2xl shadow-2xl overflow-hidden">
-              <GoogleTrafficMap
-                center={
-                  currentLocation 
-                    ? { lat: currentLocation[0], lng: currentLocation[1] }
-                    : (route.route && route.route.length > 0 
-                      ? { lat: route.route[0][0], lng: route.route[0][1] }
-                      : { lat: route.originLat, lng: route.originLng })
-                }
-                zoom={isNavigating && currentLocation ? 16 : 14}
-                showTrafficLayer={true}
-                route={route.route}
-                currentLocation={currentLocation}
-                className="w-full h-full"
-              />
-              
-              {/* مفتاح الألوان - تصميم محسّن */}
-              <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-4 z-10 border border-gray-200">
-                <h4 className="text-xs font-bold text-gray-700 mb-3">مفتاح الألوان</h4>
+            {/* التوجيه الحالي */}
+            {currentStep && (
+              <div className="bg-white rounded-lg p-4 shadow-sm border-2 border-primary-200">
+                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <Navigation className="w-5 h-5 text-primary-600" />
+                  التوجيه الحالي
+                </h3>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-white shadow-sm"></div>
-                    <span className="text-xs text-gray-700 font-medium">نقطة البداية</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
-                    <span className="text-xs text-gray-700 font-medium">موقعك الحالي</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-white shadow-sm"></div>
-                    <span className="text-xs text-gray-700 font-medium">الوجهة</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-1.5 bg-blue-500 rounded-full shadow-sm"></div>
-                    <span className="text-xs text-gray-700 font-medium">مسار التوجيه</span>
+                  <p className="text-lg font-bold text-gray-900">
+                    {currentStep.instruction || 'تابع المسار'}
+                  </p>
+                  <div className="flex items-center justify-between text-sm text-gray-600 pt-2 border-t border-gray-200">
+                    <span className="flex items-center gap-1">
+                      <Route className="w-4 h-4" />
+                      {formatDistance(currentStep.distance)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {formatTime(currentStep.duration)}
+                    </span>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* قائمة الخطوات */}
+            {route.steps && route.steps.length > 0 && (
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <h3 className="font-bold text-gray-900 mb-3">خطوات المسار</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {route.steps.map((step, index) => (
+                    <div
+                      key={index}
+                      className={`p-3 rounded-lg transition ${
+                        index === currentStepIndex
+                          ? 'bg-primary-50 border-2 border-primary-500'
+                          : 'bg-gray-50 border-2 border-transparent hover:border-gray-200'
+                      }`}
+                      onClick={() => {
+                        if (!isNavigating) {
+                          setCurrentStepIndex(index)
+                        }
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                          index === currentStepIndex
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-gray-300 text-gray-700'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-sm ${
+                            index === currentStepIndex ? 'font-bold text-gray-900' : 'text-gray-700'
+                          }`}>
+                            {step.instruction || 'تابع المسار'}
+                          </p>
+                          <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                            <span>{formatDistance(step.distance)}</span>
+                            <span>{formatTime(step.duration)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* الخريطة */}
+        <div className="flex-1 relative bg-white">
+          <GoogleTrafficMap
+            center={
+              currentLocation 
+                ? { lat: currentLocation[0], lng: currentLocation[1] }
+                : (route.route && route.route.length > 0 
+                  ? { lat: route.route[0][0], lng: route.route[0][1] }
+                  : { lat: route.originLat, lng: route.originLng })
+            }
+            zoom={isNavigating && currentLocation ? 16 : 14}
+            showTrafficLayer={true}
+            route={route.route}
+            currentLocation={currentLocation}
+            className="w-full h-full"
+          />
+          
+          {/* مفتاح الألوان */}
+          <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 z-10 border border-gray-200">
+            <h4 className="text-xs font-bold text-gray-700 mb-2">مفتاح الألوان</h4>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white"></div>
+                <span className="text-xs text-gray-700">نقطة البداية</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></div>
+                <span className="text-xs text-gray-700">موقعك الحالي</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white"></div>
+                <span className="text-xs text-gray-700">الوجهة</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-1 bg-blue-500 rounded"></div>
+                <span className="text-xs text-gray-700">مسار التوجيه</span>
               </div>
             </div>
           </div>
