@@ -73,6 +73,9 @@ export default function GoogleTrafficMap({
   const directionsRendererRef = useRef<any>(null)
   const routePolylineRef = useRef<any>(null)
   const currentLocationMarkerRef = useRef<any>(null)
+  const originMarkerRef = useRef<any>(null)
+  const destinationMarkerRef = useRef<any>(null)
+  const directionMarkersRef = useRef<any[]>([])
   const weatherInfoWindowRef = useRef<any>(null)
   const weatherClickListenerRef = useRef<any>(null)
   const visibilityMarkersRef = useRef<any[]>([])
@@ -364,6 +367,23 @@ export default function GoogleTrafficMap({
         directionsRendererRef.current.setMap(null)
         directionsRendererRef.current = null
       }
+      // Clean up route markers
+      if (originMarkerRef.current) {
+        originMarkerRef.current.setMap(null)
+        originMarkerRef.current = null
+      }
+      if (destinationMarkerRef.current) {
+        destinationMarkerRef.current.setMap(null)
+        destinationMarkerRef.current = null
+      }
+      if (routePolylineRef.current) {
+        routePolylineRef.current.setMap(null)
+        routePolylineRef.current = null
+      }
+      directionMarkersRef.current.forEach((marker) => {
+        if (marker) marker.setMap(null)
+      })
+      directionMarkersRef.current = []
       // Clean up map instance
       if (mapInstanceRef.current) {
         mapInstanceRef.current = null
@@ -491,18 +511,120 @@ export default function GoogleTrafficMap({
         lng: coord[1],
       }))
 
+      // Clear previous markers
+      if (originMarkerRef.current) {
+        originMarkerRef.current.setMap(null)
+        originMarkerRef.current = null
+      }
+      if (destinationMarkerRef.current) {
+        destinationMarkerRef.current.setMap(null)
+        destinationMarkerRef.current = null
+      }
+      directionMarkersRef.current.forEach((marker) => {
+        if (marker) marker.setMap(null)
+      })
+      directionMarkersRef.current = []
+
+      // رسم المسار مع أسهم الاتجاه
       routePolylineRef.current = new (window as any).google.maps.Polyline({
         path: path,
         geodesic: true,
         strokeColor: '#4285F4',
-        strokeOpacity: 1.0,
-        strokeWeight: 5,
+        strokeOpacity: 0.8,
+        strokeWeight: 6,
+        icons: [
+          {
+            icon: {
+              path: (window as any).google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              scale: 4,
+              strokeColor: '#4285F4',
+              fillColor: '#4285F4',
+              fillOpacity: 1,
+            },
+            offset: '50%',
+            repeat: '100px',
+          },
+        ],
         map: mapInstanceRef.current,
       })
+
+      // إضافة علامة البداية (الأخضر)
+      if (path.length > 0) {
+        originMarkerRef.current = new (window as any).google.maps.Marker({
+          position: path[0],
+          map: mapInstanceRef.current,
+          icon: {
+            path: (window as any).google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#10B981',
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 3,
+          },
+          title: 'نقطة البداية',
+          zIndex: 1000,
+        })
+      }
+
+      // إضافة علامة النهاية (الأحمر)
+      if (path.length > 1) {
+        destinationMarkerRef.current = new (window as any).google.maps.Marker({
+          position: path[path.length - 1],
+          map: mapInstanceRef.current,
+          icon: {
+            path: (window as any).google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#EF4444',
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 3,
+          },
+          title: 'الوجهة',
+          zIndex: 1000,
+        })
+      }
+
+      // إضافة أسهم الاتجاه على طول المسار
+      if ((window as any).google?.maps?.geometry?.spherical) {
+        for (let i = 0; i < path.length - 1; i += Math.max(1, Math.floor(path.length / 10))) {
+          const start = path[i]
+          const end = path[Math.min(i + 1, path.length - 1)]
+          
+          try {
+            // حساب الاتجاه باستخدام geometry library
+            const heading = (window as any).google.maps.geometry.spherical.computeHeading(
+              new (window as any).google.maps.LatLng(start.lat, start.lng),
+              new (window as any).google.maps.LatLng(end.lat, end.lng)
+            )
+
+            const directionMarker = new (window as any).google.maps.Marker({
+              position: start,
+              map: mapInstanceRef.current,
+              icon: {
+                path: (window as any).google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                scale: 3,
+                rotation: heading,
+                fillColor: '#4285F4',
+                fillOpacity: 0.8,
+                strokeColor: '#FFFFFF',
+                strokeWeight: 1,
+              },
+              zIndex: 500,
+            })
+            directionMarkersRef.current.push(directionMarker)
+          } catch (e) {
+            // تجاهل الأخطاء في حساب الاتجاه
+            console.warn('Error calculating heading:', e)
+          }
+        }
+      }
 
       // Fit bounds to show entire route
       const bounds = new (window as any).google.maps.LatLngBounds()
       path.forEach((point) => bounds.extend(point))
+      if (currentLocation && currentLocation.length === 2) {
+        bounds.extend({ lat: currentLocation[0], lng: currentLocation[1] })
+      }
       mapInstanceRef.current.fitBounds(bounds)
 
       return () => {
@@ -510,6 +632,18 @@ export default function GoogleTrafficMap({
           routePolylineRef.current.setMap(null)
           routePolylineRef.current = null
         }
+        if (originMarkerRef.current) {
+          originMarkerRef.current.setMap(null)
+          originMarkerRef.current = null
+        }
+        if (destinationMarkerRef.current) {
+          destinationMarkerRef.current.setMap(null)
+          destinationMarkerRef.current = null
+        }
+        directionMarkersRef.current.forEach((marker) => {
+          if (marker) marker.setMap(null)
+        })
+        directionMarkersRef.current = []
       }
     }
 

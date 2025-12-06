@@ -615,7 +615,7 @@ export default function NavigationPage() {
 
           {/* الخريطة */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg" style={{ height: '600px' }}>
+            <div className="bg-white rounded-xl overflow-hidden shadow-lg relative" style={{ height: '600px' }}>
               <GoogleTrafficMap
                 center={
                   currentLocation 
@@ -624,12 +624,34 @@ export default function NavigationPage() {
                       ? { lat: route.route[0][0], lng: route.route[0][1] }
                       : { lat: route.originLat, lng: route.originLng })
                 }
-                zoom={15}
+                zoom={isNavigating && currentLocation ? 16 : 14}
                 showTrafficLayer={true}
                 route={route.route}
                 currentLocation={currentLocation}
                 className="w-full h-full"
               />
+              
+              {/* مفتاح الألوان */}
+              <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 z-10 text-sm">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white"></div>
+                    <span className="text-gray-700">نقطة البداية</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></div>
+                    <span className="text-gray-700">موقعك الحالي</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white"></div>
+                    <span className="text-gray-700">الوجهة</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-1 bg-blue-500"></div>
+                    <span className="text-gray-700">مسار التوجيه</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
