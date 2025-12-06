@@ -387,41 +387,43 @@ export default function NavigationPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)]">
+      <div className="flex h-[calc(100vh-64px)]">
         {/* الشريط الجانبي */}
-        <div className="w-full lg:w-96 bg-white shadow-lg overflow-y-auto">
-          <div className="p-4 space-y-4">
+        <div className="w-96 bg-white shadow-xl border-l border-gray-200 overflow-y-auto hidden lg:block">
+          <div className="p-6 space-y-6">
             {/* زر العودة */}
             <button
               onClick={() => router.back()}
-              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition mb-2"
+              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition mb-4"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>العودة</span>
+              <span className="font-medium">العودة</span>
             </button>
 
             {/* معلومات المسار */}
-            <div className="bg-primary-600 text-white rounded-lg p-4">
-              <h3 className="font-bold mb-3 flex items-center gap-2">
-                <Route className="w-5 h-5" />
+            <div className="bg-gradient-to-br from-primary-600 to-primary-700 text-white rounded-xl p-6 shadow-lg">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <Route className="w-6 h-6" />
                 معلومات المسار
               </h3>
               
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white/20 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <MapPin className="w-4 h-4" />
-                    <span className="text-sm">المسافة</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin className="w-5 h-5" />
+                    <span className="text-sm font-medium">المسافة</span>
                   </div>
-                  <p className="text-xl font-bold">{route.distance.toFixed(1)} كم</p>
+                  <p className="text-3xl font-bold">{route.distance.toFixed(1)}</p>
+                  <p className="text-sm opacity-90 mt-1">كيلومتر</p>
                 </div>
 
-                <div className="bg-white/20 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-sm">الوقت</span>
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-5 h-5" />
+                    <span className="text-sm font-medium">الوقت المتوقع</span>
                   </div>
-                  <p className="text-xl font-bold">{Math.round(route.estimatedTime)} د</p>
+                  <p className="text-3xl font-bold">{Math.round(route.estimatedTime)}</p>
+                  <p className="text-sm opacity-90 mt-1">دقيقة</p>
                 </div>
               </div>
             </div>
@@ -574,8 +576,8 @@ export default function NavigationPage() {
           </div>
         </div>
 
-        {/* الخريطة */}
-        <div className="flex-1 relative bg-white">
+        {/* الخريطة - كامل العرض */}
+        <div className="flex-1 relative">
           <GoogleTrafficMap
             center={
               currentLocation 
@@ -592,24 +594,24 @@ export default function NavigationPage() {
           />
           
           {/* مفتاح الألوان */}
-          <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 z-10 border border-gray-200">
-            <h4 className="text-xs font-bold text-gray-700 mb-2">مفتاح الألوان</h4>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-green-500 border-2 border-white"></div>
-                <span className="text-xs text-gray-700">نقطة البداية</span>
+          <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-4 z-10 border border-gray-200">
+            <h4 className="text-xs font-bold text-gray-700 mb-3">مفتاح الألوان</h4>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-white shadow-sm"></div>
+                <span className="text-xs text-gray-700 font-medium">نقطة البداية</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white"></div>
-                <span className="text-xs text-gray-700">موقعك الحالي</span>
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
+                <span className="text-xs text-gray-700 font-medium">موقعك الحالي</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-red-500 border-2 border-white"></div>
-                <span className="text-xs text-gray-700">الوجهة</span>
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-white shadow-sm"></div>
+                <span className="text-xs text-gray-700 font-medium">الوجهة</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-1 bg-blue-500 rounded"></div>
-                <span className="text-xs text-gray-700">مسار التوجيه</span>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-1.5 bg-blue-500 rounded-full shadow-sm"></div>
+                <span className="text-xs text-gray-700 font-medium">مسار التوجيه</span>
               </div>
             </div>
           </div>
