@@ -152,6 +152,31 @@ export default function NavigationPage() {
     }
   }, [route])
 
+  // جلب موقع المستخدم تلقائياً عند فتح الصفحة
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location: [number, number] = [
+            position.coords.latitude,
+            position.coords.longitude
+          ]
+          setCurrentLocation(location)
+          console.log('✅ User location fetched:', location)
+        },
+        (error) => {
+          console.error('Error getting user location:', error)
+          // في حالة الفشل، يمكن استخدام موقع افتراضي أو إظهار رسالة
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      )
+    }
+  }, []) // يتم التنفيذ مرة واحدة عند تحميل الصفحة
+
   // الاستماع لتحديثات المسار من Google Maps Directions API
   useEffect(() => {
     const handleRouteUpdate = (event: CustomEvent) => {
@@ -516,7 +541,7 @@ export default function NavigationPage() {
                   ? { lat: route.route[0][0], lng: route.route[0][1] }
                   : { lat: route.originLat, lng: route.originLng })
             }
-            zoom={isNavigating && currentLocation ? 16 : 14}
+            zoom={currentLocation ? 15 : (isNavigating && currentLocation ? 16 : 14)} // تكبير الخريطة عند وجود موقع حالي
             showTrafficLayer={true}
             route={{
               origin: currentLocation 
