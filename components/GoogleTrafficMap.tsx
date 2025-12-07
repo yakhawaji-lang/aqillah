@@ -82,6 +82,7 @@ export default function GoogleTrafficMap({
   const visibilityMarkersRef = useRef<any[]>([])
   const visibilityForecastMarkersRef = useRef<any[]>([])
   const unsafeRoutesMarkersRef = useRef<any[]>([])
+  const lastRenderedRouteRef = useRef<string>('') // لتتبع آخر route تم رسمه
   const [map, setMap] = useState<any>(null)
   const [directionsService, setDirectionsService] = useState<any>(null)
   const [directionsRenderer, setDirectionsRenderer] = useState<any>(null)
@@ -393,30 +394,14 @@ export default function GoogleTrafficMap({
     }
   }, [isMapRefReady])
 
-  // Update map center - فقط عند تغيير فعلي لتجنب التحديث المستمر
-  const lastCenterRef = useRef<{ lat: number; lng: number } | null>(null)
-  const lastZoomRef = useRef<number | null>(null)
-  
+  // Update map center
   useEffect(() => {
     if (mapInstanceRef.current && map) {
-      const centerChanged = !lastCenterRef.current || 
-        lastCenterRef.current.lat !== center.lat || 
-        lastCenterRef.current.lng !== center.lng
-      const zoomChanged = lastZoomRef.current === null || lastZoomRef.current !== zoom
-      
-      if (centerChanged || zoomChanged) {
-        try {
-          if (centerChanged) {
-            mapInstanceRef.current.setCenter(center)
-            lastCenterRef.current = center
-          }
-          if (zoomChanged) {
-            mapInstanceRef.current.setZoom(zoom)
-            lastZoomRef.current = zoom
-          }
-        } catch (err) {
-          console.error('Error updating map center:', err)
-        }
+      try {
+        mapInstanceRef.current.setCenter(center)
+        mapInstanceRef.current.setZoom(zoom)
+      } catch (err) {
+        console.error('Error updating map center:', err)
       }
     }
   }, [map, center, zoom])
@@ -641,11 +626,20 @@ export default function GoogleTrafficMap({
         directionsRendererRef.current.setDirections({ routes: [] })
       }
 
-      // A: دائماً استخدام الموقع الحالي كـ origin (نقطة البداية)
-      // B: الوجهة من route.destination
+      // إنشاء مفتاح فريد للمسار لتجنب إعادة الرسم غير الضرورية
+      const routeKey = `${route.origin.lat},${route.origin.lng}-${route.destination.lat},${route.destination.lng}`
+      
+      // إذا كان نفس المسار، لا تعيد الرسم
+      if (lastRenderedRouteRef.current === routeKey) {
+        return
+      }
+      
+      lastRenderedRouteRef.current = routeKey
+      
+      // A: دائماً استخدام الموقع الحالي كـ origin
       const originToUse = currentLocation && currentLocation.length === 2
-        ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي
-        : { lat: route.origin.lat, lng: route.origin.lng } // A: نقطة البداية المحفوظة
+        ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي دائماً
+        : { lat: route.origin.lat, lng: route.origin.lng } // A: نقطة البداية إذا لم يكن هناك موقع حالي
 
       const request: any = {
         origin: originToUse,
@@ -681,20 +675,13 @@ export default function GoogleTrafficMap({
               preserveViewport: false,
             })
             
-            // Fit bounds to show entire route - مرة واحدة فقط لتجنب التحديث المستمر
-            if (mapInstanceRef.current) {
-              const bounds = new (window as any).google.maps.LatLngBounds()
-              result.routes[0].legs.forEach((leg: any) => {
-                bounds.extend(leg.start_location) // A: نقطة البداية
-                bounds.extend(leg.end_location) // B: نقطة النهاية
-              })
-              // استخدام setTimeout لتأخير fitBounds قليلاً وتجنب التحديث المستمر
-              setTimeout(() => {
-                if (mapInstanceRef.current) {
-                  mapInstanceRef.current.fitBounds(bounds)
-                }
-              }, 200)
-            }
+            // Fit bounds to show entire route
+            const bounds = new (window as any).google.maps.LatLngBounds()
+            result.routes[0].legs.forEach((leg: any) => {
+              bounds.extend(leg.start_location) // A: نقطة البداية
+              bounds.extend(leg.end_location) // B: نقطة النهاية
+            })
+            mapInstanceRef.current.fitBounds(bounds)
             
             // جلب بيانات الطقس للمسار لحساب التأخير الإضافي
             const fetchWeatherDelay = async () => {
@@ -848,17 +835,10 @@ export default function GoogleTrafficMap({
         zIndex: 1000,
       })
 
-      // Center map on current location if currentLocation prop is provided - مرة واحدة فقط
-      if (currentLocation && mapInstanceRef.current) {
-        const currentCenter = mapInstanceRef.current.getCenter()
-        const shouldCenter = !currentCenter || 
-          Math.abs(currentCenter.lat() - currentLocation[0]) > 0.001 ||
-          Math.abs(currentCenter.lng() - currentLocation[1]) > 0.001
-        
-        if (shouldCenter) {
-          mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
-          mapInstanceRef.current.setZoom(15)
-        }
+      // Center map on current location if currentLocation prop is provided
+      if (currentLocation) {
+        mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
+        mapInstanceRef.current.setZoom(16)
       }
     }
 

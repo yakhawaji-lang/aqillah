@@ -620,7 +620,7 @@ export default function NavigationPage() {
           <GoogleTrafficMap
             center={
               currentLocation 
-                ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي
+                ? { lat: currentLocation[0], lng: currentLocation[1] } // مركز الخريطة على موقعك الحالي
                 : (route && route.route && route.route.length > 0 
                   ? { lat: route.route[0][0], lng: route.route[0][1] }
                   : route && route.originLat && route.originLng
@@ -632,7 +632,7 @@ export default function NavigationPage() {
             route={
               currentLocation && destination
                 ? {
-                    origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي
+                    origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي دائماً
                     destination: { lat: destination[0], lng: destination[1] }, // B: الوجهة المحددة
                   }
                 : route && route.destinationLat && route.destinationLng && currentLocation
