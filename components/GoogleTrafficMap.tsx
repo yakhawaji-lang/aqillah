@@ -625,8 +625,13 @@ export default function GoogleTrafficMap({
         directionsRendererRef.current.setDirections({ routes: [] })
       }
 
+      // استخدام الموقع الحالي كـ origin إذا كان متاحاً، وإلا استخدام route.origin
+      const originToUse = currentLocation && currentLocation.length === 2
+        ? { lat: currentLocation[0], lng: currentLocation[1] }
+        : { lat: route.origin.lat, lng: route.origin.lng }
+
       const request: any = {
-        origin: { lat: route.origin.lat, lng: route.origin.lng },
+        origin: originToUse,
         destination: { lat: route.destination.lat, lng: route.destination.lng },
         travelMode: (window as any).google.maps.TravelMode.DRIVING,
         ...(route.waypoints && route.waypoints.length > 0 && {
