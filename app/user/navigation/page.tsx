@@ -529,8 +529,12 @@ export default function NavigationPage() {
                     <Clock className="w-4 h-4" />
                     <span className="text-xs font-medium">الوقت</span>
                   </div>
-                  <p className="text-2xl font-bold">{Math.round(route.estimatedTime)}</p>
-                  <p className="text-xs opacity-90">دقيقة</p>
+                  <p className="text-2xl font-bold">
+                    {Math.round(route.estimatedTimeInTraffic || route.estimatedTime)}
+                  </p>
+                  <p className="text-xs opacity-90">
+                    {route.estimatedTimeInTraffic ? 'دقيقة (مع الازدحام)' : 'دقيقة'}
+                  </p>
                 </div>
               </div>
             </div>
