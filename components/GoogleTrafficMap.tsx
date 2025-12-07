@@ -672,25 +672,73 @@ export default function GoogleTrafficMap({
             })
             mapInstanceRef.current.fitBounds(bounds)
             
-            // إرسال بيانات المسار المحدثة إلى الصفحة الأم
-            const routeData = {
-              distance: result.routes[0].legs[0].distance?.value / 1000, // بالكيلومتر
-              duration: result.routes[0].legs[0].duration?.value / 60, // بالدقائق
-              durationInTraffic: result.routes[0].legs[0].duration_in_traffic?.value / 60, // بالدقائق مع الازدحام
+            // جلب بيانات الطقس للمسار لحساب التأخير الإضافي
+            const fetchWeatherDelay = async () => {
+              try {
+                // حساب نقطة المنتصف للمسار
+                const midPoint = {
+                  lat: (originToUse.lat + route.destination.lat) / 2,
+                  lng: (originToUse.lng + route.destination.lng) / 2,
+                }
+                
+                const weatherResponse = await fetch(`/api/weather/point?lat=${midPoint.lat}&lng=${midPoint.lng}`)
+                const weatherData = await weatherResponse.json()
+                
+                // حساب التأخير بسبب الطقس
+                let weatherDelay = 0
+                if (weatherData.success && weatherData.data?.current) {
+                  const weather = weatherData.data.current
+                  // زيادة الوقت بنسبة 10-30% حسب حالة الطقس
+                  if (weather.condition?.toLowerCase().includes('rain') || weather.condition?.toLowerCase().includes('storm')) {
+                    weatherDelay = 0.3 // 30% زيادة
+                  } else if (weather.condition?.toLowerCase().includes('fog') || weather.condition?.toLowerCase().includes('mist')) {
+                    weatherDelay = 0.2 // 20% زيادة
+                  } else if (weather.condition?.toLowerCase().includes('cloud')) {
+                    weatherDelay = 0.1 // 10% زيادة
+                  }
+                }
+                
+                // إرسال بيانات المسار المحدثة مع تأثير الطقس
+                const baseDuration = result.routes[0].legs[0].duration?.value / 60 || 0
+                const trafficDuration = result.routes[0].legs[0].duration_in_traffic?.value / 60 || baseDuration
+                const finalDuration = trafficDuration * (1 + weatherDelay)
+                
+                const routeData = {
+                  distance: result.routes[0].legs[0].distance?.value / 1000, // بالكيلومتر
+                  duration: baseDuration, // بالدقائق بدون ازدحام
+                  durationInTraffic: trafficDuration, // بالدقائق مع الازدحام
+                  durationWithWeather: finalDuration, // بالدقائق مع الازدحام والطقس
+                  weatherDelay: weatherDelay * 100, // نسبة التأخير بسبب الطقس
+                }
+                
+                // إرسال حدث مخصص لتحديث البيانات في صفحة التوجيه
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('routeUpdated', { detail: routeData }))
+                }
+                
+                console.log('✅ Route rendered using Directions API', {
+                  origin: originToUse, // A: موقعك الحالي
+                  destination: { lat: route.destination.lat, lng: route.destination.lng }, // B: الوجهة
+                  distance: result.routes[0].legs[0].distance?.text,
+                  duration: result.routes[0].legs[0].duration?.text,
+                  durationInTraffic: result.routes[0].legs[0].duration_in_traffic?.text,
+                  weatherDelay: `${(weatherDelay * 100).toFixed(0)}%`,
+                })
+              } catch (error) {
+                console.error('Error fetching weather data:', error)
+                // إرسال البيانات بدون تأثير الطقس في حالة الخطأ
+                const routeData = {
+                  distance: result.routes[0].legs[0].distance?.value / 1000,
+                  duration: result.routes[0].legs[0].duration?.value / 60,
+                  durationInTraffic: result.routes[0].legs[0].duration_in_traffic?.value / 60,
+                }
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('routeUpdated', { detail: routeData }))
+                }
+              }
             }
             
-            // إرسال حدث مخصص لتحديث البيانات في صفحة التوجيه
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('routeUpdated', { detail: routeData }))
-            }
-            
-            console.log('✅ Route rendered using Directions API', {
-              origin: originToUse, // A: موقعك الحالي
-              destination: { lat: route.destination.lat, lng: route.destination.lng }, // B: الوجهة
-              distance: result.routes[0].legs[0].distance?.text,
-              duration: result.routes[0].legs[0].duration?.text,
-              durationInTraffic: result.routes[0].legs[0].duration_in_traffic?.text,
-            })
+            fetchWeatherDelay()
           } catch (err) {
             console.error('Error rendering route:', err)
           }
