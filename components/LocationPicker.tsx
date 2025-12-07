@@ -84,11 +84,23 @@ export function LocationPicker({
   // Handle selecting a place from autocomplete
   const handleSelectPlace = async (prediction: PlacePrediction) => {
     try {
-      // Get place details to get coordinates
-      const placeDetails = await googleMapsService.getPlaceDetails(prediction.place_id)
+      console.log('📍 Getting place details for:', prediction.place_id)
+      
+      // استخدام API route للحصول على تفاصيل المكان
+      const response = await axios.get('/api/places/details', {
+        params: {
+          place_id: prediction.place_id,
+        },
+      })
+
+      if (!response.data.success || !response.data.data) {
+        throw new Error('Failed to get place details from API')
+      }
+
+      const placeDetails = response.data.data
       
       // التحقق من وجود البيانات المطلوبة
-      if (!placeDetails || !placeDetails.geometry || !placeDetails.geometry.location) {
+      if (!placeDetails.geometry || !placeDetails.geometry.location) {
         throw new Error('Invalid place details response')
       }
       
@@ -98,21 +110,29 @@ export function LocationPicker({
         name: prediction.description || prediction.structured_formatting?.main_text || 'موقع مختار',
       }
       
-      console.log('✅ Location from place details:', location)
+      console.log('✅ Location from place details API:', location)
       
       setSelectedLocation(location)
       setMapCenter([location.lat, location.lng])
       setSearchQuery(prediction.description)
       onLocationSelect(location)
     } catch (error: any) {
-      console.error('Error getting place details:', error)
+      console.error('❌ Error getting place details:', error)
       console.log('🔄 Trying geocoding API as fallback...')
       
       // محاولة استخدام Geocoding API للحصول على الإحداثيات من العنوان
       try {
-        const geocodeResult = await googleMapsService.geocode({
-          address: prediction.description,
+        const geocodeResponse = await axios.get('/api/places/geocode', {
+          params: {
+            address: prediction.description,
+          },
         })
+
+        if (!geocodeResponse.data.success || !geocodeResponse.data.data) {
+          throw new Error('Failed to geocode address')
+        }
+
+        const geocodeResult = geocodeResponse.data.data
         
         if (geocodeResult.results && geocodeResult.results.length > 0) {
           const firstResult = geocodeResult.results[0]
@@ -128,7 +148,7 @@ export function LocationPicker({
             name: prediction.description || prediction.structured_formatting?.main_text || 'موقع مختار',
           }
           
-          console.log('✅ Location from geocoding:', location)
+          console.log('✅ Location from geocoding API:', location)
           
           setSelectedLocation(location)
           setMapCenter([location.lat, location.lng])
@@ -138,16 +158,23 @@ export function LocationPicker({
           throw new Error('No geocoding results found')
         }
       } catch (geocodeError: any) {
-        console.error('Error geocoding address:', geocodeError)
+        console.error('❌ Error geocoding address:', geocodeError)
         console.error('Full error details:', {
           message: geocodeError.message,
           response: geocodeError.response?.data,
           status: geocodeError.response?.status,
         })
         
-        // إذا فشل كل شيء، نرمي خطأ بدلاً من استخدام موقع المستخدم الحالي
-        toast.error('فشل في جلب إحداثيات المكان. يرجى المحاولة مرة أخرى.')
-        // لا نرمي الخطأ هنا حتى لا يكسر التطبيق، فقط نعرض رسالة الخطأ
+        // عرض رسالة خطأ واضحة
+        const errorMessage = geocodeError.response?.data?.error || geocodeError.message || 'فشل في جلب إحداثيات المكان'
+        toast.error(errorMessage)
+        
+        // إذا كان الخطأ متعلق بالـ billing، عرض رسالة خاصة
+        if (geocodeError.response?.data?.billingRequired) {
+          toast.error('يجب تفعيل Billing في Google Cloud Console', {
+            duration: 5000,
+          })
+        }
       }
     }
   }
