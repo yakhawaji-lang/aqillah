@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
+import { LocationPicker } from '@/components/LocationPicker'
 
 interface RouteStep {
   instruction: string
@@ -53,9 +54,12 @@ export default function NavigationPage() {
   const [isNavigating, setIsNavigating] = useState(false)
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true)
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null)
+  const [destination, setDestination] = useState<[number, number] | null>(null) // B: الوجهة
+  const [destinationName, setDestinationName] = useState<string>('') // اسم الوجهة
   const [distanceToNextTurn, setDistanceToNextTurn] = useState<number | null>(null)
   const [isPaused, setIsPaused] = useState(false)
   const [isLoadingRoute, setIsLoadingRoute] = useState(true)
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
   const [routeError, setRouteError] = useState<string | null>(null)
   
   const watchIdRef = useRef<number | null>(null)
@@ -520,8 +524,8 @@ export default function NavigationPage() {
       <Header />
       
       <div className="flex flex-col h-[calc(100vh-64px)]">
-        {/* زر العودة */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3">
+        {/* زر العودة + حقل البحث عن الوجهة */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3 space-y-3">
           <button
             onClick={() => router.back()}
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition"
@@ -529,6 +533,44 @@ export default function NavigationPage() {
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">العودة</span>
           </button>
+          
+          {/* حقل البحث عن الوجهة */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              الوجهة (B)
+            </label>
+            <LocationPicker
+              onLocationSelect={(location) => {
+                // B: الوجهة - حفظ خط الطول والعرض
+                const dest: [number, number] = [location.lat, location.lng]
+                setDestination(dest)
+                setDestinationName(location.name || 'موقع مختار')
+                console.log('✅ Destination selected:', {
+                  name: location.name,
+                  lat: location.lat,
+                  lng: location.lng,
+                })
+                toast.success(`تم تحديد الوجهة: ${location.name || 'موقع مختار'}`)
+              }}
+              currentLocation={currentLocation || undefined}
+              placeholder="ابحث عن موقع أو اختر من الخريطة..."
+            />
+            {destination && (
+              <div className="mt-2 text-xs text-gray-600">
+                <span className="font-medium">خط الطول:</span> {destination[1].toFixed(6)}, 
+                <span className="font-medium mr-2"> خط العرض:</span> {destination[0].toFixed(6)}
+                {destinationName && (
+                  <span className="mr-2"> - {destinationName}</span>
+                )}
+              </div>
+            )}
+            {isCalculatingRoute && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-primary-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                <span>جاري حساب المسار...</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* الخريطة */}
@@ -543,12 +585,21 @@ export default function NavigationPage() {
             }
             zoom={currentLocation ? 15 : (isNavigating && currentLocation ? 16 : 14)} // تكبير الخريطة عند وجود موقع حالي
             showTrafficLayer={true}
-            route={{
-              origin: currentLocation 
-                ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي
-                : { lat: route.originLat, lng: route.originLng }, // A: نقطة البداية المحفوظة
-              destination: { lat: route.destinationLat, lng: route.destinationLng }, // B: الوجهة
-            }}
+            route={
+              currentLocation && destination
+                ? {
+                    origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي
+                    destination: { lat: destination[0], lng: destination[1] }, // B: الوجهة المحددة
+                  }
+                : route
+                  ? {
+                      origin: currentLocation 
+                        ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي
+                        : { lat: route.originLat, lng: route.originLng }, // A: نقطة البداية المحفوظة
+                      destination: { lat: route.destinationLat, lng: route.destinationLng }, // B: الوجهة المحفوظة
+                    }
+                  : undefined
+            }
             currentLocation={currentLocation}
             className="w-full h-full"
           />
