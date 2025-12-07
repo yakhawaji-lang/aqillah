@@ -343,6 +343,19 @@ export default function NavigationPage() {
     }
   }, [isNavigating, isPaused, route, currentStepIndex])
 
+  // تحديث الوقت المستغرق كل ثانية
+  useEffect(() => {
+    if (!isNavigating || !navigationStartTime) return
+
+    const interval = setInterval(() => {
+      const now = new Date()
+      const elapsed = Math.floor((now.getTime() - navigationStartTime.getTime()) / 1000)
+      setElapsedTime(elapsed)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isNavigating, navigationStartTime])
+
   const toggleNavigation = () => {
     if (!route) {
       toast.error('لا يوجد مسار محدد')
