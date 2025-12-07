@@ -583,6 +583,18 @@ export default function NavigationPage() {
             </label>
             <LocationPicker
               onLocationSelect={(location) => {
+                // التحقق من أن الإحداثيات مختلفة عن موقعك الحالي
+                if (currentLocation && 
+                    Math.abs(currentLocation[0] - location.lat) < 0.0001 && 
+                    Math.abs(currentLocation[1] - location.lng) < 0.0001) {
+                  toast.error('الوجهة يجب أن تكون مختلفة عن موقعك الحالي')
+                  console.error('❌ Destination same as current location:', {
+                    current: currentLocation,
+                    destination: [location.lat, location.lng],
+                  })
+                  return
+                }
+                
                 // B: الوجهة - حفظ خط الطول والعرض
                 const dest: [number, number] = [location.lat, location.lng]
                 setDestination(dest)
@@ -591,6 +603,7 @@ export default function NavigationPage() {
                   name: location.name,
                   lat: location.lat,
                   lng: location.lng,
+                  currentLocation: currentLocation,
                 })
                 toast.success(`تم تحديد الوجهة: ${location.name || 'موقع مختار'}`)
               }}

@@ -5,6 +5,7 @@ import { MapPin, Search, X, Navigation, Loader2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { googleMapsService } from '@/lib/services/google-maps'
+import toast from 'react-hot-toast'
 
 interface LocationPickerProps {
   onLocationSelect: (location: { lat: number; lng: number; name?: string }) => void
@@ -98,15 +99,34 @@ export function LocationPicker({
       onLocationSelect(location)
     } catch (error: any) {
       console.error('Error getting place details:', error)
-      // Fallback: use description as name
-      const location = {
-        lat: mapCenter[0],
-        lng: mapCenter[1],
-        name: prediction.description,
+      // محاولة استخدام Geocoding API للحصول على الإحداثيات من العنوان
+      try {
+        const geocodeResult = await googleMapsService.geocode({
+          address: prediction.description,
+        })
+        
+        if (geocodeResult.results && geocodeResult.results.length > 0) {
+          const firstResult = geocodeResult.results[0]
+          const location = {
+            lat: firstResult.geometry.location.lat,
+            lng: firstResult.geometry.location.lng,
+            name: prediction.description || prediction.structured_formatting?.main_text || 'موقع مختار',
+          }
+          
+          setSelectedLocation(location)
+          setMapCenter([location.lat, location.lng])
+          setSearchQuery(prediction.description)
+          onLocationSelect(location)
+          console.log('✅ Location from geocoding:', location)
+        } else {
+          throw new Error('No geocoding results found')
+        }
+      } catch (geocodeError: any) {
+        console.error('Error geocoding address:', geocodeError)
+        // إذا فشل كل شيء، نرمي خطأ بدلاً من استخدام موقع المستخدم الحالي
+        toast.error('فشل في جلب إحداثيات المكان. يرجى المحاولة مرة أخرى.')
+        throw new Error('Failed to get location coordinates')
       }
-      setSelectedLocation(location)
-      setSearchQuery(prediction.description)
-      onLocationSelect(location)
     }
   }
 
