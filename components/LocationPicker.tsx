@@ -87,11 +87,18 @@ export function LocationPicker({
       // Get place details to get coordinates
       const placeDetails = await googleMapsService.getPlaceDetails(prediction.place_id)
       
+      // التحقق من وجود البيانات المطلوبة
+      if (!placeDetails || !placeDetails.geometry || !placeDetails.geometry.location) {
+        throw new Error('Invalid place details response')
+      }
+      
       const location = {
         lat: placeDetails.geometry.location.lat,
         lng: placeDetails.geometry.location.lng,
         name: prediction.description || prediction.structured_formatting?.main_text || 'موقع مختار',
       }
+      
+      console.log('✅ Location from place details:', location)
       
       setSelectedLocation(location)
       setMapCenter([location.lat, location.lng])
@@ -99,6 +106,8 @@ export function LocationPicker({
       onLocationSelect(location)
     } catch (error: any) {
       console.error('Error getting place details:', error)
+      console.log('🔄 Trying geocoding API as fallback...')
+      
       // محاولة استخدام Geocoding API للحصول على الإحداثيات من العنوان
       try {
         const geocodeResult = await googleMapsService.geocode({
@@ -107,25 +116,38 @@ export function LocationPicker({
         
         if (geocodeResult.results && geocodeResult.results.length > 0) {
           const firstResult = geocodeResult.results[0]
+          
+          // التحقق من وجود الإحداثيات
+          if (!firstResult.geometry || !firstResult.geometry.location) {
+            throw new Error('Invalid geocoding response')
+          }
+          
           const location = {
             lat: firstResult.geometry.location.lat,
             lng: firstResult.geometry.location.lng,
             name: prediction.description || prediction.structured_formatting?.main_text || 'موقع مختار',
           }
           
+          console.log('✅ Location from geocoding:', location)
+          
           setSelectedLocation(location)
           setMapCenter([location.lat, location.lng])
           setSearchQuery(prediction.description)
           onLocationSelect(location)
-          console.log('✅ Location from geocoding:', location)
         } else {
           throw new Error('No geocoding results found')
         }
       } catch (geocodeError: any) {
         console.error('Error geocoding address:', geocodeError)
+        console.error('Full error details:', {
+          message: geocodeError.message,
+          response: geocodeError.response?.data,
+          status: geocodeError.response?.status,
+        })
+        
         // إذا فشل كل شيء، نرمي خطأ بدلاً من استخدام موقع المستخدم الحالي
         toast.error('فشل في جلب إحداثيات المكان. يرجى المحاولة مرة أخرى.')
-        throw new Error('Failed to get location coordinates')
+        // لا نرمي الخطأ هنا حتى لا يكسر التطبيق، فقط نعرض رسالة الخطأ
       }
     }
   }

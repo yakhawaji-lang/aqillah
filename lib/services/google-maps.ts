@@ -265,12 +265,26 @@ class GoogleMapsService {
     }
 
     try {
-      const url = `${googleMapsConfig.mapsApiUrl}/place/details/json?place_id=${placeId}&key=${this.placesApiKey || this.apiKey}&language=${googleMapsConfig.defaultLanguage}`
+      const url = `${googleMapsConfig.mapsApiUrl}/place/details/json?place_id=${placeId}&key=${this.placesApiKey || this.apiKey}&language=${googleMapsConfig.defaultLanguage}&fields=geometry,formatted_address,name`
 
       const response = await axios.get(url)
+      
+      if (response.data.status !== 'OK') {
+        throw new Error(`Places API error: ${response.data.status} - ${response.data.error_message || 'Unknown error'}`)
+      }
+      
+      if (!response.data.result) {
+        throw new Error('No result returned from Places API')
+      }
+      
       return response.data.result
     } catch (error: any) {
       console.error('Error getting place details:', error)
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      })
       throw new Error(`Failed to get place details: ${error.message}`)
     }
   }
