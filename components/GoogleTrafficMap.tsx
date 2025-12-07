@@ -660,19 +660,33 @@ export default function GoogleTrafficMap({
                 strokeWeight: 8,
                 strokeOpacity: 0.9,
               },
-              suppressMarkers: false,
+              suppressMarkers: false, // إظهار العلامات (A و B)
               preserveViewport: false,
             })
             
             // Fit bounds to show entire route
             const bounds = new (window as any).google.maps.LatLngBounds()
             result.routes[0].legs.forEach((leg: any) => {
-              bounds.extend(leg.start_location)
-              bounds.extend(leg.end_location)
+              bounds.extend(leg.start_location) // A: نقطة البداية
+              bounds.extend(leg.end_location) // B: نقطة النهاية
             })
             mapInstanceRef.current.fitBounds(bounds)
             
+            // إرسال بيانات المسار المحدثة إلى الصفحة الأم
+            const routeData = {
+              distance: result.routes[0].legs[0].distance?.value / 1000, // بالكيلومتر
+              duration: result.routes[0].legs[0].duration?.value / 60, // بالدقائق
+              durationInTraffic: result.routes[0].legs[0].duration_in_traffic?.value / 60, // بالدقائق مع الازدحام
+            }
+            
+            // إرسال حدث مخصص لتحديث البيانات في صفحة التوجيه
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('routeUpdated', { detail: routeData }))
+            }
+            
             console.log('✅ Route rendered using Directions API', {
+              origin: originToUse, // A: موقعك الحالي
+              destination: { lat: route.destination.lat, lng: route.destination.lng }, // B: الوجهة
               distance: result.routes[0].legs[0].distance?.text,
               duration: result.routes[0].legs[0].duration?.text,
               durationInTraffic: result.routes[0].legs[0].duration_in_traffic?.text,

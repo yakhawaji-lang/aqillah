@@ -38,6 +38,8 @@ interface NavigationRoute {
   distance: number
   estimatedTime: number
   estimatedTimeInTraffic?: number // الوقت المتوقع مع الازدحام
+  estimatedTimeWithWeather?: number // الوقت المتوقع مع الازدحام والطقس
+  weatherDelay?: number // نسبة التأخير بسبب الطقس
   steps?: RouteStep[]
 }
 
@@ -147,6 +149,29 @@ export default function NavigationPage() {
   useEffect(() => {
     if (route) {
       localStorage.setItem('currentRoute', JSON.stringify(route))
+    }
+  }, [route])
+
+  // الاستماع لتحديثات المسار من Google Maps Directions API
+  useEffect(() => {
+    const handleRouteUpdate = (event: CustomEvent) => {
+      const routeData = event.detail
+      if (route && routeData) {
+        // تحديث المسافة والوقت بناءً على البيانات الفعلية من Google Maps
+        setRoute({
+          ...route,
+          distance: routeData.distance || route.distance,
+          estimatedTime: routeData.duration || route.estimatedTime,
+          estimatedTimeInTraffic: routeData.durationInTraffic || route.estimatedTimeInTraffic,
+          estimatedTimeWithWeather: routeData.durationWithWeather || route.estimatedTimeWithWeather,
+          weatherDelay: routeData.weatherDelay || route.weatherDelay,
+        })
+      }
+    }
+
+    window.addEventListener('routeUpdated', handleRouteUpdate as EventListener)
+    return () => {
+      window.removeEventListener('routeUpdated', handleRouteUpdate as EventListener)
     }
   }, [route])
 
@@ -495,9 +520,9 @@ export default function NavigationPage() {
             showTrafficLayer={true}
             route={{
               origin: currentLocation 
-                ? { lat: currentLocation[0], lng: currentLocation[1] }
-                : { lat: route.originLat, lng: route.originLng },
-              destination: { lat: route.destinationLat, lng: route.destinationLng },
+                ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي
+                : { lat: route.originLat, lng: route.originLng }, // A: نقطة البداية المحفوظة
+              destination: { lat: route.destinationLat, lng: route.destinationLng }, // B: الوجهة
             }}
             currentLocation={currentLocation}
             className="w-full h-full"
@@ -530,10 +555,14 @@ export default function NavigationPage() {
                     <span className="text-xs font-medium">الوقت</span>
                   </div>
                   <p className="text-2xl font-bold">
-                    {Math.round(route.estimatedTimeInTraffic || route.estimatedTime)}
+                    {Math.round(route.estimatedTimeWithWeather || route.estimatedTimeInTraffic || route.estimatedTime)}
                   </p>
                   <p className="text-xs opacity-90">
-                    {route.estimatedTimeInTraffic ? 'دقيقة (مع الازدحام)' : 'دقيقة'}
+                    {route.estimatedTimeWithWeather 
+                      ? `دقيقة (مع الازدحام والطقس${route.weatherDelay ? ` +${route.weatherDelay.toFixed(0)}%` : ''})`
+                      : route.estimatedTimeInTraffic 
+                        ? 'دقيقة (مع الازدحام)' 
+                        : 'دقيقة'}
                   </p>
                 </div>
               </div>
