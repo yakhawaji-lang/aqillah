@@ -417,29 +417,6 @@ export default function NavigationPage() {
             currentLocation={currentLocation}
             className="w-full h-full"
           />
-          
-          {/* مفتاح الألوان */}
-          <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl p-4 z-10 border border-gray-200">
-            <h4 className="text-xs font-bold text-gray-700 mb-3">مفتاح الألوان</h4>
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-white shadow-sm"></div>
-                <span className="text-xs text-gray-700 font-medium">نقطة البداية</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
-                <span className="text-xs text-gray-700 font-medium">موقعك الحالي</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-white shadow-sm"></div>
-                <span className="text-xs text-gray-700 font-medium">الوجهة</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-1.5 bg-blue-500 rounded-full shadow-sm"></div>
-                <span className="text-xs text-gray-700 font-medium">مسار التوجيه</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* معلومات المسار - في الأسفل */}
