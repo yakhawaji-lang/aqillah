@@ -539,26 +539,13 @@ export default function GoogleTrafficMap({
       })
       directionMarkersRef.current = []
 
-      // رسم المسار مع أسهم الاتجاه
+      // رسم المسار كخط متصل يتبع الطريق
       routePolylineRef.current = new (window as any).google.maps.Polyline({
         path: path,
         geodesic: true,
         strokeColor: '#4285F4',
-        strokeOpacity: 0.8,
-        strokeWeight: 6,
-        icons: [
-          {
-            icon: {
-              path: (window as any).google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              scale: 4,
-              strokeColor: '#4285F4',
-              fillColor: '#4285F4',
-              fillOpacity: 1,
-            },
-            offset: '50%',
-            repeat: '100px',
-          },
-        ],
+        strokeOpacity: 0.9,
+        strokeWeight: 8,
         map: mapInstanceRef.current,
       })
 
@@ -602,40 +589,7 @@ export default function GoogleTrafficMap({
         })
       }
 
-      // إضافة أسهم الاتجاه على طول المسار
-      if ((window as any).google?.maps?.geometry?.spherical) {
-        for (let i = 0; i < path.length - 1; i += Math.max(1, Math.floor(path.length / 10))) {
-          const start = path[i]
-          const end = path[Math.min(i + 1, path.length - 1)]
-          
-          try {
-            // حساب الاتجاه باستخدام geometry library
-            const heading = (window as any).google.maps.geometry.spherical.computeHeading(
-              new (window as any).google.maps.LatLng(start.lat, start.lng),
-              new (window as any).google.maps.LatLng(end.lat, end.lng)
-            )
-
-            const directionMarker = new (window as any).google.maps.Marker({
-              position: start,
-              map: mapInstanceRef.current,
-              icon: {
-                path: (window as any).google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                scale: 3,
-                rotation: heading,
-                fillColor: '#4285F4',
-                fillOpacity: 0.8,
-                strokeColor: '#FFFFFF',
-                strokeWeight: 1,
-              },
-              zIndex: 500,
-            })
-            directionMarkersRef.current.push(directionMarker)
-          } catch (e) {
-            // تجاهل الأخطاء في حساب الاتجاه
-            console.warn('Error calculating heading:', e)
-          }
-        }
-      }
+      // لا حاجة لأسهم الاتجاه - الخط المتصل يتبع الطريق
 
       // Fit bounds to show entire route
       const bounds = new (window as any).google.maps.LatLngBounds()
