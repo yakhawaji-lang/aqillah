@@ -204,6 +204,42 @@ export default function NavigationPage() {
     }
   }, [route])
 
+  // حساب المسار تلقائياً عند تحديد الوجهة
+  useEffect(() => {
+    const calculateRoute = async () => {
+      if (!currentLocation || !destination) return
+
+      setIsCalculatingRoute(true)
+      try {
+        const res = await axios.post('/api/emergency-route', {
+          originLat: currentLocation[0], // A: موقعك الحالي
+          originLng: currentLocation[1],
+          destinationLat: destination[0], // B: الوجهة
+          destinationLng: destination[1],
+        })
+
+        if (res.data.success && res.data.data) {
+          const routeData = res.data.data
+          setRoute({
+            ...routeData,
+            destinationLat: destination[0],
+            destinationLng: destination[1],
+          })
+          toast.success('تم حساب المسار بنجاح')
+        } else {
+          toast.error('فشل في حساب المسار')
+        }
+      } catch (error: any) {
+        console.error('Error calculating route:', error)
+        toast.error(error.response?.data?.error || 'فشل في حساب المسار')
+      } finally {
+        setIsCalculatingRoute(false)
+      }
+    }
+
+    calculateRoute()
+  }, [currentLocation, destination]) // يتم التنفيذ عند تغيير الموقع الحالي أو الوجهة
+
   const calculateDistance = (
     point1: [number, number],
     point2: [number, number]
