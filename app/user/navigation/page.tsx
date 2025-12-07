@@ -207,7 +207,13 @@ export default function NavigationPage() {
   // حساب المسار تلقائياً عند تحديد الوجهة
   useEffect(() => {
     const calculateRoute = async () => {
+      // التأكد من وجود الموقع الحالي والوجهة
       if (!currentLocation || !destination) return
+      
+      // تجنب إعادة الحساب إذا كان المسار موجود بالفعل ونفس الوجهة
+      if (route && route.destinationLat === destination[0] && route.destinationLng === destination[1]) {
+        return
+      }
 
       setIsCalculatingRoute(true)
       try {
@@ -615,9 +621,11 @@ export default function NavigationPage() {
             center={
               currentLocation 
                 ? { lat: currentLocation[0], lng: currentLocation[1] }
-                : (route.route && route.route.length > 0 
+                : (route && route.route && route.route.length > 0 
                   ? { lat: route.route[0][0], lng: route.route[0][1] }
-                  : { lat: route.originLat, lng: route.originLng })
+                  : route && route.originLat && route.originLng
+                    ? { lat: route.originLat, lng: route.originLng }
+                    : { lat: 24.7136, lng: 46.6753 }) // الرياض كموقع افتراضي
             }
             zoom={currentLocation ? 15 : (isNavigating && currentLocation ? 16 : 14)} // تكبير الخريطة عند وجود موقع حالي
             showTrafficLayer={true}
@@ -627,7 +635,7 @@ export default function NavigationPage() {
                     origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي
                     destination: { lat: destination[0], lng: destination[1] }, // B: الوجهة المحددة
                   }
-                : route
+                : route && route.destinationLat && route.destinationLng
                   ? {
                       origin: currentLocation 
                         ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي
