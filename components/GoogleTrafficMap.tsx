@@ -1425,8 +1425,6 @@ export default function GoogleTrafficMap({
           <span className="text-red-600 ml-2">🔴</span> شديد
         </div>
       )}
-
-      {/* علامات حالة الطرق - ظاهرة دائماً */}
     </div>
   )
 }
