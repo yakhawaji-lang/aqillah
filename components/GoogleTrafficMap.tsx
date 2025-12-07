@@ -83,6 +83,8 @@ export default function GoogleTrafficMap({
   const visibilityForecastMarkersRef = useRef<any[]>([])
   const unsafeRoutesMarkersRef = useRef<any[]>([])
   const lastRenderedRouteRef = useRef<string>('') // لتتبع آخر route تم رسمه
+  const lastCenterRef = useRef<{ lat: number; lng: number } | null>(null)
+  const lastZoomRef = useRef<number | null>(null)
   const [map, setMap] = useState<any>(null)
   const [directionsService, setDirectionsService] = useState<any>(null)
   const [directionsRenderer, setDirectionsRenderer] = useState<any>(null)
@@ -394,14 +396,24 @@ export default function GoogleTrafficMap({
     }
   }, [isMapRefReady])
 
-  // Update map center
+  // Update map center - فقط عند تغيير center أو zoom بشكل فعلي
   useEffect(() => {
-    if (mapInstanceRef.current && map) {
-      try {
-        mapInstanceRef.current.setCenter(center)
-        mapInstanceRef.current.setZoom(zoom)
-      } catch (err) {
-        console.error('Error updating map center:', err)
+    if (mapInstanceRef.current && map && center) {
+      // تجنب التحديث إذا كان نفس المركز والزوم
+      const centerChanged = !lastCenterRef.current || 
+        lastCenterRef.current.lat !== center.lat || 
+        lastCenterRef.current.lng !== center.lng
+      const zoomChanged = lastZoomRef.current !== zoom
+      
+      if (centerChanged || zoomChanged) {
+        try {
+          mapInstanceRef.current.setCenter(center)
+          mapInstanceRef.current.setZoom(zoom)
+          lastCenterRef.current = center
+          lastZoomRef.current = zoom
+        } catch (err) {
+          console.error('Error updating map center:', err)
+        }
       }
     }
   }, [map, center, zoom])
@@ -642,8 +654,8 @@ export default function GoogleTrafficMap({
         : { lat: route.origin.lat, lng: route.origin.lng } // A: نقطة البداية إذا لم يكن هناك موقع حالي
 
       const request: any = {
-        origin: originToUse,
-        destination: { lat: route.destination.lat, lng: route.destination.lng },
+        origin: originToUse, // A: موقعك الحالي
+        destination: destinationToUse, // B: الوجهة المحددة
         travelMode: (window as any).google.maps.TravelMode.DRIVING,
         ...(route.waypoints && route.waypoints.length > 0 && {
           waypoints: route.waypoints.map((wp: any) => ({
