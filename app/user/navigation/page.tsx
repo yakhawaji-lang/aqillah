@@ -620,12 +620,12 @@ export default function NavigationPage() {
           <GoogleTrafficMap
             center={
               currentLocation 
-                ? { lat: currentLocation[0], lng: currentLocation[1] }
+                ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي
                 : (route && route.route && route.route.length > 0 
                   ? { lat: route.route[0][0], lng: route.route[0][1] }
                   : route && route.originLat && route.originLng
                     ? { lat: route.originLat, lng: route.originLng }
-                    : { lat: 24.7136, lng: 46.6753 }) // الرياض كموقع افتراضي
+                    : undefined) // لا موقع افتراضي
             }
             zoom={currentLocation ? 15 : (isNavigating && currentLocation ? 16 : 14)} // تكبير الخريطة عند وجود موقع حالي
             showTrafficLayer={true}

@@ -393,14 +393,30 @@ export default function GoogleTrafficMap({
     }
   }, [isMapRefReady])
 
-  // Update map center
+  // Update map center - فقط عند تغيير فعلي لتجنب التحديث المستمر
+  const lastCenterRef = useRef<{ lat: number; lng: number } | null>(null)
+  const lastZoomRef = useRef<number | null>(null)
+  
   useEffect(() => {
     if (mapInstanceRef.current && map) {
-      try {
-        mapInstanceRef.current.setCenter(center)
-        mapInstanceRef.current.setZoom(zoom)
-      } catch (err) {
-        console.error('Error updating map center:', err)
+      const centerChanged = !lastCenterRef.current || 
+        lastCenterRef.current.lat !== center.lat || 
+        lastCenterRef.current.lng !== center.lng
+      const zoomChanged = lastZoomRef.current === null || lastZoomRef.current !== zoom
+      
+      if (centerChanged || zoomChanged) {
+        try {
+          if (centerChanged) {
+            mapInstanceRef.current.setCenter(center)
+            lastCenterRef.current = center
+          }
+          if (zoomChanged) {
+            mapInstanceRef.current.setZoom(zoom)
+            lastZoomRef.current = zoom
+          }
+        } catch (err) {
+          console.error('Error updating map center:', err)
+        }
       }
     }
   }, [map, center, zoom])
@@ -625,10 +641,11 @@ export default function GoogleTrafficMap({
         directionsRendererRef.current.setDirections({ routes: [] })
       }
 
-      // استخدام الموقع الحالي كـ origin إذا كان متاحاً، وإلا استخدام route.origin
+      // A: دائماً استخدام الموقع الحالي كـ origin (نقطة البداية)
+      // B: الوجهة من route.destination
       const originToUse = currentLocation && currentLocation.length === 2
-        ? { lat: currentLocation[0], lng: currentLocation[1] }
-        : { lat: route.origin.lat, lng: route.origin.lng }
+        ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي
+        : { lat: route.origin.lat, lng: route.origin.lng } // A: نقطة البداية المحفوظة
 
       const request: any = {
         origin: originToUse,
