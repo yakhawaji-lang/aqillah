@@ -648,10 +648,13 @@ export default function GoogleTrafficMap({
       
       lastRenderedRouteRef.current = routeKey
       
-      // A: دائماً استخدام الموقع الحالي كـ origin
+      // A: دائماً استخدام الموقع الحالي كـ origin (موقعك الحالي)
       const originToUse = currentLocation && currentLocation.length === 2
         ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي دائماً
         : { lat: route.origin.lat, lng: route.origin.lng } // A: نقطة البداية إذا لم يكن هناك موقع حالي
+      
+      // B: الوجهة المحددة
+      const destinationToUse = { lat: route.destination.lat, lng: route.destination.lng } // B: الوجهة
 
       const request: any = {
         origin: originToUse, // A: موقعك الحالي
