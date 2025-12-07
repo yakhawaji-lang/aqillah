@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Loader } from '@googlemaps/js-api-loader'
 import { WeatherInfoWindow } from './WeatherInfoWindow'
+import { Navigation2 } from 'lucide-react'
 
 // Declare google namespace for TypeScript
 declare global {
@@ -89,6 +90,7 @@ export default function GoogleTrafficMap({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isMapRefReady, setIsMapRefReady] = useState(false)
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
 
   // Memoize markers to prevent unnecessary re-renders
   const memoizedMarkers = useMemo(() => markers, [JSON.stringify(markers)])
@@ -664,6 +666,45 @@ export default function GoogleTrafficMap({
     }
   }, [directionsService, route, map, currentLocation])
 
+  // Get user location on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation([position.coords.latitude, position.coords.longitude])
+        },
+        (error) => {
+          console.error('Error getting location:', error)
+        }
+      )
+    }
+  }, [])
+
+  // Function to center map on user location
+  const centerOnUserLocation = useCallback(() => {
+    if (!mapInstanceRef.current) return
+
+    if (userLocation && userLocation.length === 2) {
+      mapInstanceRef.current.setCenter({ lat: userLocation[0], lng: userLocation[1] })
+      mapInstanceRef.current.setZoom(16)
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location: [number, number] = [position.coords.latitude, position.coords.longitude]
+          setUserLocation(location)
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.setCenter({ lat: location[0], lng: location[1] })
+            mapInstanceRef.current.setZoom(16)
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error)
+          alert('فشل في الحصول على موقعك. تأكد من تفعيل صلاحيات الموقع.')
+        }
+      )
+    }
+  }, [userLocation])
+
   // Render current location marker
   useEffect(() => {
     if (!(window as any).google || !mapInstanceRef.current) return
@@ -674,25 +715,30 @@ export default function GoogleTrafficMap({
       currentLocationMarkerRef.current = null
     }
 
-    if (currentLocation && currentLocation.length === 2) {
+    // Use currentLocation prop if available, otherwise use userLocation
+    const locationToShow = currentLocation || userLocation
+
+    if (locationToShow && locationToShow.length === 2) {
       currentLocationMarkerRef.current = new (window as any).google.maps.Marker({
-        position: { lat: currentLocation[0], lng: currentLocation[1] },
+        position: { lat: locationToShow[0], lng: locationToShow[1] },
         map: mapInstanceRef.current,
         icon: {
           path: (window as any).google.maps.SymbolPath.CIRCLE,
-          scale: 10,
+          scale: 12,
           fillColor: '#4285F4',
           fillOpacity: 1,
           strokeColor: '#FFFFFF',
-          strokeWeight: 3,
+          strokeWeight: 4,
         },
         title: 'موقعك الحالي',
         zIndex: 1000,
       })
 
-      // Center map on current location
-      mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
-      mapInstanceRef.current.setZoom(16)
+      // Center map on current location if currentLocation prop is provided
+      if (currentLocation) {
+        mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
+        mapInstanceRef.current.setZoom(16)
+      }
     }
 
     return () => {
@@ -701,7 +747,7 @@ export default function GoogleTrafficMap({
         currentLocationMarkerRef.current = null
       }
     }
-  }, [currentLocation, map])
+  }, [currentLocation, userLocation, map])
 
   // Toggle traffic layer
   useEffect(() => {
@@ -1424,6 +1470,17 @@ export default function GoogleTrafficMap({
           <span className="text-orange-600 ml-2">🟠</span> مزدحم
           <span className="text-red-600 ml-2">🔴</span> شديد
         </div>
+      )}
+
+      {/* زر العودة إلى موقع المستخدم */}
+      {(userLocation || currentLocation) && (
+        <button
+          onClick={centerOnUserLocation}
+          className="absolute bottom-4 left-4 bg-white hover:bg-gray-50 p-3 rounded-full shadow-lg border border-gray-200 z-10 transition-all hover:scale-110"
+          title="العودة إلى موقعك"
+        >
+          <Navigation2 className="w-6 h-6 text-primary-600" />
+        </button>
       )}
     </div>
   )
