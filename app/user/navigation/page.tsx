@@ -635,11 +635,9 @@ export default function NavigationPage() {
                     origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي
                     destination: { lat: destination[0], lng: destination[1] }, // B: الوجهة المحددة
                   }
-                : route && route.destinationLat && route.destinationLng
+                : route && route.destinationLat && route.destinationLng && currentLocation
                   ? {
-                      origin: currentLocation 
-                        ? { lat: currentLocation[0], lng: currentLocation[1] } // A: موقعك الحالي
-                        : { lat: route.originLat, lng: route.originLng }, // A: نقطة البداية المحفوظة
+                      origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي دائماً
                       destination: { lat: route.destinationLat, lng: route.destinationLng }, // B: الوجهة المحفوظة
                     }
                   : undefined

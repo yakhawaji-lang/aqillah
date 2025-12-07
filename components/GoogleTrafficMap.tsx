@@ -681,13 +681,20 @@ export default function GoogleTrafficMap({
               preserveViewport: false,
             })
             
-            // Fit bounds to show entire route
-            const bounds = new (window as any).google.maps.LatLngBounds()
-            result.routes[0].legs.forEach((leg: any) => {
-              bounds.extend(leg.start_location) // A: نقطة البداية
-              bounds.extend(leg.end_location) // B: نقطة النهاية
-            })
-            mapInstanceRef.current.fitBounds(bounds)
+            // Fit bounds to show entire route - مرة واحدة فقط لتجنب التحديث المستمر
+            if (mapInstanceRef.current) {
+              const bounds = new (window as any).google.maps.LatLngBounds()
+              result.routes[0].legs.forEach((leg: any) => {
+                bounds.extend(leg.start_location) // A: نقطة البداية
+                bounds.extend(leg.end_location) // B: نقطة النهاية
+              })
+              // استخدام setTimeout لتأخير fitBounds قليلاً وتجنب التحديث المستمر
+              setTimeout(() => {
+                if (mapInstanceRef.current) {
+                  mapInstanceRef.current.fitBounds(bounds)
+                }
+              }, 200)
+            }
             
             // جلب بيانات الطقس للمسار لحساب التأخير الإضافي
             const fetchWeatherDelay = async () => {
@@ -841,10 +848,17 @@ export default function GoogleTrafficMap({
         zIndex: 1000,
       })
 
-      // Center map on current location if currentLocation prop is provided
-      if (currentLocation) {
-        mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
-        mapInstanceRef.current.setZoom(16)
+      // Center map on current location if currentLocation prop is provided - مرة واحدة فقط
+      if (currentLocation && mapInstanceRef.current) {
+        const currentCenter = mapInstanceRef.current.getCenter()
+        const shouldCenter = !currentCenter || 
+          Math.abs(currentCenter.lat() - currentLocation[0]) > 0.001 ||
+          Math.abs(currentCenter.lng() - currentLocation[1]) > 0.001
+        
+        if (shouldCenter) {
+          mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
+          mapInstanceRef.current.setZoom(15)
+        }
       }
     }
 
