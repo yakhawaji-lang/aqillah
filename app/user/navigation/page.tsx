@@ -159,18 +159,23 @@ export default function NavigationPage() {
   // جلب موقع المستخدم تلقائياً عند فتح الصفحة
   useEffect(() => {
     if (navigator.geolocation) {
+      console.log('📍 Requesting user location...')
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const location: [number, number] = [
-            position.coords.latitude,
-            position.coords.longitude
+            position.coords.latitude,  // خط العرض
+            position.coords.longitude  // خط الطول
           ]
           setCurrentLocation(location)
-          console.log('✅ User location fetched:', location)
+          console.log('✅ User location (A) fetched:', {
+            lat: location[0],
+            lng: location[1],
+            formatted: `${location[0]}, ${location[1]}`,
+          })
         },
         (error) => {
-          console.error('Error getting user location:', error)
-          // في حالة الفشل، يمكن استخدام موقع افتراضي أو إظهار رسالة
+          console.error('❌ Error getting user location:', error)
+          toast.error('فشل في جلب موقعك الحالي. يرجى التأكد من تفعيل الموقع.')
         },
         {
           enableHighAccuracy: true,
@@ -178,6 +183,9 @@ export default function NavigationPage() {
           maximumAge: 0
         }
       )
+    } else {
+      console.error('❌ Geolocation not supported')
+      toast.error('المتصفح لا يدعم تحديد الموقع')
     }
   }, []) // يتم التنفيذ مرة واحدة عند تحميل الصفحة
 
@@ -208,20 +216,53 @@ export default function NavigationPage() {
   useEffect(() => {
     const calculateRoute = async () => {
       // التأكد من وجود الموقع الحالي والوجهة
-      if (!currentLocation || !destination) return
+      if (!currentLocation || !destination) {
+        console.log('⏳ Waiting for location data:', {
+          hasCurrentLocation: !!currentLocation,
+          hasDestination: !!destination,
+          currentLocation: currentLocation,
+          destination: destination,
+        })
+        return
+      }
+      
+      // التحقق من صحة الإحداثيات
+      if (isNaN(currentLocation[0]) || isNaN(currentLocation[1]) || 
+          isNaN(destination[0]) || isNaN(destination[1])) {
+        console.error('❌ Invalid coordinates:', {
+          currentLocation,
+          destination,
+        })
+        toast.error('إحداثيات غير صحيحة')
+        return
+      }
       
       // تجنب إعادة الحساب إذا كان المسار موجود بالفعل ونفس الوجهة
       if (route && route.destinationLat === destination[0] && route.destinationLng === destination[1]) {
+        console.log('⏭️ Route already calculated for this destination')
         return
       }
+
+      console.log('🚀 Calculating route:', {
+        origin: {
+          lat: currentLocation[0],
+          lng: currentLocation[1],
+          formatted: `${currentLocation[0]}, ${currentLocation[1]}`,
+        },
+        destination: {
+          lat: destination[0],
+          lng: destination[1],
+          formatted: `${destination[0]}, ${destination[1]}`,
+        },
+      })
 
       setIsCalculatingRoute(true)
       try {
         const res = await axios.post('/api/emergency-route', {
-          originLat: currentLocation[0], // A: موقعك الحالي
-          originLng: currentLocation[1],
-          destinationLat: destination[0], // B: الوجهة
-          destinationLng: destination[1],
+          originLat: currentLocation[0], // A: موقعك الحالي (خط العرض)
+          originLng: currentLocation[1], // A: موقعك الحالي (خط الطول)
+          destinationLat: destination[0], // B: الوجهة (خط العرض)
+          destinationLng: destination[1], // B: الوجهة (خط الطول)
         })
 
         if (res.data.success && res.data.data) {
@@ -231,12 +272,22 @@ export default function NavigationPage() {
             destinationLat: destination[0],
             destinationLng: destination[1],
           })
+          console.log('✅ Route calculated successfully:', {
+            distance: routeData.distance,
+            estimatedTime: routeData.estimatedTime,
+          })
           toast.success('تم حساب المسار بنجاح')
         } else {
+          console.error('❌ Route calculation failed:', res.data)
           toast.error('فشل في حساب المسار')
         }
       } catch (error: any) {
-        console.error('Error calculating route:', error)
+        console.error('❌ Error calculating route:', error)
+        console.error('Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        })
         toast.error(error.response?.data?.error || 'فشل في حساب المسار')
       } finally {
         setIsCalculatingRoute(false)
@@ -583,14 +634,36 @@ export default function NavigationPage() {
             </label>
             <LocationPicker
               onLocationSelect={(location) => {
+                console.log('📍 Location selected from LocationPicker:', {
+                  name: location.name,
+                  lat: location.lat,
+                  lng: location.lng,
+                  formatted: `${location.lat}, ${location.lng}`,
+                })
+                
+                // التحقق من أن الإحداثيات صحيحة
+                if (!location.lat || !location.lng || isNaN(location.lat) || isNaN(location.lng)) {
+                  toast.error('إحداثيات غير صحيحة')
+                  console.error('❌ Invalid coordinates:', location)
+                  return
+                }
+                
                 // التحقق من أن الإحداثيات مختلفة عن موقعك الحالي
                 if (currentLocation && 
                     Math.abs(currentLocation[0] - location.lat) < 0.0001 && 
                     Math.abs(currentLocation[1] - location.lng) < 0.0001) {
                   toast.error('الوجهة يجب أن تكون مختلفة عن موقعك الحالي')
                   console.error('❌ Destination same as current location:', {
-                    current: currentLocation,
-                    destination: [location.lat, location.lng],
+                    current: {
+                      lat: currentLocation[0],
+                      lng: currentLocation[1],
+                      formatted: `${currentLocation[0]}, ${currentLocation[1]}`,
+                    },
+                    destination: {
+                      lat: location.lat,
+                      lng: location.lng,
+                      formatted: `${location.lat}, ${location.lng}`,
+                    },
                   })
                   return
                 }
@@ -599,11 +672,16 @@ export default function NavigationPage() {
                 const dest: [number, number] = [location.lat, location.lng]
                 setDestination(dest)
                 setDestinationName(location.name || 'موقع مختار')
-                console.log('✅ Destination selected:', {
+                console.log('✅ Destination (B) saved:', {
                   name: location.name,
-                  lat: location.lat,
-                  lng: location.lng,
-                  currentLocation: currentLocation,
+                  lat: dest[0],
+                  lng: dest[1],
+                  formatted: `${dest[0]}, ${dest[1]}`,
+                  currentLocation: currentLocation ? {
+                    lat: currentLocation[0],
+                    lng: currentLocation[1],
+                    formatted: `${currentLocation[0]}, ${currentLocation[1]}`,
+                  } : null,
                 })
                 toast.success(`تم تحديد الوجهة: ${location.name || 'موقع مختار'}`)
               }}
