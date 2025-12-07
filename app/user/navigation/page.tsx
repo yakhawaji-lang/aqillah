@@ -186,19 +186,70 @@ export default function NavigationPage() {
       ? `${Math.round(step.distance)} متر`
       : `${(step.distance / 1000).toFixed(1)} كيلومتر`
     const instruction = step.instruction || 'تابع المسار'
-    speak(`${instruction} بعد ${distanceText}`)
+    
+    // تحسين التعليمات الصوتية
+    let announcement = ''
+    if (step.maneuver) {
+      // استخدام maneuver من Google Directions API
+      const maneuverMap: Record<string, string> = {
+        'turn-left': 'استدر يساراً',
+        'turn-right': 'استدر يميناً',
+        'turn-sharp-left': 'استدر يساراً بشدة',
+        'turn-sharp-right': 'استدر يميناً بشدة',
+        'turn-slight-left': 'استدر يساراً قليلاً',
+        'turn-slight-right': 'استدر يميناً قليلاً',
+        'straight': 'تابع مباشرة',
+        'uturn-left': 'استدر 180 درجة يساراً',
+        'uturn-right': 'استدر 180 درجة يميناً',
+        'ramp-left': 'اتجه يساراً على المنحدر',
+        'ramp-right': 'اتجه يميناً على المنحدر',
+        'merge': 'ادمج مع المرور',
+        'fork-left': 'اتجه يساراً عند التقاطع',
+        'fork-right': 'اتجه يميناً عند التقاطع',
+      }
+      announcement = maneuverMap[step.maneuver.toLowerCase()] || instruction
+    } else {
+      announcement = instruction
+    }
+    
+    speak(`${announcement} بعد ${distanceText}`)
   }
 
   const announceApproachingTurn = (step: RouteStep, distance: number) => {
     let distanceText = ''
-    if (distance < 50) {
+    if (distance < 30) {
       distanceText = 'الآن'
+    } else if (distance < 50) {
+      distanceText = 'بعد 30 متر'
     } else if (distance < 100) {
       distanceText = 'بعد 50 متر'
-    } else {
+    } else if (distance < 200) {
       distanceText = 'بعد 100 متر'
+    } else {
+      distanceText = 'بعد 200 متر'
     }
-    const instruction = step.instruction || 'استدر'
+    
+    let instruction = step.instruction || 'استدر'
+    if (step.maneuver) {
+      const maneuverMap: Record<string, string> = {
+        'turn-left': 'استدر يساراً',
+        'turn-right': 'استدر يميناً',
+        'turn-sharp-left': 'استدر يساراً بشدة',
+        'turn-sharp-right': 'استدر يميناً بشدة',
+        'turn-slight-left': 'استدر يساراً قليلاً',
+        'turn-slight-right': 'استدر يميناً قليلاً',
+        'straight': 'تابع مباشرة',
+        'uturn-left': 'استدر 180 درجة يساراً',
+        'uturn-right': 'استدر 180 درجة يميناً',
+        'ramp-left': 'اتجه يساراً على المنحدر',
+        'ramp-right': 'اتجه يميناً على المنحدر',
+        'merge': 'ادمج مع المرور',
+        'fork-left': 'اتجه يساراً عند التقاطع',
+        'fork-right': 'اتجه يميناً عند التقاطع',
+      }
+      instruction = maneuverMap[step.maneuver.toLowerCase()] || instruction
+    }
+    
     speak(`${instruction} ${distanceText}`)
   }
 
@@ -211,14 +262,31 @@ export default function NavigationPage() {
     const distance = calculateDistance(location, currentStep.endLocation)
     setDistanceToNextTurn(distance)
 
+    // تحديث الخطوة الحالية عند الوصول إلى نهاية الخطوة
     if (distance < 50 && currentStepIndex < route.steps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1)
-      announceNextStep(route.steps[currentStepIndex + 1])
+      const nextStep = route.steps[currentStepIndex + 1]
+      if (nextStep) {
+        announceNextStep(nextStep)
+      }
     }
 
-    if (distance < 200 && Date.now() - lastAnnouncementRef.current > 5000) {
-      announceApproachingTurn(currentStep, distance)
-      lastAnnouncementRef.current = Date.now()
+    // إعلان اقتراب المنعطف بناءً على المسافة
+    const now = Date.now()
+    if (distance < 200 && now - lastAnnouncementRef.current > 5000) {
+      if (distance < 30) {
+        // عند الاقتراب الشديد (أقل من 30 متر)
+        announceApproachingTurn(currentStep, distance)
+        lastAnnouncementRef.current = now
+      } else if (distance < 100 && now - lastAnnouncementRef.current > 10000) {
+        // عند الاقتراب المتوسط (100 متر) - كل 10 ثواني
+        announceApproachingTurn(currentStep, distance)
+        lastAnnouncementRef.current = now
+      } else if (distance < 200 && now - lastAnnouncementRef.current > 15000) {
+        // عند الاقتراب البعيد (200 متر) - كل 15 ثانية
+        announceApproachingTurn(currentStep, distance)
+        lastAnnouncementRef.current = now
+      }
     }
   }
 
@@ -271,21 +339,32 @@ export default function NavigationPage() {
       setIsNavigating(true)
       setIsPaused(false)
       
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setCurrentLocation([
-              position.coords.latitude,
-              position.coords.longitude
-            ])
-            speak('تم بدء التوجيه. اتبع التعليمات')
-          },
-          (error) => {
-            console.error('Error getting location:', error)
-            toast.error('فشل في جلب موقعك الحالي')
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const startLocation: [number, number] = [
+                  position.coords.latitude,
+                  position.coords.longitude
+                ]
+                setCurrentLocation(startLocation)
+                
+                // إعلان بدء التوجيه مع معلومات المسار
+                if (route && route.steps && route.steps.length > 0) {
+                  const firstStep = route.steps[0]
+                  const totalDistance = route.distance
+                  const totalTime = route.estimatedTime
+                  
+                  speak(`تم بدء التوجيه. المسافة ${totalDistance.toFixed(1)} كيلومتر. الوقت المتوقع ${Math.round(totalTime)} دقيقة. ${firstStep.instruction || 'تابع المسار'}`)
+                } else {
+                  speak('تم بدء التوجيه. اتبع التعليمات')
+                }
+              },
+              (error) => {
+                console.error('Error getting location:', error)
+                toast.error('فشل في جلب موقعك الحالي')
+              }
+            )
           }
-        )
-      }
     }
   }
 

@@ -5,6 +5,47 @@ import {
   shouldUpdateRoute,
 } from '@/lib/core/emergency-routing'
 import { prisma } from '@/lib/prisma'
+import { googleMapsService } from '@/lib/services/google-maps'
+
+/**
+ * فك تشفير Google Polyline إلى مصفوفة من الإحداثيات
+ */
+function decodePolyline(encoded: string): Array<[number, number]> {
+  if (!encoded) return []
+  
+  const poly: Array<[number, number]> = []
+  let index = 0
+  const len = encoded.length
+  let lat = 0
+  let lng = 0
+
+  while (index < len) {
+    let b
+    let shift = 0
+    let result = 0
+    do {
+      b = encoded.charCodeAt(index++) - 63
+      result |= (b & 0x1f) << shift
+      shift += 5
+    } while (b >= 0x20)
+    const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1))
+    lat += dlat
+
+    shift = 0
+    result = 0
+    do {
+      b = encoded.charCodeAt(index++) - 63
+      result |= (b & 0x1f) << shift
+      shift += 5
+    } while (b >= 0x20)
+    const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1))
+    lng += dlng
+
+    poly.push([lat * 1e-5, lng * 1e-5])
+  }
+
+  return poly
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -182,59 +223,67 @@ export async function POST(request: NextRequest) {
       return bearing2 - bearing1
     }
 
-    // حساب المسار
+    // حساب المسار باستخدام Google Directions API للحصول على مسار يتبع الطرق الفعلية
     let route
     try {
+      // استخدام Google Routes API للحصول على المسار الفعلي على الطرق
+      const googleRoute = await googleMapsService.calculateRoute({
+        origin: { lat: originLat, lng: originLng },
+        destination: { lat: destinationLat, lng: destinationLng },
+        departureTime: 'now',
+        alternatives: false,
+      })
+
+      if (!googleRoute.routes || googleRoute.routes.length === 0) {
+        throw new Error('لم يتم العثور على مسار')
+      }
+
+      const bestRoute = googleRoute.routes[0]
+      
+      // فك تشفير polyline للحصول على نقاط المسار
+      const decodedPolyline = decodePolyline(bestRoute.polyline)
+      
+      // تحويل الخطوات من Google Routes API
+      const steps = bestRoute.steps.map((step: any) => ({
+        instruction: step.instructions || 'تابع المسار',
+        distance: step.distance || 0,
+        duration: step.duration || 0,
+        startLocation: [step.startLocation.lat, step.startLocation.lng] as [number, number],
+        endLocation: [step.endLocation.lat, step.endLocation.lng] as [number, number],
+        maneuver: step.maneuver || undefined,
+      }))
+
+      // إنشاء كائن EmergencyRoute
+      route = {
+        id: `emergency-${Date.now()}`,
+        originLat,
+        originLng,
+        destinationLat,
+        destinationLng,
+        route: decodedPolyline,
+        distance: (bestRoute.distance || 0) / 1000, // تحويل من متر إلى كيلومتر
+        estimatedTime: (bestRoute.durationInTraffic || bestRoute.duration || 0) / 60, // تحويل من ثانية إلى دقيقة
+        lastUpdate: new Date(),
+        updateInterval: 30,
+        isActive: true,
+        congestionAlongRoute: [],
+        steps,
+      }
+
+      console.log('Route calculated using Google Directions API:', { 
+        distance: route.distance, 
+        estimatedTime: route.estimatedTime,
+        stepsCount: steps.length 
+      })
+    } catch (routeError: any) {
+      console.error('Error calculating route with Google Directions API:', routeError)
+      // Fallback إلى الحساب المبسط إذا فشل Google Directions API
+      console.log('Falling back to simplified route calculation')
       route = calculateEmergencyRoute(
         [originLat, originLng],
         [destinationLat, destinationLng],
         congestionMap
       )
-      console.log('Route calculated:', { distance: route.distance, estimatedTime: route.estimatedTime })
-      
-      // تحويل المسار إلى خطوات للتوجيه
-      if (route.route && route.route.length > 0) {
-        const steps: any[] = []
-        const segmentLength = Math.max(1, Math.floor(route.route.length / 10)) // تقسيم المسار إلى 10 خطوات تقريباً
-        
-        for (let i = 0; i < route.route.length - 1; i += segmentLength) {
-          const startPoint = route.route[i]
-          const endPoint = route.route[Math.min(i + segmentLength, route.route.length - 1)]
-          
-          const distance = calculateDistance(startPoint, endPoint)
-          const duration = (distance / 1000 / 50) * 60 // افتراض سرعة 50 كم/س
-          
-          let instruction = 'تابع المسار'
-          if (i === 0) {
-            instruction = 'ابدأ المسار'
-          } else if (i + segmentLength >= route.route.length - 1) {
-            instruction = 'وصلت إلى الوجهة'
-          } else {
-            // تحديد نوع المنعطف بناءً على الزاوية
-            const angle = calculateAngle(startPoint, route.route[Math.max(0, i - 1)], endPoint)
-            if (angle > 30) {
-              instruction = 'استدر يميناً'
-            } else if (angle < -30) {
-              instruction = 'استدر يساراً'
-            } else {
-              instruction = 'تابع مباشرة'
-            }
-          }
-          
-          steps.push({
-            instruction,
-            distance: Math.round(distance),
-            duration: Math.round(duration),
-            startLocation: startPoint,
-            endLocation: endPoint,
-          })
-        }
-        
-        route.steps = steps
-      }
-    } catch (routeError: any) {
-      console.error('Error in calculateEmergencyRoute:', routeError)
-      throw new Error(`فشل في حساب المسار: ${routeError?.message || 'خطأ غير معروف'}`)
     }
 
     // حفظ المسار (مع التعامل مع عدم توفر قاعدة البيانات)
