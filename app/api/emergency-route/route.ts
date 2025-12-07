@@ -262,7 +262,10 @@ export async function POST(request: NextRequest) {
         destinationLng,
         route: decodedPolyline,
         distance: (bestRoute.distance || 0) / 1000, // تحويل من متر إلى كيلومتر
-        estimatedTime: (bestRoute.durationInTraffic || bestRoute.duration || 0) / 60, // تحويل من ثانية إلى دقيقة
+        estimatedTime: (bestRoute.duration || 0) / 60, // الوقت بدون ازدحام (بالدقائق)
+        estimatedTimeInTraffic: bestRoute.durationInTraffic 
+          ? (bestRoute.durationInTraffic / 60) // الوقت مع الازدحام (بالدقائق)
+          : undefined,
         lastUpdate: new Date(),
         updateInterval: 30,
         isActive: true,

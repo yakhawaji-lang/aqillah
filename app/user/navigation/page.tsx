@@ -37,6 +37,7 @@ interface NavigationRoute {
   route: Array<[number, number]>
   distance: number
   estimatedTime: number
+  estimatedTimeInTraffic?: number // الوقت المتوقع مع الازدحام
   steps?: RouteStep[]
 }
 
@@ -54,9 +55,6 @@ export default function NavigationPage() {
   const [isPaused, setIsPaused] = useState(false)
   const [isLoadingRoute, setIsLoadingRoute] = useState(true)
   const [routeError, setRouteError] = useState<string | null>(null)
-  const [remainingTime, setRemainingTime] = useState<number | null>(null)
-  const [elapsedTime, setElapsedTime] = useState<number>(0)
-  const [navigationStartTime, setNavigationStartTime] = useState<Date | null>(null)
   
   const watchIdRef = useRef<number | null>(null)
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null)
@@ -265,25 +263,6 @@ export default function NavigationPage() {
     const distance = calculateDistance(location, currentStep.endLocation)
     setDistanceToNextTurn(distance)
 
-    // حساب المسافة المتبقية إلى الوجهة
-    let remainingDistance = 0
-    if (currentStepIndex < route.steps.length - 1) {
-      // المسافة المتبقية = المسافة إلى نهاية الخطوة الحالية + مجموع مسافات الخطوات المتبقية
-      remainingDistance = distance
-      for (let i = currentStepIndex + 1; i < route.steps.length; i++) {
-        remainingDistance += route.steps[i].distance
-      }
-    } else {
-      remainingDistance = distance
-    }
-
-    // حساب الوقت المتبقي بناءً على المسافة المتبقية والسرعة المتوسطة
-    // افتراض سرعة متوسطة 50 كم/ساعة (13.9 م/ث) مع مراعاة الازدحام
-    const averageSpeed = 13.9 // متر/ثانية (50 كم/ساعة)
-    const remainingTimeSeconds = remainingDistance / averageSpeed
-    const remainingTimeMinutes = remainingTimeSeconds / 60
-    setRemainingTime(Math.max(0, Math.round(remainingTimeMinutes)))
-
     // تحديث الخطوة الحالية عند الوصول إلى نهاية الخطوة
     if (distance < 50 && currentStepIndex < route.steps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1)
@@ -343,19 +322,6 @@ export default function NavigationPage() {
     }
   }, [isNavigating, isPaused, route, currentStepIndex])
 
-  // تحديث الوقت المستغرق كل ثانية
-  useEffect(() => {
-    if (!isNavigating || !navigationStartTime) return
-
-    const interval = setInterval(() => {
-      const now = new Date()
-      const elapsed = Math.floor((now.getTime() - navigationStartTime.getTime()) / 1000)
-      setElapsedTime(elapsed)
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [isNavigating, navigationStartTime])
-
   const toggleNavigation = () => {
     if (!route) {
       toast.error('لا يوجد مسار محدد')
@@ -365,8 +331,6 @@ export default function NavigationPage() {
     if (isNavigating) {
       setIsNavigating(false)
       setIsPaused(false)
-      setNavigationStartTime(null)
-      setElapsedTime(0)
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
       }
@@ -384,8 +348,6 @@ export default function NavigationPage() {
                   position.coords.longitude
                 ]
                 setCurrentLocation(startLocation)
-                setNavigationStartTime(new Date())
-                setElapsedTime(0)
                 
                 // إعلان بدء التوجيه مع معلومات المسار
                 if (route && route.steps && route.steps.length > 0) {
@@ -412,9 +374,6 @@ export default function NavigationPage() {
     setIsNavigating(false)
     setIsPaused(false)
     setDistanceToNextTurn(null)
-    setRemainingTime(null)
-    setElapsedTime(0)
-    setNavigationStartTime(null)
     window.speechSynthesis.cancel()
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
@@ -534,7 +493,12 @@ export default function NavigationPage() {
             }
             zoom={isNavigating && currentLocation ? 16 : 14}
             showTrafficLayer={true}
-            route={route.route}
+            route={{
+              origin: currentLocation 
+                ? { lat: currentLocation[0], lng: currentLocation[1] }
+                : { lat: route.originLat, lng: route.originLng },
+              destination: { lat: route.destinationLat, lng: route.destinationLng },
+            }}
             currentLocation={currentLocation}
             className="w-full h-full"
           />
@@ -563,21 +527,10 @@ export default function NavigationPage() {
                 <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
                   <div className="flex items-center gap-2 mb-1">
                     <Clock className="w-4 h-4" />
-                    <span className="text-xs font-medium">
-                      {isNavigating && remainingTime !== null ? 'الوقت المتبقي' : 'الوقت المتوقع'}
-                    </span>
+                    <span className="text-xs font-medium">الوقت</span>
                   </div>
-                  <p className="text-2xl font-bold">
-                    {isNavigating && remainingTime !== null 
-                      ? remainingTime 
-                      : Math.round(route.estimatedTime)}
-                  </p>
+                  <p className="text-2xl font-bold">{Math.round(route.estimatedTime)}</p>
                   <p className="text-xs opacity-90">دقيقة</p>
-                  {isNavigating && navigationStartTime && (
-                    <p className="text-xs opacity-75 mt-1">
-                      الوقت المستغرق: {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>

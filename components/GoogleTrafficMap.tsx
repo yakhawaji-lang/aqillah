@@ -496,136 +496,109 @@ export default function GoogleTrafficMap({
     }
   }, [map, memoizedMarkers])
 
-  // Render route using DirectionsService for actual road routing
+  // Render route
   useEffect(() => {
-    if (!(window as any).google || !mapInstanceRef.current || !directionsService || !directionsRendererRef.current) return
+    if (!(window as any).google || !mapInstanceRef.current) return
 
-    // Clear previous route
+    // Clear previous route polyline
     if (routePolylineRef.current) {
       routePolylineRef.current.setMap(null)
       routePolylineRef.current = null
     }
 
-    // Clear previous markers
-    if (originMarkerRef.current) {
-      originMarkerRef.current.setMap(null)
-      originMarkerRef.current = null
-    }
-    if (destinationMarkerRef.current) {
-      destinationMarkerRef.current.setMap(null)
-      destinationMarkerRef.current = null
-    }
-    directionMarkersRef.current.forEach((marker) => {
-      if (marker) marker.setMap(null)
-    })
-    directionMarkersRef.current = []
-
-    // Handle route as coordinate array - use DirectionsService to get actual road route
+    // Handle route as coordinate array
     if (Array.isArray(route) && route.length > 0) {
-      const origin = currentLocation && currentLocation.length === 2
-        ? { lat: currentLocation[0], lng: currentLocation[1] }
-        : { lat: route[0][0], lng: route[0][1] }
+      // بناء المسار: إذا كان هناك موقع حالي، ابدأ منه، وإلا ابدأ من نقطة البداية
+      let path: Array<{ lat: number; lng: number }> = []
       
-      const destination = { lat: route[route.length - 1][0], lng: route[route.length - 1][1] }
-
-      // Use DirectionsService to get the actual road route
-      const request: any = {
-        origin: origin,
-        destination: destination,
-        travelMode: (window as any).google.maps.TravelMode.DRIVING,
-        drivingOptions: {
-          departureTime: new Date(),
-          trafficModel: (window as any).google.maps.TrafficModel.BEST_GUESS,
-        },
-        provideRouteAlternatives: false,
+      // إذا كان هناك موقع حالي، أضفه في البداية
+      if (currentLocation && currentLocation.length === 2) {
+        path.push({
+          lat: currentLocation[0],
+          lng: currentLocation[1],
+        })
       }
-
-      directionsService.route(request, (result: any, status: any) => {
-        if (status === (window as any).google.maps.DirectionsStatus.OK && result && directionsRendererRef.current && mapInstanceRef.current) {
-          try {
-            // Configure DirectionsRenderer to show route on actual roads
-            directionsRendererRef.current.setOptions({
-              map: mapInstanceRef.current,
-              suppressMarkers: true, // We'll add custom markers
-              preserveViewport: false,
-              polylineOptions: {
-                strokeColor: '#4285F4', // Google Maps blue
-                strokeWeight: 8,
-                strokeOpacity: 0.9,
-              },
-            })
-
-            // Set the directions result to render the route
-            directionsRendererRef.current.setDirections(result)
-
-            // Add custom origin marker (green) at current location or route start
-            if (origin) {
-              originMarkerRef.current = new (window as any).google.maps.Marker({
-                position: origin,
-                map: mapInstanceRef.current,
-                icon: {
-                  path: (window as any).google.maps.SymbolPath.CIRCLE,
-                  scale: 10,
-                  fillColor: '#10B981', // Green
-                  fillOpacity: 1,
-                  strokeColor: '#FFFFFF',
-                  strokeWeight: 3,
-                },
-                title: currentLocation ? 'موقعك الحالي' : 'نقطة البداية',
-                zIndex: 1000,
-              })
-            }
-
-            // Add custom destination marker (red)
-            if (destination) {
-              destinationMarkerRef.current = new (window as any).google.maps.Marker({
-                position: destination,
-                map: mapInstanceRef.current,
-                icon: {
-                  path: (window as any).google.maps.SymbolPath.CIRCLE,
-                  scale: 10,
-                  fillColor: '#EF4444', // Red
-                  fillOpacity: 1,
-                  strokeColor: '#FFFFFF',
-                  strokeWeight: 3,
-                },
-                title: 'الوجهة',
-                zIndex: 1000,
-              })
-            }
-
-            // Fit bounds to show entire route
-            const bounds = new (window as any).google.maps.LatLngBounds()
-            result.routes[0].legs.forEach((leg: any) => {
-              bounds.extend(leg.start_location)
-              bounds.extend(leg.end_location)
-            })
-            mapInstanceRef.current.fitBounds(bounds)
-          } catch (err) {
-            console.error('Error rendering route:', err)
-          }
-        } else {
-          console.error('Directions request failed:', status)
-          // Fallback to polyline if DirectionsService fails
-          const path = route.map((coord) => ({
-            lat: coord[0],
-            lng: coord[1],
-          }))
-          routePolylineRef.current = new (window as any).google.maps.Polyline({
-            path: path,
-            geodesic: true,
-            strokeColor: '#4285F4',
-            strokeOpacity: 0.9,
-            strokeWeight: 8,
-            map: mapInstanceRef.current,
-          })
-        }
+      
+      // إضافة باقي نقاط المسار
+      route.forEach((coord) => {
+        path.push({
+          lat: coord[0],
+          lng: coord[1],
+        })
       })
 
+      // Clear previous markers
+      if (originMarkerRef.current) {
+        originMarkerRef.current.setMap(null)
+        originMarkerRef.current = null
+      }
+      if (destinationMarkerRef.current) {
+        destinationMarkerRef.current.setMap(null)
+        destinationMarkerRef.current = null
+      }
+      directionMarkersRef.current.forEach((marker) => {
+        if (marker) marker.setMap(null)
+      })
+      directionMarkersRef.current = []
+
+      // رسم المسار كخط متصل يتبع الطريق
+      routePolylineRef.current = new (window as any).google.maps.Polyline({
+        path: path,
+        geodesic: true,
+        strokeColor: '#4285F4',
+        strokeOpacity: 0.9,
+        strokeWeight: 8,
+        map: mapInstanceRef.current,
+      })
+
+      // إضافة علامة البداية (الأخضر) - من موقع المستخدم الحالي إذا كان متاحاً
+      if (path.length > 0) {
+        const startPosition = currentLocation && currentLocation.length === 2
+          ? { lat: currentLocation[0], lng: currentLocation[1] }
+          : path[0]
+        
+        originMarkerRef.current = new (window as any).google.maps.Marker({
+          position: startPosition,
+          map: mapInstanceRef.current,
+          icon: {
+            path: (window as any).google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#10B981',
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 3,
+          },
+          title: currentLocation ? 'موقعك الحالي' : 'نقطة البداية',
+          zIndex: 1000,
+        })
+      }
+
+      // إضافة علامة النهاية (الأحمر)
+      if (path.length > 1) {
+        destinationMarkerRef.current = new (window as any).google.maps.Marker({
+          position: path[path.length - 1],
+          map: mapInstanceRef.current,
+          icon: {
+            path: (window as any).google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#EF4444',
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 3,
+          },
+          title: 'الوجهة',
+          zIndex: 1000,
+        })
+      }
+
+      // لا حاجة لأسهم الاتجاه - الخط المتصل يتبع الطريق
+
+      // Fit bounds to show entire route
+      const bounds = new (window as any).google.maps.LatLngBounds()
+      path.forEach((point) => bounds.extend(point))
+      mapInstanceRef.current.fitBounds(bounds)
+
       return () => {
-        if (directionsRendererRef.current) {
-          directionsRendererRef.current.setDirections({ routes: [] })
-        }
         if (routePolylineRef.current) {
           routePolylineRef.current.setMap(null)
           routePolylineRef.current = null
@@ -645,7 +618,7 @@ export default function GoogleTrafficMap({
       }
     }
 
-    // Handle route as object (original format)
+    // Handle route as object (original format) - استخدام Directions API
     if (route && typeof route === 'object' && 'origin' in route && directionsService && directionsRendererRef.current) {
       // Clear previous route first
       if (directionsRendererRef.current) {
@@ -656,34 +629,35 @@ export default function GoogleTrafficMap({
         origin: { lat: route.origin.lat, lng: route.origin.lng },
         destination: { lat: route.destination.lat, lng: route.destination.lng },
         travelMode: (window as any).google.maps.TravelMode.DRIVING,
+        ...(route.waypoints && route.waypoints.length > 0 && {
+          waypoints: route.waypoints.map((wp: any) => ({
+            location: { lat: wp.lat, lng: wp.lng },
+            stopover: false,
+          })),
+        }),
+        provideRouteAlternatives: false,
         drivingOptions: {
           departureTime: new Date(),
           trafficModel: (window as any).google.maps.TrafficModel.BEST_GUESS,
         },
-        ...(route.waypoints && route.waypoints.length > 0 && {
-          waypoints: route.waypoints.map((wp: any) => ({
-            location: { lat: wp.lat, lng: wp.lng },
-          })),
-        }),
-        provideRouteAlternatives: false,
       }
 
       directionsService.route(request, (result: any, status: any) => {
         if (status === (window as any).google.maps.DirectionsStatus.OK && result && directionsRendererRef.current && mapInstanceRef.current) {
           try {
-            // Configure DirectionsRenderer
+            // تحديث DirectionsRenderer لعرض المسار الفعلي على الطرق
+            directionsRendererRef.current.setDirections(result)
+            
+            // تحديث خيارات الخط ليكون أكثر وضوحاً
             directionsRendererRef.current.setOptions({
-              map: mapInstanceRef.current,
-              suppressMarkers: false,
-              preserveViewport: false,
               polylineOptions: {
                 strokeColor: '#4285F4',
                 strokeWeight: 8,
                 strokeOpacity: 0.9,
               },
+              suppressMarkers: false,
+              preserveViewport: false,
             })
-            
-            directionsRendererRef.current.setDirections(result)
             
             // Fit bounds to show entire route
             const bounds = new (window as any).google.maps.LatLngBounds()
@@ -692,6 +666,12 @@ export default function GoogleTrafficMap({
               bounds.extend(leg.end_location)
             })
             mapInstanceRef.current.fitBounds(bounds)
+            
+            console.log('✅ Route rendered using Directions API', {
+              distance: result.routes[0].legs[0].distance?.text,
+              duration: result.routes[0].legs[0].duration?.text,
+              durationInTraffic: result.routes[0].legs[0].duration_in_traffic?.text,
+            })
           } catch (err) {
             console.error('Error rendering route:', err)
           }

@@ -15,6 +15,7 @@ export interface EmergencyRoute {
   route: Array<[number, number]> // إحداثيات المسار
   distance: number // المسافة (كم)
   estimatedTime: number // الوقت المتوقع (دقيقة)
+  estimatedTimeInTraffic?: number // الوقت المتوقع مع الازدحام (دقيقة)
   
   // تحديثات حية
   lastUpdate: Date
