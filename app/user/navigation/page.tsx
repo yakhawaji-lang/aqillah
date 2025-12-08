@@ -585,7 +585,6 @@ export default function NavigationPage() {
   if (!route && isLoadingRoute) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
         <div className="container mx-auto px-4 py-6">
           <button
             onClick={() => router.back()}
@@ -606,7 +605,6 @@ export default function NavigationPage() {
   if (!route || routeError) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
         <div className="container mx-auto px-4 py-6">
           <button
             onClick={() => router.back()}
