@@ -48,16 +48,27 @@ export default function GovernmentDashboardPage() {
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area')
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null)
 
-  // Real-time data من Google Traffic API مباشرة - قراءة من الخريطة الحالية
+  // Real-time data من Google Routes API (New) مباشرة - قراءة من الخريطة الحالية
+  // محاولة استخدام Routes API الجديد أولاً، ثم Fallback إلى Directions API القديم
   const { data: trafficData, isLoading: trafficLoading, refetch: refetchTraffic, isError } = useQuery({
     queryKey: ['traffic', selectedCity, timeRange],
     queryFn: async () => {
       try {
-        // استخدام Google Traffic API للحصول على بيانات حقيقية من الخريطة
+        // محاولة استخدام Routes API الجديد أولاً
+        try {
+          const res = await axios.get(`/api/traffic/live?city=${selectedCity}`)
+          if (res.data.success && res.data.data && res.data.data.length > 0) {
+            console.log('✅ Google Routes API (New) data received:', res.data.data.length, 'routes')
+            return res.data.data
+          }
+        } catch (routesError: any) {
+          console.warn('⚠️ Routes API (New) failed, falling back to Directions API:', routesError.message)
+        }
+
+        // Fallback إلى Directions API القديم
         const res = await axios.get(`/api/traffic/google?city=${selectedCity}`)
         const data = res.data.data || []
-        console.log('📊 Google Traffic Data received:', data.length, 'routes')
-        console.log('📊 Sample data:', data.slice(0, 3))
+        console.log('📊 Google Directions API data received:', data.length, 'routes')
         return data
       } catch (error: any) {
         console.error('❌ Error fetching Google traffic data:', error.message)
