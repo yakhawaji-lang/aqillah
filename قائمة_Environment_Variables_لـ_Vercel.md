@@ -64,3 +64,4 @@ OPENWEATHER_API_KEY=your_openweather_api_key
 3. جرب البحث عن المواقع
 4. تحقق من Console Logs في Vercel
 
+

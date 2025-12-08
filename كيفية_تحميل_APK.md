@@ -79,3 +79,4 @@ C:\Aqqilha\public\downloads\aqillah.apk
 **ملاحظة:** الملف موجود محلياً في `public/downloads/aqillah.apk` لكنه غير موجود في Git بسبب الحجم الكبير.
 
 
+

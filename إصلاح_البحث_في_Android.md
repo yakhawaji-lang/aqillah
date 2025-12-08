@@ -107,3 +107,4 @@ AQILLAH_ROUTES_KEY=your_google_routes_api_key
 
 بعد إعادة بناء التطبيق، يجب أن يعمل البحث عن المواقع بشكل صحيح في تطبيق Android!
 
+

@@ -136,6 +136,50 @@ export default function GovernmentDashboardPage() {
     refetchInterval: 60000,
   })
 
+  // اكتشاف نقاط الازدحام من بيانات الخريطة مباشرة
+  const detectedBottlenecks = useMemo(() => {
+    if (!trafficData || trafficData.length === 0) {
+      return []
+    }
+
+    // تصفية نقاط الازدحام بناءً على congestionIndex
+    const bottlenecks = trafficData
+      .filter((item: any) => {
+        // اعتبار نقاط الازدحام: congestionIndex >= 50
+        return item.congestionIndex >= 50
+      })
+      .map((item: any) => {
+        // تحديد مستوى الشدة
+        let severity: 'critical' | 'high' | 'medium' = 'medium'
+        if (item.congestionIndex >= 80) {
+          severity = 'critical'
+        } else if (item.congestionIndex >= 70) {
+          severity = 'high'
+        }
+
+        // حساب التأخير التقريبي (دقيقة لكل 10% ازدحام)
+        const estimatedDelay = Math.max(1, Math.round((item.congestionIndex - 50) / 10))
+
+        return {
+          id: item.id || `detected-${item.roadName}-${item.position[0]}-${item.position[1]}`,
+          roadName: item.roadName,
+          city: item.city || selectedCity,
+          direction: item.direction || 'غير محدد',
+          position: item.position,
+          congestionIndex: item.congestionIndex,
+          severity,
+          avgDelay: estimatedDelay,
+          affectedVehicles: item.deviceCount || Math.round(item.congestionIndex * 10),
+          duration: Math.round((item.congestionIndex - 50) / 5), // مدة تقريبية بالدقائق
+          lastDetected: item.timestamp ? new Date(item.timestamp) : new Date(),
+          avgSpeed: item.avgSpeed || 0,
+        }
+      })
+      .sort((a: any, b: any) => b.congestionIndex - a.congestionIndex) // ترتيب حسب الشدة
+
+    return bottlenecks
+  }, [trafficData, selectedCity])
+
   // Filtered data
   const filteredTrafficData = trafficData?.filter((item: any) => {
     if (searchQuery && !item.roadName.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -388,14 +432,18 @@ export default function GovernmentDashboardPage() {
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
               <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-bold">
-                {bottlenecks?.length || 0} نشط
+                {detectedBottlenecks?.length || 0} نشط
               </span>
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-1">نقاط ازدحام مكتشفة</h3>
-            <p className="text-sm text-gray-600 mb-3">يتطلب مراقبة مستمرة</p>
+            <p className="text-sm text-gray-600 mb-3">اكتشاف مباشر من الخريطة</p>
             <div className="flex items-center gap-2 text-sm">
               <Gauge className="h-4 w-4 text-red-500" />
-              <span className="text-gray-600">متوسط التأخير: {bottlenecks?.[0]?.avgDelay?.toFixed(1) || '0'} دقيقة</span>
+              <span className="text-gray-600">
+                متوسط التأخير: {detectedBottlenecks?.length > 0 
+                  ? (detectedBottlenecks.reduce((sum: number, b: any) => sum + (b.avgDelay || 0), 0) / detectedBottlenecks.length).toFixed(1)
+                  : '0'} دقيقة
+              </span>
             </div>
           </div>
 
@@ -659,15 +707,15 @@ export default function GovernmentDashboardPage() {
         )}
 
         {/* جدول نقاط الازدحام - تصميم احترافي */}
-        {bottlenecks && bottlenecks.length > 0 && (
+        {detectedBottlenecks && detectedBottlenecks.length > 0 && (
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-1">نقاط الازدحام المكتشفة</h3>
-                <p className="text-sm text-gray-600">مراقبة مستمرة وتحديث فوري</p>
+                <p className="text-sm text-gray-600">اكتشاف مباشر من بيانات الخريطة</p>
               </div>
               <div className="px-4 py-2 bg-red-100 text-red-800 rounded-lg font-bold">
-                {bottlenecks.length} نقطة نشطة
+                {detectedBottlenecks.length} نقطة نشطة
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -676,6 +724,7 @@ export default function GovernmentDashboardPage() {
                   <tr className="bg-gray-50 border-b border-gray-200">
                     <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase">الطريق</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 uppercase">المدينة</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">مؤشر الازدحام</th>
                     <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">الشدة</th>
                     <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">التأخير</th>
                     <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">المركبات المتأثرة</th>
@@ -684,7 +733,7 @@ export default function GovernmentDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {bottlenecks.slice(0, 10).map((bottleneck: any) => {
+                  {detectedBottlenecks.slice(0, 10).map((bottleneck: any) => {
                     const severityColors: Record<string, { bg: string; text: string; label: string }> = {
                       critical: { bg: 'bg-red-100', text: 'text-red-800', label: 'حرج' },
                       high: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'عالي' },
@@ -702,6 +751,15 @@ export default function GovernmentDashboardPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-gray-600">{bottleneck.city}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`font-bold ${
+                            bottleneck.congestionIndex >= 80 ? 'text-red-600' :
+                            bottleneck.congestionIndex >= 70 ? 'text-orange-600' :
+                            'text-yellow-600'
+                          }`}>
+                            {bottleneck.congestionIndex}%
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${severity.bg} ${severity.text}`}>
                             {severity.label}
