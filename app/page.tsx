@@ -138,18 +138,18 @@ export default function Home() {
                  </div>
                  <Download className="w-5 h-5 opacity-80 group-hover:opacity-100 transition" />
                </a>
-               <a
-                 href="/downloads/aqillah.apk"
-                 download="aqillah.apk"
-                 className="group flex items-center gap-3 bg-primary-600 text-white px-6 py-4 rounded-xl hover:bg-primary-700 transition-all hover:scale-105 shadow-lg"
-               >
-                 <Package className="w-8 h-8" />
+               <div className="group flex items-center gap-3 bg-primary-600/50 text-white px-6 py-4 rounded-xl shadow-lg relative cursor-not-allowed">
+                 <Package className="w-8 h-8 opacity-60" />
                  <div className="text-right">
-                   <div className="text-xs opacity-90">تحميل مباشر</div>
-                   <div className="text-lg font-bold">APK</div>
+                   <div className="text-xs opacity-70">تحميل مباشر</div>
+                   <div className="text-lg font-bold opacity-80">APK</div>
+                   <div className="text-xs opacity-60 mt-1">قريباً</div>
                  </div>
-                 <Download className="w-5 h-5 opacity-80 group-hover:opacity-100 transition" />
-               </a>
+                 <Download className="w-5 h-5 opacity-50" />
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/10 rounded-xl">
+                   <span className="text-xs font-medium opacity-80">سيتم إضافته قريباً</span>
+                 </div>
+               </div>
              </div>
             <p className="text-white/70 text-sm mt-4">
               النسخة المحدثة • آخر تحديث: {new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' })}
