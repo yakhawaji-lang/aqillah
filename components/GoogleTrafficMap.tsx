@@ -687,16 +687,19 @@ export default function GoogleTrafficMap({
                 strokeOpacity: 0.9,
               },
               suppressMarkers: false, // إظهار العلامات (A و B)
-              preserveViewport: false,
+              preserveViewport: true, // الحفاظ على المركز الحالي (موقع المستخدم)
             })
             
-            // Fit bounds to show entire route
-            const bounds = new (window as any).google.maps.LatLngBounds()
-            result.routes[0].legs.forEach((leg: any) => {
-              bounds.extend(leg.start_location) // A: نقطة البداية
-              bounds.extend(leg.end_location) // B: نقطة النهاية
-            })
-            mapInstanceRef.current.fitBounds(bounds)
+            // لا نستخدم fitBounds - نركز على موقع المستخدم الحالي بدلاً من ذلك
+            // إذا كان هناك موقع حالي، نركز عليه
+            if (currentLocation && currentLocation.length === 2) {
+              mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
+              mapInstanceRef.current.setZoom(16)
+              console.log('✅ Map centered on current location (not fitBounds):', {
+                lat: currentLocation[0],
+                lng: currentLocation[1],
+              })
+            }
             
             // جلب بيانات الطقس للمسار لحساب التأخير الإضافي
             const fetchWeatherDelay = async () => {

@@ -487,31 +487,56 @@ export default function NavigationPage() {
       setIsNavigating(true)
       setIsPaused(false)
       
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                const startLocation: [number, number] = [
-                  position.coords.latitude,
-                  position.coords.longitude
-                ]
-                setCurrentLocation(startLocation)
-                
-                // إعلان بدء التوجيه مع معلومات المسار
-                if (route && route.steps && route.steps.length > 0) {
-                  const firstStep = route.steps[0]
-                  const totalDistance = route.distance
-                  const totalTime = route.estimatedTime
+          // استخدام الموقع الحالي الموجود بدلاً من طلب موقع جديد
+          if (currentLocation && currentLocation.length === 2) {
+            console.log('✅ Starting navigation with current location:', {
+              lat: currentLocation[0],
+              lng: currentLocation[1],
+              formatted: `${currentLocation[0]}, ${currentLocation[1]}`,
+            })
+            
+            // إعلان بدء التوجيه مع معلومات المسار
+            if (route && route.steps && route.steps.length > 0) {
+              const firstStep = route.steps[0]
+              const totalDistance = route.distance
+              const totalTime = route.estimatedTime
+              
+              speak(`تم بدء التوجيه. المسافة ${totalDistance.toFixed(1)} كيلومتر. الوقت المتوقع ${Math.round(totalTime)} دقيقة. ${firstStep.instruction || 'تابع المسار'}`)
+            } else {
+              speak('تم بدء التوجيه. اتبع التعليمات')
+            }
+          } else {
+            // فقط إذا لم يكن هناك موقع حالي، نطلبه
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const startLocation: [number, number] = [
+                    position.coords.latitude,
+                    position.coords.longitude
+                  ]
+                  setCurrentLocation(startLocation)
+                  console.log('✅ Got location for navigation start:', {
+                    lat: startLocation[0],
+                    lng: startLocation[1],
+                  })
                   
-                  speak(`تم بدء التوجيه. المسافة ${totalDistance.toFixed(1)} كيلومتر. الوقت المتوقع ${Math.round(totalTime)} دقيقة. ${firstStep.instruction || 'تابع المسار'}`)
-                } else {
-                  speak('تم بدء التوجيه. اتبع التعليمات')
+                  // إعلان بدء التوجيه مع معلومات المسار
+                  if (route && route.steps && route.steps.length > 0) {
+                    const firstStep = route.steps[0]
+                    const totalDistance = route.distance
+                    const totalTime = route.estimatedTime
+                    
+                    speak(`تم بدء التوجيه. المسافة ${totalDistance.toFixed(1)} كيلومتر. الوقت المتوقع ${Math.round(totalTime)} دقيقة. ${firstStep.instruction || 'تابع المسار'}`)
+                  } else {
+                    speak('تم بدء التوجيه. اتبع التعليمات')
+                  }
+                },
+                (error) => {
+                  console.error('Error getting location:', error)
+                  toast.error('فشل في جلب موقعك الحالي')
                 }
-              },
-              (error) => {
-                console.error('Error getting location:', error)
-                toast.error('فشل في جلب موقعك الحالي')
-              }
-            )
+              )
+            }
           }
     }
   }
