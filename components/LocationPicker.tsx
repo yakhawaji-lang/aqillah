@@ -54,10 +54,20 @@ export function LocationPicker({
         const locationParam = mapCenter ? `${mapCenter[0]},${mapCenter[1]}` : undefined
         console.log('🔍 Fetching autocomplete for:', searchQuery, 'location:', locationParam)
         
-        // Use full URL for Android app (Capacitor)
-        const apiUrl = typeof window !== 'undefined' && (window as any).Capacitor
+        // Detect if running in Capacitor (Android/iOS app)
+        const isCapacitor = typeof window !== 'undefined' && (
+          (window as any).Capacitor || 
+          (window as any).Android || 
+          navigator.userAgent.includes('Capacitor') ||
+          navigator.userAgent.includes('Android')
+        )
+        
+        // Use full URL for Android app (Capacitor), relative URL for web
+        const apiUrl = isCapacitor
           ? 'https://aqillah.vercel.app/api/places/autocomplete'
           : '/api/places/autocomplete'
+        
+        console.log('🌐 API URL:', apiUrl, 'isCapacitor:', isCapacitor)
         
         const response = await axios.get(apiUrl, {
           params: {
@@ -65,10 +75,28 @@ export function LocationPicker({
             ...(locationParam && { location: locationParam }),
             radius: 50000, // 50km
           },
+          timeout: 15000, // 15 seconds timeout
+          headers: {
+            'Content-Type': 'application/json',
+          },
         })
 
         console.log('✅ Autocomplete response:', response.data)
-        return response.data
+        
+        // Ensure we return the correct format
+        if (response.data && response.data.success !== undefined) {
+          // API route format: { success: true, data: [...] }
+          return response.data
+        } else if (response.data && Array.isArray(response.data)) {
+          // Direct array format
+          return { data: response.data }
+        } else if (response.data && response.data.predictions) {
+          // Google API format
+          return { data: response.data.predictions }
+        } else {
+          console.warn('⚠️ Unexpected response format:', response.data)
+          return { data: [] }
+        }
       } catch (error: any) {
         console.error('❌ Error fetching autocomplete:', error)
         console.error('Error details:', {
@@ -88,13 +116,23 @@ export function LocationPicker({
 
   // Handle selecting a place from autocomplete
   const handleSelectPlace = async (prediction: PlacePrediction) => {
-    try {
-      console.log('📍 Getting place details for:', prediction.place_id)
-      
-      // Use full URL for Android app (Capacitor)
-      const apiUrl = typeof window !== 'undefined' && (window as any).Capacitor
-        ? 'https://aqillah.vercel.app/api/places/details'
-        : '/api/places/details'
+      try {
+        console.log('📍 Getting place details for:', prediction.place_id)
+        
+        // Detect if running in Capacitor (Android/iOS app)
+        const isCapacitor = typeof window !== 'undefined' && (
+          (window as any).Capacitor || 
+          (window as any).Android || 
+          navigator.userAgent.includes('Capacitor') ||
+          navigator.userAgent.includes('Android')
+        )
+        
+        // Use full URL for Android app (Capacitor), relative URL for web
+        const apiUrl = isCapacitor
+          ? 'https://aqillah.vercel.app/api/places/details'
+          : '/api/places/details'
+        
+        console.log('🌐 Place Details API URL:', apiUrl, 'isCapacitor:', isCapacitor)
       
       // استخدام API route للحصول على تفاصيل المكان
       const response = await axios.get(apiUrl, {
@@ -132,13 +170,27 @@ export function LocationPicker({
       
       // محاولة استخدام Geocoding API للحصول على الإحداثيات من العنوان
       try {
-        const geocodeApiUrl = typeof window !== 'undefined' && (window as any).Capacitor
+        // Detect if running in Capacitor (Android/iOS app)
+        const isCapacitor = typeof window !== 'undefined' && (
+          (window as any).Capacitor || 
+          (window as any).Android || 
+          navigator.userAgent.includes('Capacitor') ||
+          navigator.userAgent.includes('Android')
+        )
+        
+        const geocodeApiUrl = isCapacitor
           ? 'https://aqillah.vercel.app/api/places/geocode'
           : '/api/places/geocode'
+        
+        console.log('🌐 Geocode API URL:', geocodeApiUrl, 'isCapacitor:', isCapacitor)
         
         const geocodeResponse = await axios.get(geocodeApiUrl, {
           params: {
             address: prediction.description,
+          },
+          timeout: 15000, // 15 seconds timeout
+          headers: {
+            'Content-Type': 'application/json',
           },
         })
 

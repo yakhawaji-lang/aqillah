@@ -118,3 +118,4 @@ npm run android:download-java
 - تأكد من أن Android SDK محدث
 - جرب: `cd android && ./gradlew clean`
 
+
