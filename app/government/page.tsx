@@ -209,18 +209,10 @@ export default function GovernmentDashboardPage() {
     return true
   }) || []
 
+  // إزالة النقاط من الخريطة - لا نضيف أي markers
   useEffect(() => {
-    if (filteredTrafficData) {
-      const markers: MapMarker[] = filteredTrafficData.map((item: any) => ({
-        id: item.id,
-        position: item.position,
-        congestionIndex: item.congestionIndex,
-        roadName: item.roadName,
-        direction: item.direction,
-      }))
-      setMapMarkers(markers)
-    }
-  }, [filteredTrafficData])
+    setMapMarkers([])
+  }, [])
 
   // بيانات الرسوم البيانية من البيانات الفعلية فقط
   const chartData = useMemo(() => {
@@ -836,12 +828,7 @@ export default function GovernmentDashboardPage() {
                 { lat: 24.7136, lng: 46.6753 }
               }
               zoom={selectedCity === 'الرياض' ? 11 : 12}
-              markers={mapMarkers.map(m => ({
-                lat: m.position[0],
-                lng: m.position[1],
-                title: m.roadName,
-                congestionIndex: m.congestionIndex,
-              }))}
+              markers={[]}
               showTrafficLayer={true}
               className="w-full h-full"
             />
