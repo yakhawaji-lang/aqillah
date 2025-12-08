@@ -1,0 +1,9 @@
+This is a placeholder file for the Aqillah APK.
+Please replace this file with the actual APK file built from your Android application.
+
+To build the APK:
+1. Use Android Studio, React Native, Flutter, or your preferred mobile framework
+2. Build the release APK
+3. Replace this file with the actual APK file
+4. Commit and push to Git
+
