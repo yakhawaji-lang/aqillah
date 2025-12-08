@@ -48,16 +48,25 @@ export default function GovernmentDashboardPage() {
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area')
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null)
 
-  // Real-time data من Google Traffic API مباشرة
+  // Real-time data من Google Traffic API مباشرة - قراءة من الخريطة الحالية
   const { data: trafficData, isLoading: trafficLoading, refetch: refetchTraffic, isError } = useQuery({
     queryKey: ['traffic', selectedCity, timeRange],
     queryFn: async () => {
-      // استخدام Google Traffic API للحصول على بيانات حقيقية من الخريطة
-      const res = await axios.get(`/api/traffic/google?city=${selectedCity}`)
-      return res.data.data || []
+      try {
+        // استخدام Google Traffic API للحصول على بيانات حقيقية من الخريطة
+        const res = await axios.get(`/api/traffic/google?city=${selectedCity}`)
+        const data = res.data.data || []
+        console.log('📊 Google Traffic Data received:', data.length, 'routes')
+        console.log('📊 Sample data:', data.slice(0, 3))
+        return data
+      } catch (error: any) {
+        console.error('❌ Error fetching Google traffic data:', error.message)
+        return []
+      }
     },
-    refetchInterval: 60000, // تحديث كل دقيقة للحصول على بيانات مباشرة
+    refetchInterval: 60000, // تحديث كل دقيقة للحصول على بيانات مباشرة من الخريطة
     retry: 2, // إعادة المحاولة مرتين عند الفشل
+    staleTime: 30000, // البيانات صالحة لمدة 30 ثانية
   })
 
   // حالة الاتصال والتحديث
@@ -171,15 +180,16 @@ export default function GovernmentDashboardPage() {
     console.log('📊 Filtered by time range:', filteredByTimeRange.length, 'items')
 
     // تصفية نقاط الازدحام بناءً على congestionIndex
-    // تقليل العتبة إلى 30 لضمان عرض البيانات الحقيقية من الخريطة
+    // تقليل العتبة إلى 20 لضمان عرض البيانات الحقيقية من الخريطة
     const bottlenecks = filteredByTimeRange
       .filter((item: any) => {
-        // اعتبار نقاط الازدحام: congestionIndex >= 30 (لضمان عرض البيانات الحقيقية)
-        const isBottleneck = item.congestionIndex >= 30
-        if (isBottleneck) {
-          console.log('🚨 Bottleneck detected:', item.roadName, 'congestion:', item.congestionIndex + '%')
+        // اعتبار نقاط الازدحام: congestionIndex >= 20 (لضمان عرض البيانات الحقيقية)
+        // أو إذا كان هناك تأخير واضح (delayMinutes > 0)
+        const hasCongestion = item.congestionIndex >= 20 || (item.delayMinutes && item.delayMinutes > 0)
+        if (hasCongestion) {
+          console.log('🚨 Bottleneck detected:', item.roadName, 'congestion:', item.congestionIndex + '%', 'delay:', item.delayMinutes || 0, 'min')
         }
-        return isBottleneck
+        return hasCongestion
       })
       .map((item: any) => {
         // تحديد مستوى الشدة
@@ -462,15 +472,27 @@ export default function GovernmentDashboardPage() {
               </span>
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-1">نقاط ازدحام مكتشفة</h3>
-            <p className="text-sm text-gray-600 mb-3">اكتشاف مباشر من الخريطة</p>
-            <div className="flex items-center gap-2 text-sm">
-              <Gauge className="h-4 w-4 text-red-500" />
-              <span className="text-gray-600">
-                متوسط التأخير: {detectedBottlenecks?.length > 0 
-                  ? (detectedBottlenecks.reduce((sum: number, b: any) => sum + (b.avgDelay || 0), 0) / detectedBottlenecks.length).toFixed(1)
-                  : '0'} دقيقة
-              </span>
-            </div>
+            <p className="text-sm text-gray-600 mb-3">اكتشاف مباشر من بيانات الخريطة</p>
+            {trafficLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                <span>جاري البحث عن البيانات...</span>
+              </div>
+            ) : detectedBottlenecks?.length === 0 ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Info className="h-4 w-4" />
+                <span>لا توجد نقاط ازدحام حالياً</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm">
+                <Gauge className="h-4 w-4 text-red-500" />
+                <span className="text-gray-600">
+                  متوسط التأخير: {detectedBottlenecks?.length > 0 
+                    ? (detectedBottlenecks.reduce((sum: number, b: any) => sum + (b.avgDelay || 0), 0) / detectedBottlenecks.length).toFixed(1)
+                    : '0'} دقيقة
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-xl shadow-md border-2 border-blue-200 p-6 hover:shadow-lg transition-shadow">
