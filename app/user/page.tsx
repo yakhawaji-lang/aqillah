@@ -42,22 +42,58 @@ export default function UserAppPage() {
   const [activeTab, setActiveTab] = useState<'map' | 'alerts' | 'route'>('map')
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
 
-  // جلب موقع المستخدم
+  // جلب موقع المستخدم تلقائياً عند فتح الصفحة
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation([position.coords.latitude, position.coords.longitude])
-        },
-        (error) => {
-          console.error('Error getting location:', error)
-          // موقع افتراضي (الرياض)
-          setUserLocation([24.7136, 46.6753])
-        }
-      )
-    } else {
-      setUserLocation([24.7136, 46.6753])
+    console.log('📍 Requesting user location...')
+    
+    if (!navigator.geolocation) {
+      console.error('❌ Geolocation not supported')
+      toast.error('المتصفح لا يدعم تحديد الموقع')
+      // لا نضع موقع افتراضي، نتركه null حتى يطلب المستخدم الإذن
+      return
     }
+
+    // طلب الموقع مع خيارات محسّنة
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location: [number, number] = [
+          position.coords.latitude,
+          position.coords.longitude
+        ]
+        setUserLocation(location)
+        console.log('✅ User location fetched:', {
+          lat: location[0],
+          lng: location[1],
+          formatted: `${location[0]}, ${location[1]}`,
+          accuracy: position.coords.accuracy,
+        })
+        toast.success('تم تحديد موقعك بنجاح', { duration: 2000 })
+      },
+      (error) => {
+        console.error('❌ Error getting location:', error)
+        let errorMessage = 'فشل في تحديد موقعك'
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'تم رفض الإذن لتحديد الموقع. يرجى السماح بالوصول إلى موقعك من إعدادات المتصفح.'
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'معلومات الموقع غير متاحة'
+            break
+          case error.TIMEOUT:
+            errorMessage = 'انتهت مهلة طلب الموقع'
+            break
+        }
+        
+        toast.error(errorMessage, { duration: 4000 })
+        // لا نضع موقع افتراضي، نتركه null
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000, // 15 ثانية
+        maximumAge: 0, // لا نستخدم موقع قديم
+      }
+    )
   }, [])
 
   // Real-time traffic data
@@ -275,11 +311,11 @@ export default function UserAppPage() {
                 )}
               </div>
               <div className="h-[400px] rounded-lg overflow-hidden">
-                {userLocation && (
+                {userLocation ? (
                   <GoogleTrafficMap
                     key={`google-traffic-map-${userLocation[0]}-${userLocation[1]}-${mapMarkers.length}`}
                     center={{ lat: userLocation[0], lng: userLocation[1] }}
-                    zoom={13}
+                    zoom={15}
                     markers={mapMarkers.map(m => ({
                       lat: m.position[0],
                       lng: m.position[1],
@@ -287,8 +323,17 @@ export default function UserAppPage() {
                       congestionIndex: m.congestionIndex,
                     }))}
                     showTrafficLayer={true}
+                    currentLocation={userLocation}
                     className="w-full h-full"
                   />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600 mb-2">جاري تحديد موقعك...</p>
+                      <p className="text-sm text-gray-500">يرجى السماح بالوصول إلى موقعك</p>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
