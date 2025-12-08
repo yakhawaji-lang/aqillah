@@ -1,9 +1,20 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { MapPin, Building2, Users, ArrowLeft, Download, Smartphone, Package } from 'lucide-react'
 
 export default function Home() {
+  const router = useRouter()
+
+  // Redirect to /user if running in Android app (Capacitor)
+  useEffect(() => {
+    // Check if running in Capacitor (Android/iOS app)
+    if (typeof window !== 'undefined' && (window as any).Capacitor) {
+      router.replace('/user')
+    }
+  }, [router])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 flex items-center justify-center p-4">

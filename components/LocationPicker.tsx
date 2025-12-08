@@ -54,10 +54,15 @@ export function LocationPicker({
         const locationParam = mapCenter ? `${mapCenter[0]},${mapCenter[1]}` : undefined
         console.log('🔍 Fetching autocomplete for:', searchQuery, 'location:', locationParam)
         
-        const response = await axios.get('/api/places/autocomplete', {
+        // Use full URL for Android app (Capacitor)
+        const apiUrl = typeof window !== 'undefined' && (window as any).Capacitor
+          ? 'https://aqillah.vercel.app/api/places/autocomplete'
+          : '/api/places/autocomplete'
+        
+        const response = await axios.get(apiUrl, {
           params: {
             input: searchQuery,
-            location: locationParam,
+            ...(locationParam && { location: locationParam }),
             radius: 50000, // 50km
           },
         })
@@ -86,8 +91,13 @@ export function LocationPicker({
     try {
       console.log('📍 Getting place details for:', prediction.place_id)
       
+      // Use full URL for Android app (Capacitor)
+      const apiUrl = typeof window !== 'undefined' && (window as any).Capacitor
+        ? 'https://aqillah.vercel.app/api/places/details'
+        : '/api/places/details'
+      
       // استخدام API route للحصول على تفاصيل المكان
-      const response = await axios.get('/api/places/details', {
+      const response = await axios.get(apiUrl, {
         params: {
           place_id: prediction.place_id,
         },
@@ -122,7 +132,11 @@ export function LocationPicker({
       
       // محاولة استخدام Geocoding API للحصول على الإحداثيات من العنوان
       try {
-        const geocodeResponse = await axios.get('/api/places/geocode', {
+        const geocodeApiUrl = typeof window !== 'undefined' && (window as any).Capacitor
+          ? 'https://aqillah.vercel.app/api/places/geocode'
+          : '/api/places/geocode'
+        
+        const geocodeResponse = await axios.get(geocodeApiUrl, {
           params: {
             address: prediction.description,
           },
