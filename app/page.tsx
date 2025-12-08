@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Building2, Users, ArrowLeft, Download, Smartphone } from 'lucide-react'
+import { MapPin, Building2, Users, ArrowLeft, Download, Smartphone, Package } from 'lucide-react'
 
 export default function Home() {
 
