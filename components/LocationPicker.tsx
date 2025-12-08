@@ -139,6 +139,10 @@ export function LocationPicker({
         params: {
           place_id: prediction.place_id,
         },
+        timeout: 15000, // 15 seconds timeout
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
 
       if (!response.data.success || !response.data.data) {
