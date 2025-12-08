@@ -48,14 +48,15 @@ export default function GovernmentDashboardPage() {
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area')
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null)
 
-  // Real-time data مع timeRange
+  // Real-time data من Google Traffic API مباشرة
   const { data: trafficData, isLoading: trafficLoading, refetch: refetchTraffic, isError } = useQuery({
     queryKey: ['traffic', selectedCity, timeRange],
     queryFn: async () => {
-      const res = await axios.get(`/api/traffic?city=${selectedCity}&timeRange=${timeRange}`)
-      return res.data.data
+      // استخدام Google Traffic API للحصول على بيانات حقيقية من الخريطة
+      const res = await axios.get(`/api/traffic/google?city=${selectedCity}`)
+      return res.data.data || []
     },
-    refetchInterval: 30000,
+    refetchInterval: 60000, // تحديث كل دقيقة للحصول على بيانات مباشرة
     retry: 2, // إعادة المحاولة مرتين عند الفشل
   })
 
@@ -136,14 +137,34 @@ export default function GovernmentDashboardPage() {
     refetchInterval: 60000,
   })
 
-  // اكتشاف نقاط الازدحام من بيانات الخريطة مباشرة
+  // اكتشاف نقاط الازدحام من بيانات Google Maps مباشرة مع تصفية حسب الساعات
   const detectedBottlenecks = useMemo(() => {
     if (!trafficData || trafficData.length === 0) {
       return []
     }
 
+    // تصفية البيانات حسب timeRange (الساعات)
+    const now = new Date()
+    const filteredByTimeRange = trafficData.filter((item: any) => {
+      if (!item.timestamp) return true // إذا لم يكن هناك timestamp، نعرضه
+      
+      const itemTime = new Date(item.timestamp)
+      const diffHours = (now.getTime() - itemTime.getTime()) / (1000 * 60 * 60)
+      
+      switch (timeRange) {
+        case '1h':
+          return diffHours <= 1
+        case '6h':
+          return diffHours <= 6
+        case '24h':
+          return diffHours <= 24
+        default:
+          return true
+      }
+    })
+
     // تصفية نقاط الازدحام بناءً على congestionIndex
-    const bottlenecks = trafficData
+    const bottlenecks = filteredByTimeRange
       .filter((item: any) => {
         // اعتبار نقاط الازدحام: congestionIndex >= 50
         return item.congestionIndex >= 50
@@ -157,8 +178,8 @@ export default function GovernmentDashboardPage() {
           severity = 'high'
         }
 
-        // حساب التأخير التقريبي (دقيقة لكل 10% ازدحام)
-        const estimatedDelay = Math.max(1, Math.round((item.congestionIndex - 50) / 10))
+        // استخدام التأخير الفعلي من Google API إن وجد، وإلا حساب تقريبي
+        const avgDelay = item.delayMinutes || Math.max(1, Math.round((item.congestionIndex - 50) / 10))
 
         return {
           id: item.id || `detected-${item.roadName}-${item.position[0]}-${item.position[1]}`,
@@ -168,9 +189,9 @@ export default function GovernmentDashboardPage() {
           position: item.position,
           congestionIndex: item.congestionIndex,
           severity,
-          avgDelay: estimatedDelay,
+          avgDelay: avgDelay,
           affectedVehicles: item.deviceCount || Math.round(item.congestionIndex * 10),
-          duration: Math.round((item.congestionIndex - 50) / 5), // مدة تقريبية بالدقائق
+          duration: item.duration || Math.round((item.congestionIndex - 50) / 5), // مدة من Google API أو حساب تقريبي
           lastDetected: item.timestamp ? new Date(item.timestamp) : new Date(),
           avgSpeed: item.avgSpeed || 0,
         }
@@ -178,7 +199,7 @@ export default function GovernmentDashboardPage() {
       .sort((a: any, b: any) => b.congestionIndex - a.congestionIndex) // ترتيب حسب الشدة
 
     return bottlenecks
-  }, [trafficData, selectedCity])
+  }, [trafficData, selectedCity, timeRange])
 
   // Filtered data
   const filteredTrafficData = trafficData?.filter((item: any) => {
