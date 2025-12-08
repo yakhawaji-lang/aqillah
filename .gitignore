@@ -43,6 +43,10 @@ next-env.d.ts
 /android-debug.apk
 /android-release.apk
 
+# APK files (too large for Git)
+*.apk
+/public/downloads/*.apk
+
 # capacitor
 .capacitor
 
