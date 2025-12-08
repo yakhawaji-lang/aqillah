@@ -260,50 +260,77 @@ export default function GovernmentDashboardPage() {
     setMapMarkers([])
   }, [])
 
-  // بيانات الرسوم البيانية من البيانات الفعلية فقط
+  // جلب بيانات الازدحام التاريخية خلال اليوم
+  const { data: trafficHistoryData, isLoading: historyLoading } = useQuery({
+    queryKey: ['traffic-history', selectedCity],
+    queryFn: async () => {
+      try {
+        const res = await axios.get(`/api/traffic/history?city=${selectedCity}&hours=24`)
+        return res.data.data || []
+      } catch (error: any) {
+        console.error('❌ Error fetching traffic history:', error.message)
+        return []
+      }
+    },
+    refetchInterval: 5 * 60 * 1000, // تحديث كل 5 دقائق
+    staleTime: 2 * 60 * 1000, // البيانات صالحة لمدة دقيقتين
+  })
+
+  // بيانات الرسوم البيانية من البيانات التاريخية الحقيقية
   const chartData = useMemo(() => {
-    if (!trafficData || trafficData.length === 0) {
-      return []
-    }
-
-    // تجميع البيانات حسب الساعات
-    const hoursMap = new Map<number, { congestion: number[], delay: number[] }>()
-    
-    trafficData.forEach((item: any) => {
-      const timestamp = new Date(item.timestamp || Date.now())
-      const hour = timestamp.getHours()
-      
-      if (!hoursMap.has(hour)) {
-        hoursMap.set(hour, { congestion: [], delay: [] })
+    if (!trafficHistoryData || trafficHistoryData.length === 0) {
+      // Fallback: استخدام البيانات الحالية إذا لم تكن هناك بيانات تاريخية
+      if (!trafficData || trafficData.length === 0) {
+        return []
       }
-      
-      const hourData = hoursMap.get(hour)!
-      hourData.congestion.push(item.congestionIndex || 0)
-      hourData.delay.push(item.delayMinutes || 0)
-    })
 
-    // إنشاء بيانات لجميع الساعات (0-23)
-    const result = []
-    for (let hour = 0; hour < 24; hour++) {
-      const hourData = hoursMap.get(hour)
-      let avgCongestion = 0
-      let avgDelay = 0
+      // تجميع البيانات الحالية حسب الساعات
+      const hoursMap = new Map<number, { congestion: number[], delay: number[] }>()
       
-      if (hourData && hourData.congestion.length > 0) {
-        avgCongestion = hourData.congestion.reduce((a, b) => a + b, 0) / hourData.congestion.length
-        avgDelay = hourData.delay.reduce((a, b) => a + b, 0) / hourData.delay.length
-      }
-      
-      result.push({
-        name: `${hour.toString().padStart(2, '0')}:00`,
-        congestion: Math.round(avgCongestion),
-        delay: Math.round(avgDelay * 10) / 10,
-        value: Math.round(avgCongestion), // للتوافق مع InteractiveChart
+      trafficData.forEach((item: any) => {
+        const timestamp = new Date(item.timestamp || Date.now())
+        const hour = timestamp.getHours()
+        
+        if (!hoursMap.has(hour)) {
+          hoursMap.set(hour, { congestion: [], delay: [] })
+        }
+        
+        const hourData = hoursMap.get(hour)!
+        hourData.congestion.push(item.congestionIndex || 0)
+        hourData.delay.push(item.delayMinutes || 0)
       })
+
+      // إنشاء بيانات لجميع الساعات (0-23)
+      const result = []
+      for (let hour = 0; hour < 24; hour++) {
+        const hourData = hoursMap.get(hour)
+        let avgCongestion = 0
+        let avgDelay = 0
+        
+        if (hourData && hourData.congestion.length > 0) {
+          avgCongestion = hourData.congestion.reduce((a, b) => a + b, 0) / hourData.congestion.length
+          avgDelay = hourData.delay.reduce((a, b) => a + b, 0) / hourData.delay.length
+        }
+        
+        result.push({
+          name: `${hour.toString().padStart(2, '0')}:00`,
+          congestion: Math.round(avgCongestion),
+          delay: Math.round(avgDelay * 10) / 10,
+          value: Math.round(avgCongestion),
+        })
+      }
+
+      return result
     }
 
-    return result
-  }, [trafficData, timeRange])
+    // استخدام البيانات التاريخية الحقيقية
+    return trafficHistoryData.map((item: any) => ({
+      name: item.name || `${item.hour.toString().padStart(2, '0')}:00`,
+      congestion: item.congestion || 0,
+      delay: item.delay || 0,
+      value: item.congestion || 0, // للتوافق مع InteractiveChart
+    }))
+  }, [trafficHistoryData, trafficData, timeRange])
 
   const cities = ['الرياض', 'جدة', 'الدمام', 'المدينة المنورة', 'الخبر', 'أبها', 'خميس مشيط']
 
