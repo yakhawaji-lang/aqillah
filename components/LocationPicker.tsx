@@ -58,8 +58,11 @@ export function LocationPicker({
         const isCapacitor = typeof window !== 'undefined' && (
           (window as any).Capacitor || 
           (window as any).Android || 
+          (window as any).Capacitor?.getPlatform() === 'android' ||
           navigator.userAgent.includes('Capacitor') ||
-          navigator.userAgent.includes('Android')
+          navigator.userAgent.includes('Android') ||
+          window.location.protocol === 'capacitor:' ||
+          window.location.hostname === 'localhost'
         )
         
         // Use full URL for Android app (Capacitor), relative URL for web
@@ -67,7 +70,7 @@ export function LocationPicker({
           ? 'https://aqillah.vercel.app/api/places/autocomplete'
           : '/api/places/autocomplete'
         
-        console.log('🌐 API URL:', apiUrl, 'isCapacitor:', isCapacitor)
+        console.log('🌐 API URL:', apiUrl, 'isCapacitor:', isCapacitor, 'userAgent:', navigator.userAgent.substring(0, 50))
         
         const response = await axios.get(apiUrl, {
           params: {
@@ -108,9 +111,10 @@ export function LocationPicker({
         throw error
       }
     },
-    enabled: searchQuery.length >= 2,
+    enabled: Boolean(searchQuery && searchQuery.length >= 2), // تأكد من أن searchQuery موجود
     staleTime: 30000, // Cache for 30 seconds
-    retry: 1, // Retry once on failure
+    retry: 2, // Retry twice on failure
+    refetchOnWindowFocus: false, // لا تعيد الجلب عند التركيز على النافذة
   })
 
   const predictions: PlacePrediction[] = autocompleteData?.data || []
@@ -124,8 +128,11 @@ export function LocationPicker({
         const isCapacitor = typeof window !== 'undefined' && (
           (window as any).Capacitor || 
           (window as any).Android || 
+          (window as any).Capacitor?.getPlatform() === 'android' ||
           navigator.userAgent.includes('Capacitor') ||
-          navigator.userAgent.includes('Android')
+          navigator.userAgent.includes('Android') ||
+          window.location.protocol === 'capacitor:' ||
+          window.location.hostname === 'localhost'
         )
         
         // Use full URL for Android app (Capacitor), relative URL for web
@@ -133,7 +140,7 @@ export function LocationPicker({
           ? 'https://aqillah.vercel.app/api/places/details'
           : '/api/places/details'
         
-        console.log('🌐 Place Details API URL:', apiUrl, 'isCapacitor:', isCapacitor)
+        console.log('🌐 Place Details API URL:', apiUrl, 'isCapacitor:', isCapacitor, 'userAgent:', navigator.userAgent.substring(0, 50))
       
       // استخدام API route للحصول على تفاصيل المكان
       const response = await axios.get(apiUrl, {
@@ -180,15 +187,18 @@ export function LocationPicker({
         const isCapacitor = typeof window !== 'undefined' && (
           (window as any).Capacitor || 
           (window as any).Android || 
+          (window as any).Capacitor?.getPlatform() === 'android' ||
           navigator.userAgent.includes('Capacitor') ||
-          navigator.userAgent.includes('Android')
+          navigator.userAgent.includes('Android') ||
+          window.location.protocol === 'capacitor:' ||
+          window.location.hostname === 'localhost'
         )
         
         const geocodeApiUrl = isCapacitor
           ? 'https://aqillah.vercel.app/api/places/geocode'
           : '/api/places/geocode'
         
-        console.log('🌐 Geocode API URL:', geocodeApiUrl, 'isCapacitor:', isCapacitor)
+        console.log('🌐 Geocode API URL:', geocodeApiUrl, 'isCapacitor:', isCapacitor, 'userAgent:', navigator.userAgent.substring(0, 50))
         
         const geocodeResponse = await axios.get(geocodeApiUrl, {
           params: {
