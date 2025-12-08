@@ -7,11 +7,20 @@ export async function GET(request: NextRequest) {
     const address = searchParams.get('address')
     const lat = searchParams.get('lat')
     const lng = searchParams.get('lng')
+    
+    // Detect if request is from Android app
+    const userAgent = request.headers.get('user-agent') || ''
+    const clientType = request.headers.get('x-client-type') || ''
+    const isAndroid = userAgent.includes('Android') || 
+                      userAgent.includes('Capacitor') || 
+                      clientType.toLowerCase() === 'android'
 
     console.log('🌍 Geocode API called:', {
       address,
       lat,
       lng,
+      isAndroid,
+      userAgent: userAgent.substring(0, 50),
       timestamp: new Date().toISOString(),
     })
 
@@ -31,8 +40,11 @@ export async function GET(request: NextRequest) {
 
     console.log('📞 Calling googleMapsService.geocode with:', geocodeRequest)
 
-    // Use Geocoding API
-    const geocodeResult = await googleMapsService.geocode(geocodeRequest)
+    // Use Geocoding API with Android flag
+    const geocodeResult = await googleMapsService.geocode({
+      ...geocodeRequest,
+      isAndroid: isAndroid, // Pass Android flag to use Android API key
+    })
 
     console.log('✅ Geocode results:', {
       resultsCount: geocodeResult.results?.length || 0,

@@ -5,9 +5,18 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const placeId = searchParams.get('place_id')
+    
+    // Detect if request is from Android app
+    const userAgent = request.headers.get('user-agent') || ''
+    const clientType = request.headers.get('x-client-type') || ''
+    const isAndroid = userAgent.includes('Android') || 
+                      userAgent.includes('Capacitor') || 
+                      clientType.toLowerCase() === 'android'
 
     console.log('📍 Place Details API called:', {
       placeId,
+      isAndroid,
+      userAgent: userAgent.substring(0, 50),
       timestamp: new Date().toISOString(),
     })
 
@@ -22,8 +31,8 @@ export async function GET(request: NextRequest) {
       placeId,
     })
 
-    // Use Places API Details
-    const placeDetails = await googleMapsService.getPlaceDetails(placeId)
+    // Use Places API Details with Android flag
+    const placeDetails = await googleMapsService.getPlaceDetails(placeId, isAndroid)
 
     console.log('✅ Place details retrieved:', {
       hasGeometry: !!placeDetails.geometry,

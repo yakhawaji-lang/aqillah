@@ -78,6 +78,7 @@ export function LocationPicker({
           timeout: 15000, // 15 seconds timeout
           headers: {
             'Content-Type': 'application/json',
+            'X-Client-Type': isCapacitor ? 'android' : 'web', // إضافة header للتمييز بين Android والويب
           },
         })
 
@@ -142,6 +143,7 @@ export function LocationPicker({
         timeout: 15000, // 15 seconds timeout
         headers: {
           'Content-Type': 'application/json',
+          'X-Client-Type': isCapacitor ? 'android' : 'web', // إضافة header للتمييز بين Android والويب
         },
       })
 
@@ -195,6 +197,7 @@ export function LocationPicker({
           timeout: 15000, // 15 seconds timeout
           headers: {
             'Content-Type': 'application/json',
+            'X-Client-Type': isCapacitor ? 'android' : 'web', // إضافة header للتمييز بين Android والويب
           },
         })
 

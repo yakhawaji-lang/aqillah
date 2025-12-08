@@ -61,15 +61,27 @@ class GoogleMapsService {
   private apiKey: string
   private routesApiKey: string
   private placesApiKey: string
+  private androidApiKey: string
 
   constructor() {
     this.apiKey = googleMapsConfig.apiKey
     this.routesApiKey = googleMapsConfig.routesApiKey
     this.placesApiKey = googleMapsConfig.placesApiKey
+    this.androidApiKey = googleMapsConfig.androidApiKey
 
     if (!this.apiKey) {
       console.warn('Google Maps API key not configured')
     }
+  }
+
+  /**
+   * Get the appropriate API key based on client type
+   */
+  private getApiKey(isAndroid: boolean = false): string {
+    if (isAndroid && this.androidApiKey) {
+      return this.androidApiKey
+    }
+    return this.placesApiKey || this.apiKey
   }
 
   /**
@@ -259,13 +271,20 @@ class GoogleMapsService {
   /**
    * Get place details
    */
-  async getPlaceDetails(placeId: string) {
-    if (!this.placesApiKey && !this.apiKey) {
+  async getPlaceDetails(placeId: string, isAndroid: boolean = false) {
+    const apiKeyToUse = this.getApiKey(isAndroid)
+    
+    if (!apiKeyToUse) {
       throw new Error('Google Maps API key not configured')
     }
 
+    console.log('🔑 Using API key for place details:', {
+      type: isAndroid ? 'Android' : 'Web',
+      keyPrefix: apiKeyToUse.substring(0, 10) + '...',
+    })
+
     try {
-      const url = `${googleMapsConfig.mapsApiUrl}/place/details/json?place_id=${placeId}&key=${this.placesApiKey || this.apiKey}&language=${googleMapsConfig.defaultLanguage}&fields=geometry,formatted_address,name`
+      const url = `${googleMapsConfig.mapsApiUrl}/place/details/json?place_id=${placeId}&key=${apiKeyToUse}&language=${googleMapsConfig.defaultLanguage}&fields=geometry,formatted_address,name`
 
       const response = await axios.get(url)
       
@@ -298,16 +317,24 @@ class GoogleMapsService {
     language?: string
     region?: string
     types?: string[]
+    isAndroid?: boolean // Flag to indicate Android client
   }): Promise<{ predictions: any[] }> {
-    const apiKeyToUse = this.placesApiKey || this.apiKey
+    const apiKeyToUse = this.getApiKey(request.isAndroid || false)
     
     if (!apiKeyToUse) {
       console.error('Places API Key check:', {
         placesApiKey: this.placesApiKey ? 'exists' : 'missing',
+        androidApiKey: this.androidApiKey ? 'exists' : 'missing',
         apiKey: this.apiKey ? 'exists' : 'missing',
+        isAndroid: request.isAndroid,
       })
-      throw new Error('Google Maps Places API key not configured. Please set AQILLAH_PLACES_KEY in .env')
+      throw new Error('Google Maps Places API key not configured. Please set AQILLAH_PLACES_KEY or AQILLAH_Andriod_KEY in .env')
     }
+
+    console.log('🔑 Using API key:', {
+      type: request.isAndroid ? 'Android' : 'Web',
+      keyPrefix: apiKeyToUse.substring(0, 10) + '...',
+    })
 
     try {
       let url = `${googleMapsConfig.mapsApiUrl}/place/autocomplete/json`

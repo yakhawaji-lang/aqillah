@@ -7,11 +7,20 @@ export async function GET(request: NextRequest) {
     const input = searchParams.get('input')
     const location = searchParams.get('location') // lat,lng
     const radius = searchParams.get('radius') || '50000' // meters
+    
+    // Detect if request is from Android app
+    const userAgent = request.headers.get('user-agent') || ''
+    const clientType = request.headers.get('x-client-type') || ''
+    const isAndroid = userAgent.includes('Android') || 
+                      userAgent.includes('Capacitor') || 
+                      clientType.toLowerCase() === 'android'
 
     console.log('🔍 Autocomplete API called:', {
       input,
       location,
       radius,
+      isAndroid,
+      userAgent: userAgent.substring(0, 50),
       timestamp: new Date().toISOString(),
     })
 
@@ -39,12 +48,13 @@ export async function GET(request: NextRequest) {
       region: 'sa',
     })
 
-    // Use Places API Autocomplete
+    // Use Places API Autocomplete with Android flag
     const results = await googleMapsService.autocomplete({
       input,
       location: locationBias,
       language: 'ar',
       region: 'sa',
+      isAndroid: isAndroid, // Pass Android flag to use Android API key
     })
 
     console.log('✅ Autocomplete results:', {

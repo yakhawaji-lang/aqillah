@@ -8,6 +8,8 @@ export const googleMapsConfig = {
   apiKey: process.env.AQILLAH_MAPS_WEB_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
   routesApiKey: process.env.AQILLAH_ROUTES_KEY || process.env.GOOGLE_ROUTES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
   placesApiKey: process.env.AQILLAH_PLACES_KEY || process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
+  // Android-specific API Key (للتطبيق فقط)
+  androidApiKey: process.env.AQILLAH_Andriod_KEY || process.env.AQILLAH_ANDROID_KEY || '',
   
   // Base URLs
   mapsApiUrl: 'https://maps.googleapis.com/maps/api',
