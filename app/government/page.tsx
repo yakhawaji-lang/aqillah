@@ -137,19 +137,24 @@ export default function GovernmentDashboardPage() {
     refetchInterval: 60000,
   })
 
-  // اكتشاف نقاط الازدحام من بيانات Google Maps مباشرة مع تصفية حسب الساعات
+  // اكتشاف نقاط الازدحام من بيانات Google Maps مباشرة - قراءة من الخريطة الحالية
   const detectedBottlenecks = useMemo(() => {
     if (!trafficData || trafficData.length === 0) {
+      console.log('⚠️ No traffic data available')
       return []
     }
 
+    console.log('🔍 Processing traffic data:', trafficData.length, 'items')
+
     // تصفية البيانات حسب timeRange (الساعات)
-    const now = new Date()
+    // البيانات من Google API هي بيانات مباشرة (real-time) لذا نعرضها جميعاً
     const filteredByTimeRange = trafficData.filter((item: any) => {
-      if (!item.timestamp) return true // إذا لم يكن هناك timestamp، نعرضه
+      // بيانات Google Traffic API هي مباشرة، لذا نعرضها جميعاً
+      // لكن يمكن تصفية بناءً على timestamp إذا كان موجوداً
+      if (!item.timestamp) return true // إذا لم يكن هناك timestamp، نعرضه (بيانات مباشرة)
       
       const itemTime = new Date(item.timestamp)
-      const diffHours = (now.getTime() - itemTime.getTime()) / (1000 * 60 * 60)
+      const diffHours = (Date.now() - itemTime.getTime()) / (1000 * 60 * 60)
       
       switch (timeRange) {
         case '1h':
@@ -163,11 +168,18 @@ export default function GovernmentDashboardPage() {
       }
     })
 
+    console.log('📊 Filtered by time range:', filteredByTimeRange.length, 'items')
+
     // تصفية نقاط الازدحام بناءً على congestionIndex
+    // تقليل العتبة إلى 30 لضمان عرض البيانات الحقيقية من الخريطة
     const bottlenecks = filteredByTimeRange
       .filter((item: any) => {
-        // اعتبار نقاط الازدحام: congestionIndex >= 50
-        return item.congestionIndex >= 50
+        // اعتبار نقاط الازدحام: congestionIndex >= 30 (لضمان عرض البيانات الحقيقية)
+        const isBottleneck = item.congestionIndex >= 30
+        if (isBottleneck) {
+          console.log('🚨 Bottleneck detected:', item.roadName, 'congestion:', item.congestionIndex + '%')
+        }
+        return isBottleneck
       })
       .map((item: any) => {
         // تحديد مستوى الشدة
@@ -198,6 +210,7 @@ export default function GovernmentDashboardPage() {
       })
       .sort((a: any, b: any) => b.congestionIndex - a.congestionIndex) // ترتيب حسب الشدة
 
+    console.log('✅ Detected bottlenecks:', bottlenecks.length, 'points')
     return bottlenecks
   }, [trafficData, selectedCity, timeRange])
 
