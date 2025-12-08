@@ -1,6 +1,18 @@
 /**
- * API - جلب بيانات الازدحام من Google Routes API
- * يستخدم Google Routes API للحصول على بيانات الازدحام الفعلية
+ * API - جلب بيانات الازدحام من Google Directions API
+ * 
+ * المصدر: Google Directions API
+ * - يستخدم Google Directions API مع traffic_model=best_guess للحصول على بيانات الازدحام الحقيقية
+ * - البيانات الحقيقية:
+ *   * duration: المدة العادية (بدون ازدحام) من Google API
+ *   * duration_in_traffic: المدة مع الازدحام الحالي من Google API
+ *   * distance: المسافة بالكيلومتر من Google API
+ *   * delayMinutes: التأخير = (duration_in_traffic - duration) / 60
+ *   * congestionIndex: محسوب من delayRatio = duration_in_traffic / duration
+ *   * avgSpeed: محسوب من distance / (duration_in_traffic / 3600)
+ *   * deviceCount: محسوب بناءً على congestionIndex والمسافة (تقدير واقعي)
+ * 
+ * الطرق المحددة مسبقاً في CITY_ROUTES لكل مدينة
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -93,6 +105,12 @@ export async function GET(request: NextRequest) {
           // حساب متوسط السرعة (كم/س)
           const avgSpeed = distance / (durationInTraffic / 3600)
 
+          // حساب عدد المركبات المتأثرة بناءً على الازدحام الفعلي (تقدير واقعي)
+          // استخدام الكثافة والمسافة لحساب عدد المركبات المتأثرة
+          const affectedVehicles = Math.round(
+            (congestionIndex / 100) * (distance * 50) // تقدير: 50 مركبة لكل كم في حالة ازدحام كامل
+          )
+
           results.push({
             id: `google-${city}-${route.name.replace(/\s+/g, '-')}`,
             roadName: route.name,
@@ -103,7 +121,7 @@ export async function GET(request: NextRequest) {
               (route.start.lng + route.end.lng) / 2,
             ] as [number, number],
             congestionIndex: congestionIndex,
-            deviceCount: Math.floor(Math.random() * 50) + 10, // تقدير عدد الأجهزة
+            deviceCount: affectedVehicles, // حساب بناءً على الازدحام الفعلي
             avgSpeed: Math.round(avgSpeed),
             timestamp: new Date().toISOString(),
             duration: Math.round(durationInTraffic / 60), // بالدقائق
