@@ -85,6 +85,8 @@ export default function GoogleTrafficMap({
   const lastRenderedRouteRef = useRef<string>('') // لتتبع آخر route تم رسمه
   const lastCenterRef = useRef<{ lat: number; lng: number } | null>(null)
   const lastZoomRef = useRef<number | null>(null)
+  const routeResultRef = useRef<any>(null) // حفظ result المسار لتجنب فقدانه
+  const routeCheckIntervalRef = useRef<any>(null) // لتتبع interval المراقبة
   const [map, setMap] = useState<any>(null)
   const [directionsService, setDirectionsService] = useState<any>(null)
   const [directionsRenderer, setDirectionsRenderer] = useState<any>(null)
@@ -653,20 +655,27 @@ export default function GoogleTrafficMap({
 
     // Handle route as object (original format) - استخدام Directions API
     if (route && typeof route === 'object' && 'origin' in route && directionsService && directionsRendererRef.current) {
-      // Clear previous route first
-      if (directionsRendererRef.current) {
-        directionsRendererRef.current.setDirections({ routes: [] })
-      }
-
       // إنشاء مفتاح فريد للمسار لتجنب إعادة الرسم غير الضرورية
       const routeKey = `${route.origin.lat},${route.origin.lng}-${route.destination.lat},${route.destination.lng}`
       
       // إذا كان نفس المسار، لا تعيد الرسم
       if (lastRenderedRouteRef.current === routeKey) {
+        console.log('⏭️ Same route, skipping re-render')
         return
       }
       
       lastRenderedRouteRef.current = routeKey
+      
+      console.log('🔄 Rendering new route:', {
+        origin: route.origin,
+        destination: route.destination,
+        routeKey,
+      })
+      
+      // Clear previous route first (فقط إذا كان هناك مسار مختلف)
+      if (directionsRendererRef.current) {
+        directionsRendererRef.current.setDirections({ routes: [] })
+      }
       
       // A: دائماً استخدام الموقع الحالي كـ origin (موقعك الحالي)
       const originToUse = currentLocation && currentLocation.length === 2
@@ -717,31 +726,86 @@ export default function GoogleTrafficMap({
               preserveViewport: true, // الحفاظ على المركز الحالي (موقع المستخدم)
             })
             
+            // حفظ result في ref لتجنب فقدانه
+            routeResultRef.current = result
+            
+            // إيقاف أي interval سابق
+            if (routeCheckIntervalRef.current) {
+              clearInterval(routeCheckIntervalRef.current)
+            }
+            
             // تحديث DirectionsRenderer لعرض المسار الفعلي على الطرق
+            console.log('✅ Setting directions with result:', {
+              routesCount: result.routes?.length || 0,
+              hasDirectionsRenderer: !!directionsRendererRef.current,
+              hasMap: !!mapInstanceRef.current,
+            })
+            
             directionsRendererRef.current.setDirections(result)
+            
+            console.log('✅ Directions set successfully, route should be visible now')
+            
+            // مراقبة المسار للتأكد من أنه لا يختفي
+            routeCheckIntervalRef.current = setInterval(() => {
+              if (directionsRendererRef.current && mapInstanceRef.current) {
+                const currentDirections = directionsRendererRef.current.getDirections()
+                if (!currentDirections || !currentDirections.routes || currentDirections.routes.length === 0) {
+                  console.warn('⚠️ Route disappeared, re-setting...')
+                  if (routeResultRef.current) {
+                    directionsRendererRef.current.setDirections(routeResultRef.current)
+                    console.log('✅ Route re-set successfully')
+                  }
+                }
+              }
+            }, 1000) // فحص كل ثانية
+            
+            // إيقاف المراقبة بعد 10 ثواني
+            setTimeout(() => {
+              if (routeCheckIntervalRef.current) {
+                clearInterval(routeCheckIntervalRef.current)
+                routeCheckIntervalRef.current = null
+              }
+            }, 10000)
             
             // إعادة تعيين المركز والزوم بعد setDirections للتأكد من عدم تغييرهما
             if (currentLocation && currentLocation.length === 2) {
               // استخدام setTimeout للتأكد من أن setDirections انتهى
               setTimeout(() => {
-                if (mapInstanceRef.current) {
-                  mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
-                  mapInstanceRef.current.setZoom(16)
-                  console.log('✅ Map center restored to current location after route update:', {
-                    lat: currentLocation[0],
-                    lng: currentLocation[1],
-                  })
+                if (mapInstanceRef.current && directionsRendererRef.current) {
+                  // التأكد من أن المسار ما زال موجوداً قبل تغيير المركز
+                  const currentDirections = directionsRendererRef.current.getDirections()
+                  if (currentDirections && currentDirections.routes && currentDirections.routes.length > 0) {
+                    mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
+                    mapInstanceRef.current.setZoom(16)
+                    console.log('✅ Map center restored to current location after route update:', {
+                      lat: currentLocation[0],
+                      lng: currentLocation[1],
+                    })
+                  } else {
+                    console.warn('⚠️ Route not found when trying to restore center, re-setting...')
+                    if (routeResultRef.current) {
+                      directionsRendererRef.current.setDirections(routeResultRef.current)
+                    }
+                  }
                 }
-              }, 100)
+              }, 300) // زيادة الوقت إلى 300ms
             } else if (currentCenter) {
               // إذا لم يكن هناك موقع حالي، نعيد المركز السابق
               setTimeout(() => {
-                if (mapInstanceRef.current) {
-                  mapInstanceRef.current.setCenter(currentCenter)
-                  mapInstanceRef.current.setZoom(currentZoom)
-                  console.log('✅ Map center restored to previous position after route update')
+                if (mapInstanceRef.current && directionsRendererRef.current) {
+                  const currentDirections = directionsRendererRef.current.getDirections()
+                  if (currentDirections && currentDirections.routes && currentDirections.routes.length > 0) {
+                    mapInstanceRef.current.setCenter(currentCenter)
+                    mapInstanceRef.current.setZoom(currentZoom)
+                    console.log('✅ Map center restored to previous position after route update')
+                  } else {
+                    console.warn('⚠️ Route not found when trying to restore center, re-setting...')
+                    if (routeResultRef.current) {
+                      directionsRendererRef.current.setDirections(routeResultRef.current)
+                    }
+                  }
                 }
-              }, 100)
+              }, 300)
             }
             
             // جلب بيانات الطقس للمسار لحساب التأخير الإضافي
@@ -820,13 +884,13 @@ export default function GoogleTrafficMap({
       })
 
       return () => {
-        // Clear route on cleanup
-        if (directionsRendererRef.current) {
-          directionsRendererRef.current.setDirections({ routes: [] })
-        }
+        // لا نمسح المسار في cleanup إذا كان نفس المسار
+        // لأن currentLocation يتغير باستمرار أثناء التوجيه
+        // ومسح المسار سيسبب اختفاءه
+        console.log('🧹 Cleanup: Not clearing route to prevent disappearance')
       }
     }
-  }, [directionsService, route, map, currentLocation])
+  }, [directionsService, route, map]) // إزالة currentLocation من dependencies
 
   // Get user location on mount
   useEffect(() => {
