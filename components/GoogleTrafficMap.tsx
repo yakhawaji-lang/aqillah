@@ -1604,14 +1604,6 @@ export default function GoogleTrafficMap({
           </div>
         </div>
       )}
-      {showTrafficLayer && (
-        <div className="absolute bottom-4 right-4 bg-white px-3 py-2 rounded-lg shadow-md text-sm z-10">
-          <span className="text-green-600">🟢</span> سلس
-          <span className="text-yellow-600 ml-2">🟡</span> متوسط
-          <span className="text-orange-600 ml-2">🟠</span> مزدحم
-          <span className="text-red-600 ml-2">🔴</span> شديد
-        </div>
-      )}
 
       {/* زر العودة إلى موقع المستخدم */}
       {(userLocation || currentLocation) && (
