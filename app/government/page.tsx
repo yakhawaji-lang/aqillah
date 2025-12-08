@@ -47,6 +47,18 @@ export default function GovernmentDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [chartType, setChartType] = useState<'line' | 'area' | 'bar'>('area')
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null)
+  const [selectedBottleneck, setSelectedBottleneck] = useState<any | null>(null)
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>(
+    selectedCity === 'الرياض' ? { lat: 24.7136, lng: 46.6753 } :
+    selectedCity === 'جدة' ? { lat: 21.4858, lng: 39.1925 } :
+    selectedCity === 'الدمام' ? { lat: 26.4207, lng: 50.0888 } :
+    selectedCity === 'المدينة المنورة' ? { lat: 24.5247, lng: 39.5692 } :
+    selectedCity === 'الخبر' ? { lat: 26.2794, lng: 50.2080 } :
+    selectedCity === 'أبها' ? { lat: 18.2164, lng: 42.5042 } :
+    selectedCity === 'خميس مشيط' ? { lat: 18.3000, lng: 42.7333 } :
+    { lat: 24.7136, lng: 46.6753 }
+  )
+  const [mapZoom, setMapZoom] = useState<number>(selectedCity === 'الرياض' ? 11 : 12)
 
   // Real-time data من Google Routes API (New) مباشرة - قراءة من الخريطة الحالية
   // محاولة استخدام Routes API الجديد أولاً، ثم Fallback إلى Directions API القديم
@@ -802,11 +814,26 @@ export default function GovernmentDashboardPage() {
                     const severity = severityColors[bottleneck.severity] || severityColors.medium
                     
                     return (
-                      <tr key={bottleneck.id} className="hover:bg-gray-50 transition-colors">
+                      <tr 
+                        key={bottleneck.id} 
+                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                          selectedBottleneck?.id === bottleneck.id ? 'bg-primary-50 border-l-4 border-primary-600' : ''
+                        }`}
+                        onClick={() => {
+                          setSelectedBottleneck(bottleneck)
+                          // تحديث مركز الخريطة إلى موقع الازدحام
+                          if (bottleneck.position && bottleneck.position.length >= 2) {
+                            setMapCenter({ lat: bottleneck.position[0], lng: bottleneck.position[1] })
+                            setMapZoom(14) // تكبير الخريطة عند الضغط على نقطة
+                          }
+                        }}
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium text-gray-900">{bottleneck.roadName}</span>
+                            <MapPin className={`h-4 w-4 ${selectedBottleneck?.id === bottleneck.id ? 'text-primary-600' : 'text-gray-400'}`} />
+                            <span className={`font-medium ${selectedBottleneck?.id === bottleneck.id ? 'text-primary-900' : 'text-gray-900'}`}>
+                              {bottleneck.roadName}
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-gray-600">{bottleneck.city}</td>
@@ -863,18 +890,18 @@ export default function GovernmentDashboardPage() {
           </div>
           <div className="h-[650px] rounded-lg overflow-hidden border border-gray-200 shadow-inner">
             <GoogleTrafficMap
-              center={
-                selectedCity === 'الرياض' ? { lat: 24.7136, lng: 46.6753 } :
-                selectedCity === 'جدة' ? { lat: 21.4858, lng: 39.1925 } :
-                selectedCity === 'الدمام' ? { lat: 26.4207, lng: 50.0888 } :
-                selectedCity === 'المدينة المنورة' ? { lat: 24.5247, lng: 39.5692 } :
-                selectedCity === 'الخبر' ? { lat: 26.2794, lng: 50.2080 } :
-                selectedCity === 'أبها' ? { lat: 18.2164, lng: 42.5042 } :
-                selectedCity === 'خميس مشيط' ? { lat: 18.3000, lng: 42.7333 } :
-                { lat: 24.7136, lng: 46.6753 }
+              center={mapCenter}
+              zoom={mapZoom}
+              markers={
+                selectedBottleneck && selectedBottleneck.position && selectedBottleneck.position.length >= 2
+                  ? [{
+                      lat: selectedBottleneck.position[0],
+                      lng: selectedBottleneck.position[1],
+                      title: selectedBottleneck.roadName,
+                      congestionIndex: selectedBottleneck.congestionIndex,
+                    }]
+                  : []
               }
-              zoom={selectedCity === 'الرياض' ? 11 : 12}
-              markers={[]}
               showTrafficLayer={true}
               className="w-full h-full"
             />
