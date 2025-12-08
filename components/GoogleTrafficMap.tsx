@@ -822,8 +822,9 @@ export default function GoogleTrafficMap({
   }, [userLocation])
 
   // Render current location marker
+  // Display current location marker
   useEffect(() => {
-    if (!(window as any).google || !mapInstanceRef.current) return
+    if (!(window as any).google || !mapInstanceRef.current || !map) return
 
     // Clear previous current location marker
     if (currentLocationMarkerRef.current) {
@@ -834,27 +835,51 @@ export default function GoogleTrafficMap({
     // Use currentLocation prop if available, otherwise use userLocation
     const locationToShow = currentLocation || userLocation
 
-    if (locationToShow && locationToShow.length === 2) {
-      currentLocationMarkerRef.current = new (window as any).google.maps.Marker({
-        position: { lat: locationToShow[0], lng: locationToShow[1] },
-        map: mapInstanceRef.current,
-        icon: {
-          path: (window as any).google.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor: '#4285F4',
-          fillOpacity: 1,
-          strokeColor: '#FFFFFF',
-          strokeWeight: 4,
-        },
-        title: 'موقعك الحالي',
-        zIndex: 1000,
+    if (locationToShow && locationToShow.length === 2 && 
+        !isNaN(locationToShow[0]) && !isNaN(locationToShow[1])) {
+      
+      console.log('📍 Displaying current location marker:', {
+        lat: locationToShow[0],
+        lng: locationToShow[1],
+        formatted: `${locationToShow[0]}, ${locationToShow[1]}`,
+        source: currentLocation ? 'currentLocation prop' : 'userLocation state',
       })
 
-      // Center map on current location if currentLocation prop is provided
-      if (currentLocation) {
-        mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
-        mapInstanceRef.current.setZoom(16)
+      try {
+        currentLocationMarkerRef.current = new (window as any).google.maps.Marker({
+          position: { lat: locationToShow[0], lng: locationToShow[1] },
+          map: mapInstanceRef.current,
+          icon: {
+            path: (window as any).google.maps.SymbolPath.CIRCLE,
+            scale: 14,
+            fillColor: '#4285F4',
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 4,
+          },
+          title: 'موقعك الحالي',
+          zIndex: 1000,
+          animation: (window as any).google.maps.Animation.DROP,
+        })
+
+        console.log('✅ Current location marker created successfully')
+
+        // Center map on current location if currentLocation prop is provided
+        if (currentLocation && currentLocation.length === 2) {
+          const newCenter = { lat: currentLocation[0], lng: currentLocation[1] }
+          mapInstanceRef.current.setCenter(newCenter)
+          mapInstanceRef.current.setZoom(16)
+          console.log('✅ Map centered on current location:', newCenter)
+        }
+      } catch (error) {
+        console.error('❌ Error creating current location marker:', error)
       }
+    } else {
+      console.log('⚠️ No valid location to display:', {
+        currentLocation,
+        userLocation,
+        locationToShow,
+      })
     }
 
     return () => {
