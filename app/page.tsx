@@ -139,7 +139,7 @@ export default function Home() {
                  <Download className="w-5 h-5 opacity-80 group-hover:opacity-100 transition" />
                </a>
                <a
-                 href="/downloads/aqillah.apk"
+                 href="/api/download/apk"
                  download="aqillah.apk"
                  className="group flex items-center gap-3 bg-primary-600 text-white px-6 py-4 rounded-xl hover:bg-primary-700 transition-all hover:scale-105 shadow-lg"
                >
