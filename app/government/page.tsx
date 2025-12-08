@@ -142,13 +142,34 @@ export default function GovernmentDashboardPage() {
     refetchInterval: 30000,
   })
 
-  const { data: predictions, refetch: refetchPredictions } = useQuery({
-    queryKey: ['predictions', selectedCity],
+  // جلب التنبؤات الحقيقية من Google Traffic API
+  const { data: predictions, refetch: refetchPredictions, isLoading: predictionsLoading } = useQuery({
+    queryKey: ['predictions-real', selectedCity],
     queryFn: async () => {
-      const res = await axios.get(`/api/predictions?minutesAhead=60`)
-      return res.data.data || []
+      try {
+        // محاولة استخدام API التنبؤات الحقيقية أولاً
+        const res = await axios.get(`/api/predictions/real?city=${selectedCity}&minutesAhead=60`)
+        if (res.data.success && res.data.data && res.data.data.length > 0) {
+          console.log('✅ Real predictions received:', res.data.data.length, 'predictions')
+          return res.data.data
+        }
+        // Fallback إلى API القديم
+        const fallbackRes = await axios.get(`/api/predictions?minutesAhead=60`)
+        return fallbackRes.data.data || []
+      } catch (error: any) {
+        console.error('❌ Error fetching predictions:', error.message)
+        // Fallback إلى API القديم في حالة الخطأ
+        try {
+          const fallbackRes = await axios.get(`/api/predictions?minutesAhead=60`)
+          return fallbackRes.data.data || []
+        } catch (fallbackError: any) {
+          console.error('❌ Fallback predictions API also failed:', fallbackError.message)
+          return []
+        }
+      }
     },
-    refetchInterval: 60000,
+    refetchInterval: 2 * 60 * 1000, // تحديث كل دقيقتين
+    staleTime: 60 * 1000, // البيانات صالحة لمدة دقيقة
   })
 
   const { data: decisions } = useQuery({
