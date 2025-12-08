@@ -226,8 +226,10 @@ class GoogleMapsService {
   /**
    * Geocode address or reverse geocode coordinates
    */
-  async geocode(request: GeocodeRequest): Promise<GeocodeResponse> {
-    if (!this.placesApiKey && !this.apiKey) {
+  async geocode(request: GeocodeRequest & { isAndroid?: boolean }): Promise<GeocodeResponse> {
+    const apiKeyToUse = this.getApiKey(request.isAndroid || false)
+    
+    if (!apiKeyToUse) {
       throw new Error('Google Maps API key not configured')
     }
 
@@ -244,7 +246,7 @@ class GoogleMapsService {
         throw new Error('Invalid geocode request')
       }
 
-      url += `&key=${this.placesApiKey || this.apiKey}&language=${googleMapsConfig.defaultLanguage}&region=${googleMapsConfig.defaultRegion}`
+      url += `&key=${apiKeyToUse}&language=${googleMapsConfig.defaultLanguage}&region=${googleMapsConfig.defaultRegion}`
 
       const response = await axios.get(url)
 
