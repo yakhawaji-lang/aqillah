@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Header } from '@/components/Header'
 import GoogleTrafficMap from '@/components/GoogleTrafficMap'
 import { 
   ArrowLeft, 
