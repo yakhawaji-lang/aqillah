@@ -1,6 +1,6 @@
 {
   "appId": "sa.gov.aqillah",
-  "appName": "عَقِلْها",
+  "appName": "عَقِلْها - تطبيق المستخدم",
   "webDir": "out",
   "bundledWebRuntime": false,
   "server": {
