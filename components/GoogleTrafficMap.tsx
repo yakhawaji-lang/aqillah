@@ -397,6 +397,7 @@ export default function GoogleTrafficMap({
   }, [isMapRefReady])
 
   // Update map center - فقط عند تغيير center أو zoom بشكل فعلي
+  // لكن لا نغير المركز إذا كان المستخدم في وضع التوجيه (isNavigating)
   useEffect(() => {
     if (mapInstanceRef.current && map && center) {
       // تجنب التحديث إذا كان نفس المركز والزوم
@@ -405,7 +406,26 @@ export default function GoogleTrafficMap({
         lastCenterRef.current.lng !== center.lng
       const zoomChanged = lastZoomRef.current !== zoom
       
-      if (centerChanged || zoomChanged) {
+      // إذا كان هناك موقع حالي (currentLocation)، نستخدمه بدلاً من center prop
+      // لتجنب تغيير المركز عند بدء التوجيه
+      if (currentLocation && currentLocation.length === 2) {
+        const currentLocationCenter = { lat: currentLocation[0], lng: currentLocation[1] }
+        const currentLocationChanged = !lastCenterRef.current || 
+          lastCenterRef.current.lat !== currentLocationCenter.lat || 
+          lastCenterRef.current.lng !== currentLocationCenter.lng
+        
+        if (currentLocationChanged || zoomChanged) {
+          try {
+            mapInstanceRef.current.setCenter(currentLocationCenter)
+            mapInstanceRef.current.setZoom(zoom || 16)
+            lastCenterRef.current = currentLocationCenter
+            lastZoomRef.current = zoom
+            console.log('📍 Map center updated to current location:', currentLocationCenter)
+          } catch (err) {
+            console.error('Error updating map center:', err)
+          }
+        }
+      } else if (centerChanged || zoomChanged) {
         try {
           mapInstanceRef.current.setCenter(center)
           mapInstanceRef.current.setZoom(zoom)
@@ -416,7 +436,7 @@ export default function GoogleTrafficMap({
         }
       }
     }
-  }, [map, center, zoom])
+  }, [map, center, zoom, currentLocation])
 
   // Add markers with congestion colors
   useEffect(() => {
@@ -676,10 +696,17 @@ export default function GoogleTrafficMap({
       directionsService.route(request, (result: any, status: any) => {
         if (status === (window as any).google.maps.DirectionsStatus.OK && result && directionsRendererRef.current && mapInstanceRef.current) {
           try {
-            // تحديث DirectionsRenderer لعرض المسار الفعلي على الطرق
-            directionsRendererRef.current.setDirections(result)
+            // حفظ المركز الحالي قبل تحديث المسار
+            const currentCenter = mapInstanceRef.current.getCenter()
+            const currentZoom = mapInstanceRef.current.getZoom()
             
-            // تحديث خيارات الخط ليكون أكثر وضوحاً
+            console.log('📍 Preserving map center before route update:', {
+              lat: currentCenter?.lat(),
+              lng: currentCenter?.lng(),
+              zoom: currentZoom,
+            })
+            
+            // تحديث خيارات الخط أولاً قبل setDirections
             directionsRendererRef.current.setOptions({
               polylineOptions: {
                 strokeColor: '#4285F4',
@@ -690,15 +717,31 @@ export default function GoogleTrafficMap({
               preserveViewport: true, // الحفاظ على المركز الحالي (موقع المستخدم)
             })
             
-            // لا نستخدم fitBounds - نركز على موقع المستخدم الحالي بدلاً من ذلك
-            // إذا كان هناك موقع حالي، نركز عليه
+            // تحديث DirectionsRenderer لعرض المسار الفعلي على الطرق
+            directionsRendererRef.current.setDirections(result)
+            
+            // إعادة تعيين المركز والزوم بعد setDirections للتأكد من عدم تغييرهما
             if (currentLocation && currentLocation.length === 2) {
-              mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
-              mapInstanceRef.current.setZoom(16)
-              console.log('✅ Map centered on current location (not fitBounds):', {
-                lat: currentLocation[0],
-                lng: currentLocation[1],
-              })
+              // استخدام setTimeout للتأكد من أن setDirections انتهى
+              setTimeout(() => {
+                if (mapInstanceRef.current) {
+                  mapInstanceRef.current.setCenter({ lat: currentLocation[0], lng: currentLocation[1] })
+                  mapInstanceRef.current.setZoom(16)
+                  console.log('✅ Map center restored to current location after route update:', {
+                    lat: currentLocation[0],
+                    lng: currentLocation[1],
+                  })
+                }
+              }, 100)
+            } else if (currentCenter) {
+              // إذا لم يكن هناك موقع حالي، نعيد المركز السابق
+              setTimeout(() => {
+                if (mapInstanceRef.current) {
+                  mapInstanceRef.current.setCenter(currentCenter)
+                  mapInstanceRef.current.setZoom(currentZoom)
+                  console.log('✅ Map center restored to previous position after route update')
+                }
+              }, 100)
             }
             
             // جلب بيانات الطقس للمسار لحساب التأخير الإضافي
