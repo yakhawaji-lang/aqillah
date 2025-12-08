@@ -10,8 +10,8 @@ import { WeatherAlertsChecker, WeatherDayData } from '@/lib/services/weather-ale
 // عدد الأيام للتنبؤ
 const FORECAST_DAYS = 16
 
-// Force dynamic rendering because we use searchParams
-export const dynamic = 'force-dynamic'
+// Note: dynamic export removed for Android build compatibility
+// This API route will not work in static export - use server-side API instead
 
 export async function GET(request: NextRequest) {
   try {
