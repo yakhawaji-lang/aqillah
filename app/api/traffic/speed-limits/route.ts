@@ -19,16 +19,45 @@ export async function GET(request: NextRequest) {
 
     const apiKey = process.env.AQILLAH_MAPS_WEB_KEY || process.env.GOOGLE_MAPS_API_KEY
     if (!apiKey) {
-      throw new Error('Google Maps API key not configured')
+      console.error('Speed Limits API: Google Maps API key not configured')
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Google Maps API key not configured',
+          data: [],
+        },
+        { status: 500 }
+      )
     }
 
     // تحويل النقاط إلى التنسيق المطلوب
     const pointArray = points.split('|').map(point => {
-      const [lat, lng] = point.split(',')
-      return { latitude: parseFloat(lat), longitude: parseFloat(lng) }
+      const trimmedPoint = point.trim()
+      const [lat, lng] = trimmedPoint.split(',')
+      const latitude = parseFloat(lat?.trim() || '0')
+      const longitude = parseFloat(lng?.trim() || '0')
+      
+      if (isNaN(latitude) || isNaN(longitude)) {
+        throw new Error(`Invalid point format: ${trimmedPoint}`)
+      }
+      
+      return { latitude, longitude }
     })
 
+    if (pointArray.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No valid points provided' },
+        { status: 400 }
+      )
+    }
+
     const speedLimitsUrl = `https://roads.googleapis.com/v1/speedLimits?key=${apiKey}`
+    
+    console.log('Speed Limits API Request:', {
+      url: speedLimitsUrl.replace(apiKey, '***'),
+      pointsCount: pointArray.length,
+      firstPoint: pointArray[0],
+    })
     
     const response = await fetch(speedLimitsUrl, {
       method: 'POST',
@@ -42,10 +71,37 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(`Speed Limits API error: ${errorText}`)
+      console.error('Speed Limits API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+      })
+      
+      // محاولة تحليل الخطأ كـ JSON
+      let errorMessage = `Speed Limits API error (${response.status}): ${response.statusText}`
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.error?.message || errorJson.error || errorMessage
+      } catch {
+        // إذا لم يكن JSON، استخدم النص كما هو
+        errorMessage = errorText || errorMessage
+      }
+      
+      return NextResponse.json(
+        {
+          success: false,
+          error: errorMessage,
+          data: [],
+        },
+        { status: response.status >= 400 && response.status < 500 ? response.status : 500 }
+      )
     }
 
     const data = await response.json()
+    
+    console.log('Speed Limits API Success:', {
+      speedLimitsCount: data.speedLimits?.length || 0,
+    })
 
     return NextResponse.json({
       success: true,
