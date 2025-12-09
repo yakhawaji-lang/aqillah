@@ -312,8 +312,10 @@ export default function PlannedRoutePage() {
   }
 
 
-  return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+  // معالجة الأخطاء - التأكد من عدم وجود أخطاء غير معالجة
+  try {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="bg-primary-600 text-white p-4 sticky top-0 z-50 shadow-lg">
         <div className="flex items-center justify-between mb-4">
