@@ -146,6 +146,22 @@ export default function UserAppPage() {
           <div className="flex items-center gap-3">
             <RealtimeIndicator isConnected={isConnected} lastUpdate={lastUpdate} />
             <button
+              onClick={() => {
+                console.log('📍 Manual location refresh requested from header')
+                refreshLocation()
+                toast('جاري تحديد موقعك...', { icon: '📍' })
+              }}
+              disabled={locationLoading}
+              className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title="تحديد موقعي"
+            >
+              {locationLoading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <Navigation className="h-5 w-5" />
+              )}
+            </button>
+            <button
               onClick={() => window.location.reload()}
               className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition"
             >
@@ -283,9 +299,35 @@ export default function UserAppPage() {
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100">
                     <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                      <p className="text-gray-600 mb-2">جاري تحديد موقعك...</p>
-                      <p className="text-sm text-gray-500">يرجى السماح بالوصول إلى موقعك</p>
+                      {locationLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                          <p className="text-gray-600 mb-2">جاري تحديد موقعك...</p>
+                          <p className="text-sm text-gray-500">يرجى السماح بالوصول إلى موقعك</p>
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-600 mb-2">لم يتم تحديد موقعك</p>
+                          <p className="text-sm text-gray-500 mb-4">اضغط على زر تحديد الموقع أعلاه</p>
+                          <button
+                            onClick={() => {
+                              console.log('📍 Manual location refresh requested from map area')
+                              refreshLocation()
+                              toast('جاري تحديد موقعك...', { icon: '📍' })
+                            }}
+                            disabled={locationLoading}
+                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                          >
+                            {locationLoading ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : (
+                              <Navigation className="h-4 w-4" />
+                            )}
+                            تحديد موقعي
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -392,13 +434,38 @@ export default function UserAppPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     موقعك الحالي
                   </label>
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <MapPin className="h-5 w-5 text-primary-600" />
-                    <span className="text-sm text-gray-600">
-                      {userLocation
-                        ? `${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}`
-                        : 'جاري تحديد الموقع...'}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                      <MapPin className="h-5 w-5 text-primary-600" />
+                      <span className="text-sm text-gray-600 flex-1">
+                        {locationLoading ? (
+                          <span className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                            جاري تحديد الموقع...
+                          </span>
+                        ) : userLocation ? (
+                          `${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}`
+                        ) : (
+                          'لم يتم تحديد الموقع'
+                        )}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        console.log('📍 Manual location refresh requested')
+                        refreshLocation()
+                        toast('جاري تحديد موقعك...', { icon: '📍' })
+                      }}
+                      disabled={locationLoading}
+                      className="p-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      title="تحديد موقعي"
+                    >
+                      {locationLoading ? (
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      ) : (
+                        <Navigation className="h-5 w-5" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
