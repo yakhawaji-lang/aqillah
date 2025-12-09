@@ -75,7 +75,7 @@ export default function PlannedRoutePage() {
   }, [departureDateTime])
 
   // جلب بيانات الطقس للتاريخ المحدد
-  const { data: weatherData, isLoading: weatherLoading } = useQuery({
+  const { data: weatherData, isLoading: weatherLoading, error: weatherError } = useQuery({
     queryKey: ['weather-forecast', destination, departureDate, departureTime],
     queryFn: async () => {
       if (!destination || !departureDateTime || !isFutureDate) return null
@@ -87,15 +87,19 @@ export default function PlannedRoutePage() {
             lng: destination[1],
             date: departureDate,
             time: departureTime,
-          }
+          },
+          timeout: 30000, // 30 ثانية
         })
-        return res.data.data || null
-      } catch (error) {
+        return res.data?.data || null
+      } catch (error: any) {
         console.error('Error fetching weather:', error)
+        // لا نرمي الخطأ، بل نعيد null للسماح للصفحة بالاستمرار
         return null
       }
     },
     enabled: !!destination && !!departureDateTime && isFutureDate,
+    retry: 1,
+    retryDelay: 1000,
   })
 
   // جلب تنبؤات حركة المرور للتاريخ المحدد
@@ -129,7 +133,7 @@ export default function PlannedRoutePage() {
   })
 
   // جلب تنبؤات المرور للمسار المحدد
-  const { data: routePredictions, isLoading: routePredictionsLoading } = useQuery({
+  const { data: routePredictions, isLoading: routePredictionsLoading, error: routePredictionsError } = useQuery({
     queryKey: ['route-predictions', selectedRoute?.id, departureDate, departureTime],
     queryFn: async () => {
       if (!selectedRoute || !userLocation || !destination || !departureDateTime || !isFutureDate) return null
@@ -148,20 +152,24 @@ export default function PlannedRoutePage() {
             destinationLat: destination[0],
             destinationLng: destination[1],
             minutesAhead: Math.min(minutesAhead, 60),
-          }
+          },
+          timeout: 30000, // 30 ثانية
         })
         
-        if (res.data.success && res.data.data) {
+        if (res.data && res.data.success && res.data.data) {
           return res.data.data
         }
         
         return null
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching route predictions:', error)
+        // لا نرمي الخطأ، بل نعيد null للسماح للصفحة بالاستمرار
         return null
       }
     },
     enabled: !!selectedRoute && !!userLocation && !!destination && !!departureDateTime && isFutureDate,
+    retry: 1, // إعادة المحاولة مرة واحدة فقط
+    retryDelay: 1000, // انتظار ثانية واحدة قبل إعادة المحاولة
   })
 
   // جلب تنبيهات الطقس
@@ -730,28 +738,59 @@ export default function PlannedRoutePage() {
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <h3 className="font-bold text-gray-900 mb-4">خريطة المسار</h3>
             <div className="h-[400px] rounded-lg overflow-hidden">
-              <GoogleTrafficMap
-                key={`planned-route-map-${selectedRoute.id || Date.now()}`}
-                center={{
-                  lat: (userLocation[0] + destination[0]) / 2,
-                  lng: (userLocation[1] + destination[1]) / 2,
-                }}
-                zoom={12}
-                markers={[]}
-                route={
-                  // إذا كان هناك route array، استخدمه مباشرة
-                  selectedRoute.route && Array.isArray(selectedRoute.route) && selectedRoute.route.length > 0
-                    ? selectedRoute.route
-                    : // وإلا استخدم origin و destination (ستستخدم GoogleTrafficMap Directions API)
-                      {
-                        origin: { lat: userLocation[0], lng: userLocation[1] },
-                        destination: { lat: destination[0], lng: destination[1] },
-                      }
+              {(() => {
+                try {
+                  // التحقق من صحة البيانات
+                  if (!userLocation || userLocation.length !== 2 || !destination || destination.length !== 2) {
+                    return (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                        <div className="text-center">
+                          <AlertTriangle className="h-12 w-12 text-yellow-600 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">بيانات الموقع غير صحيحة</p>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // تحديد نوع route
+                  let routeToUse: any
+                  if (selectedRoute.route && Array.isArray(selectedRoute.route) && selectedRoute.route.length > 0) {
+                    routeToUse = selectedRoute.route
+                  } else {
+                    routeToUse = {
+                      origin: { lat: userLocation[0], lng: userLocation[1] },
+                      destination: { lat: destination[0], lng: destination[1] },
+                    }
+                  }
+
+                  return (
+                    <GoogleTrafficMap
+                      key={`planned-route-map-${selectedRoute.id || Date.now()}`}
+                      center={{
+                        lat: (userLocation[0] + destination[0]) / 2,
+                        lng: (userLocation[1] + destination[1]) / 2,
+                      }}
+                      zoom={12}
+                      markers={[]}
+                      route={routeToUse}
+                      currentLocation={userLocation}
+                      showTrafficLayer={true}
+                      className="w-full h-full"
+                    />
+                  )
+                } catch (error: any) {
+                  console.error('Error rendering map:', error)
+                  return (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <div className="text-center p-4">
+                        <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-2" />
+                        <p className="text-sm text-red-600 font-medium mb-1">خطأ في عرض الخريطة</p>
+                        <p className="text-xs text-gray-600">{error?.message || 'حدث خطأ غير متوقع'}</p>
+                      </div>
+                    </div>
+                  )
                 }
-                currentLocation={userLocation}
-                showTrafficLayer={true}
-                className="w-full h-full"
-              />
+              })()}
             </div>
           </div>
         )}
@@ -883,6 +922,14 @@ export default function PlannedRoutePage() {
                   <div className="text-center py-4">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
                     <p className="text-sm text-gray-600">جاري جلب بيانات الطقس...</p>
+                  </div>
+                </div>
+              ) : weatherError ? (
+                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                  <div className="text-center py-4">
+                    <AlertTriangle className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
+                    <p className="text-sm text-yellow-800">تعذر جلب بيانات الطقس</p>
+                    <p className="text-xs text-yellow-700 mt-1">سيتم عرض البيانات الأساسية فقط</p>
                   </div>
                 </div>
               ) : weatherData && (
