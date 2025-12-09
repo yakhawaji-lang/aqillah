@@ -17,7 +17,9 @@ import {
   Cloud,
   Sun,
   CloudSnow,
-  Droplets
+  Droplets,
+  TrendingUp,
+  BarChart3
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import GoogleTrafficMap from '@/components/GoogleTrafficMap'
@@ -94,6 +96,68 @@ export default function PlannedRoutePage() {
       }
     },
     enabled: !!destination && !!departureDateTime && isFutureDate,
+  })
+
+  // جلب تنبؤات حركة المرور للتاريخ المحدد
+  const { data: trafficPredictions, isLoading: trafficPredictionsLoading } = useQuery({
+    queryKey: ['traffic-predictions', userLocation, destination, departureDate, departureTime],
+    queryFn: async () => {
+      if (!userLocation || !destination || !departureDateTime || !isFutureDate) return null
+      
+      try {
+        // حساب عدد الدقائق من الآن حتى وقت المغادرة
+        const now = new Date()
+        const minutesAhead = Math.ceil((departureDateTime.getTime() - now.getTime()) / (1000 * 60))
+        
+        if (minutesAhead <= 0 || minutesAhead > 1440) return null // لا تزيد عن 24 ساعة
+        
+        // جلب تنبؤات المرور
+        const res = await axios.get(`/api/predictions/real`, {
+          params: {
+            city: 'الرياض', // يمكن تحسينه ليكتشف المدينة تلقائياً
+            minutesAhead: Math.min(minutesAhead, 60), // الحد الأقصى 60 دقيقة للتنبؤات
+          }
+        })
+        
+        return res.data.data || null
+      } catch (error) {
+        console.error('Error fetching traffic predictions:', error)
+        return null
+      }
+    },
+    enabled: !!userLocation && !!destination && !!departureDateTime && isFutureDate,
+  })
+
+  // جلب تنبؤات المرور للمسار المحدد
+  const { data: routePredictions, isLoading: routePredictionsLoading } = useQuery({
+    queryKey: ['route-predictions', selectedRoute?.id, departureDate, departureTime],
+    queryFn: async () => {
+      if (!selectedRoute || !userLocation || !destination || !departureDateTime || !isFutureDate) return null
+      
+      try {
+        const now = new Date()
+        const minutesAhead = Math.ceil((departureDateTime.getTime() - now.getTime()) / (1000 * 60))
+        
+        if (minutesAhead <= 0) return null
+        
+        // استخدام API للتنبؤات المرورية للمسار
+        const res = await axios.get(`/api/predictions/route`, {
+          params: {
+            originLat: userLocation[0],
+            originLng: userLocation[1],
+            destinationLat: destination[0],
+            destinationLng: destination[1],
+            minutesAhead: Math.min(minutesAhead, 60),
+          }
+        })
+        
+        return res.data.data || null
+      } catch (error) {
+        console.error('Error fetching route predictions:', error)
+        return null
+      }
+    },
+    enabled: !!selectedRoute && !!userLocation && !!destination && !!departureDateTime && isFutureDate,
   })
 
   // جلب تنبيهات الطقس
@@ -458,6 +522,140 @@ export default function PlannedRoutePage() {
               <div className="text-center py-8">
                 <Cloud className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">لا توجد بيانات طقس متاحة للتاريخ المحدد</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* تنبؤات حركة المرور */}
+        {selectedRoute && departureDateTime && isFutureDate && (
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              تنبؤات حركة المرور للتاريخ المحدد
+            </h2>
+
+            {routePredictionsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">جاري تحليل حركة المرور المتوقعة...</p>
+              </div>
+            ) : routePredictions ? (
+              <div className="space-y-4">
+                {/* تنبؤات الازدحام */}
+                {routePredictions.predictions && routePredictions.predictions.length > 0 ? (
+                  <div className="space-y-3">
+                    {routePredictions.predictions.map((prediction: any, index: number) => {
+                      const congestionIndex = prediction.predictedIndex || prediction.congestionIndex || 0
+                      const congestionColor = 
+                        congestionIndex >= 70 ? 'text-red-600' :
+                        congestionIndex >= 50 ? 'text-orange-600' :
+                        congestionIndex >= 30 ? 'text-yellow-600' :
+                        'text-green-600'
+                      
+                      return (
+                        <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-gray-600" />
+                              <span className="text-sm font-medium text-gray-700">
+                                بعد {prediction.minutesAhead || (index + 1) * 15} دقيقة
+                              </span>
+                            </div>
+                            <div className={`text-lg font-bold ${congestionColor}`}>
+                              {congestionIndex}%
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2 mt-3">
+                            <div className="text-sm">
+                              <span className="text-gray-600">التأخير المتوقع:</span>
+                              <span className="font-medium text-gray-900 mr-1">
+                                {prediction.predictedDelayMinutes || prediction.delayMinutes ? `${(prediction.predictedDelayMinutes || prediction.delayMinutes).toFixed(1)} دقيقة` : 'غير محدد'}
+                              </span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-gray-600">مستوى الثقة:</span>
+                              <span className="font-medium text-gray-900 mr-1">
+                                {prediction.confidence ? `${Math.round(prediction.confidence * 100)}%` : 'غير محدد'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {prediction.factors && prediction.factors.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-xs text-gray-600 mb-1">العوامل المؤثرة:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {prediction.factors.map((factor: string, idx: number) => (
+                                  <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                    {factor}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">لا توجد تنبؤات متاحة للتاريخ المحدد</p>
+                  </div>
+                )}
+
+                {/* ملخص التنبؤات */}
+                {routePredictions.avgCongestion !== undefined && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">متوسط الازدحام المتوقع</p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          بناءً على أنماط حركة المرور التاريخية
+                        </p>
+                      </div>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {routePredictions.avgCongestion.toFixed(0)}%
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : trafficPredictions ? (
+              <div className="space-y-3">
+                {Array.isArray(trafficPredictions) && trafficPredictions.slice(0, 3).map((prediction: any, index: number) => {
+                  const congestionIndex = prediction.predictedIndex || prediction.congestionIndex || 0
+                  const congestionColor = 
+                    congestionIndex >= 70 ? 'text-red-600' :
+                    congestionIndex >= 50 ? 'text-orange-600' :
+                    congestionIndex >= 30 ? 'text-yellow-600' :
+                    'text-green-600'
+                  
+                  return (
+                    <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">{prediction.roadName || 'طريق غير محدد'}</p>
+                          <p className="text-xs text-gray-600">
+                            بعد {prediction.minutesAhead || (index + 1) * 15} دقيقة
+                          </p>
+                        </div>
+                        <div className={`text-xl font-bold ${congestionColor}`}>
+                          {congestionIndex}%
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">لا توجد تنبؤات متاحة للتاريخ المحدد</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  سيتم عرض التنبؤات بعد تحديد المسار
+                </p>
               </div>
             )}
           </div>
