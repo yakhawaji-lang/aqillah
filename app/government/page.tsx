@@ -226,6 +226,39 @@ export default function GovernmentDashboardPage() {
     refetchInterval: 60000,
   })
 
+  // حساب الإحصائيات الحقيقية من البيانات
+  const realStats = useMemo(() => {
+    if (!trafficData || trafficData.length === 0) {
+      return {
+        monitoredSegments: 0,
+        highCongestionCount: 0,
+        avgCongestion: 0,
+      }
+    }
+
+    // عدد المقاطع المراقبة
+    const monitoredSegments = trafficData.length
+
+    // نقاط الازدحام العالي (congestionIndex >= 70)
+    const highCongestionCount = trafficData.filter((item: any) => 
+      item.congestionIndex >= 70
+    ).length
+
+    // متوسط الازدحام الوطني
+    const totalCongestion = trafficData.reduce((sum: number, item: any) => 
+      sum + (item.congestionIndex || 0), 0
+    )
+    const avgCongestion = monitoredSegments > 0 
+      ? Math.round((totalCongestion / monitoredSegments) * 10) / 10 
+      : 0
+
+    return {
+      monitoredSegments,
+      highCongestionCount,
+      avgCongestion,
+    }
+  }, [trafficData])
+
   // اكتشاف نقاط الازدحام من بيانات Google Maps مباشرة - قراءة من الخريطة الحالية
   const detectedBottlenecks = useMemo(() => {
     if (!trafficData || trafficData.length === 0) {
@@ -538,9 +571,20 @@ export default function GovernmentDashboardPage() {
             </div>
             <h3 className="text-sm font-medium text-primary-100 mb-2">متوسط الازدحام الوطني</h3>
             <div className="text-3xl font-bold mb-1">
-              <AnimatedCounter value={stats?.avgCongestion || 0} suffix="%" />
+              {trafficLoading ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  <span>...</span>
+                </div>
+              ) : (
+                <AnimatedCounter value={realStats.avgCongestion || stats?.avgCongestion || 0} suffix="%" />
+              )}
             </div>
-            <p className="text-xs text-primary-200">تحسن عن الأسبوع الماضي</p>
+            <p className="text-xs text-primary-200">
+              {realStats.avgCongestion > 0 
+                ? `متوسط من ${realStats.monitoredSegments} مقطع مراقب`
+                : 'تحسن عن الأسبوع الماضي'}
+            </p>
           </div>
 
           <div className="bg-gradient-to-br from-red-500 to-red-700 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
@@ -583,9 +627,20 @@ export default function GovernmentDashboardPage() {
             </div>
             <h3 className="text-sm font-medium text-orange-100 mb-2">نقاط ازدحام عالي</h3>
             <div className="text-3xl font-bold mb-1">
-              <AnimatedCounter value={stats?.highCongestionCount || 0} />
+              {trafficLoading ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  <span>...</span>
+                </div>
+              ) : (
+                <AnimatedCounter value={realStats.highCongestionCount || stats?.highCongestionCount || 0} />
+              )}
             </div>
-            <p className="text-xs text-orange-200">يتطلب تدخل فوري</p>
+            <p className="text-xs text-orange-200">
+              {realStats.highCongestionCount > 0 
+                ? `${realStats.highCongestionCount} نقطة - يتطلب تدخل فوري`
+                : 'يتطلب تدخل فوري'}
+            </p>
           </div>
 
           <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
@@ -600,9 +655,20 @@ export default function GovernmentDashboardPage() {
             </div>
             <h3 className="text-sm font-medium text-blue-100 mb-2">مقاطع مراقبة</h3>
             <div className="text-3xl font-bold mb-1">
-              <AnimatedCounter value={stats?.totalSegments || 0} />
+              {trafficLoading ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  <span>...</span>
+                </div>
+              ) : (
+                <AnimatedCounter value={realStats.monitoredSegments || stats?.totalSegments || 0} />
+              )}
             </div>
-            <p className="text-xs text-blue-200">مراقبة مستمرة 24/7</p>
+            <p className="text-xs text-blue-200">
+              {realStats.monitoredSegments > 0 
+                ? `${realStats.monitoredSegments} مقطع نشط - مراقبة مستمرة 24/7`
+                : 'مراقبة مستمرة 24/7'}
+            </p>
           </div>
         </div>
 
