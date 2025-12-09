@@ -60,13 +60,24 @@ export default function GovernmentDashboardPage() {
   )
   const [mapZoom, setMapZoom] = useState<number>(selectedCity === 'الرياض' ? 11 : 12)
 
-  // Real-time data من Google Routes API (New) مباشرة - قراءة من الخريطة الحالية
-  // محاولة استخدام Routes API الجديد أولاً، ثم Fallback إلى Directions API القديم
+  // Real-time data من Google API - مسح شامل لجميع الشوارع
+  // محاولة استخدام المسح الشامل أولاً، ثم Fallback إلى APIs الأخرى
   const { data: trafficData, isLoading: trafficLoading, refetch: refetchTraffic, isError } = useQuery({
     queryKey: ['traffic', selectedCity, timeRange],
     queryFn: async () => {
       try {
-        // محاولة استخدام Routes API الجديد أولاً
+        // محاولة استخدام المسح الشامل أولاً لاكتشاف جميع الشوارع المزدحمة
+        try {
+          const scanRes = await axios.get(`/api/traffic/scan?city=${selectedCity}&minCongestion=20`)
+          if (scanRes.data.success && scanRes.data.data && scanRes.data.data.length > 0) {
+            console.log('✅ Comprehensive scan data received:', scanRes.data.data.length, 'congested roads')
+            return scanRes.data.data
+          }
+        } catch (scanError: any) {
+          console.warn('⚠️ Comprehensive scan failed, trying Routes API:', scanError.message)
+        }
+
+        // محاولة استخدام Routes API الجديد
         try {
           const res = await axios.get(`/api/traffic/live?city=${selectedCity}`)
           if (res.data.success && res.data.data && res.data.data.length > 0) {
@@ -87,9 +98,9 @@ export default function GovernmentDashboardPage() {
         return []
       }
     },
-    refetchInterval: 60000, // تحديث كل دقيقة للحصول على بيانات مباشرة من الخريطة
+    refetchInterval: 2 * 60 * 1000, // تحديث كل دقيقتين للمسح الشامل
     retry: 2, // إعادة المحاولة مرتين عند الفشل
-    staleTime: 30000, // البيانات صالحة لمدة 30 ثانية
+    staleTime: 60 * 1000, // البيانات صالحة لمدة دقيقة
   })
 
   // حالة الاتصال والتحديث
