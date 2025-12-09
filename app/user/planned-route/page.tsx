@@ -570,8 +570,8 @@ export default function PlannedRoutePage() {
                 {/* تنبؤات الازدحام */}
                 {routePredictions.predictions && routePredictions.predictions.length > 0 ? (
                   <div className="space-y-3">
-                    {routePredictions.predictions.map((prediction: any, index: number) => {
-                      const congestionIndex = prediction.predictedIndex || prediction.congestionIndex || 0
+                    {Array.isArray(routePredictions.predictions) && routePredictions.predictions.map((prediction: any, index: number) => {
+                      const congestionIndex = Number(prediction.predictedIndex || prediction.congestionIndex || 0)
                       const congestionColor = 
                         congestionIndex >= 70 ? 'text-red-600' :
                         congestionIndex >= 50 ? 'text-orange-600' :
