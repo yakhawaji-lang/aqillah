@@ -840,6 +840,22 @@ export default function PlannedRoutePage() {
                     <p className="text-sm text-gray-600">جاري تحليل حركة المرور المتوقعة...</p>
                   </div>
                 </div>
+              ) : routePredictionsError ? (
+                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                  <div className="text-center py-4">
+                    <AlertTriangle className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
+                    <p className="text-sm text-yellow-800">تعذر جلب تنبؤات حركة المرور</p>
+                    <p className="text-xs text-yellow-700 mt-1">سيتم عرض البيانات الأساسية فقط</p>
+                  </div>
+                </div>
+              ) : routePredictionsError ? (
+                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                  <div className="text-center py-4">
+                    <AlertTriangle className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
+                    <p className="text-sm text-yellow-800">تعذر جلب تنبؤات حركة المرور</p>
+                    <p className="text-xs text-yellow-700 mt-1">سيتم عرض البيانات الأساسية فقط</p>
+                  </div>
+                </div>
               ) : routePredictions && Array.isArray(routePredictions.predictions) && routePredictions.predictions.length > 0 && (
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -903,12 +919,12 @@ export default function PlannedRoutePage() {
                     })}
                   </div>
 
-                  {routePredictions.avgCongestion !== undefined && (
+                  {routePredictions.avgCongestion !== undefined && routePredictions.avgCongestion !== null && (
                     <div className="mt-4 pt-4 border-t border-gray-300">
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-gray-700">متوسط الازدحام المتوقع</span>
                         <span className="text-xl font-bold text-gray-900">
-                          {routePredictions.avgCongestion.toFixed(0)}%
+                          {Number(routePredictions.avgCongestion).toFixed(0)}%
                         </span>
                       </div>
                     </div>
