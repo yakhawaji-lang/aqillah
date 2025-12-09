@@ -151,7 +151,11 @@ export default function PlannedRoutePage() {
           }
         })
         
-        return res.data.data || null
+        if (res.data.success && res.data.data) {
+          return res.data.data
+        }
+        
+        return null
       } catch (error) {
         console.error('Error fetching route predictions:', error)
         return null

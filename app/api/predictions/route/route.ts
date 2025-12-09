@@ -19,26 +19,28 @@ export async function GET(request: NextRequest) {
 
     if (!originLat || !originLng || !destinationLat || !destinationLng) {
       return NextResponse.json(
-        { error: 'Origin and destination coordinates are required' },
+        { success: false, error: 'Origin and destination coordinates are required' },
         { status: 400 }
       )
     }
 
-    // حساب المسار
-    const routeResult = await googleMapsService.calculateRoute({
-      origin: { lat: originLat, lng: originLng },
-      destination: { lat: destinationLat, lng: destinationLng },
-    })
+    let estimatedTimeMinutes = 30 // افتراضي 30 دقيقة
 
-    if (!routeResult || !routeResult.routes || routeResult.routes.length === 0) {
-      return NextResponse.json(
-        { error: 'Failed to calculate route' },
-        { status: 500 }
-      )
+    try {
+      // حساب المسار
+      const routeResult = await googleMapsService.calculateRoute({
+        origin: { lat: originLat, lng: originLng },
+        destination: { lat: destinationLat, lng: destinationLng },
+      })
+
+      if (routeResult && routeResult.routes && routeResult.routes.length > 0) {
+        const route = routeResult.routes[0]
+        estimatedTimeMinutes = route.duration / 60 // تحويل من ثواني إلى دقائق
+      }
+    } catch (routeError: any) {
+      console.warn('Failed to calculate route, using default time:', routeError.message)
+      // نستمر في التنبؤات حتى لو فشل حساب المسار
     }
-
-    const route = routeResult.routes[0]
-    const estimatedTimeMinutes = route.duration / 60 // تحويل من ثواني إلى دقائق
 
     const now = new Date()
     const targetTime = new Date(now.getTime() + minutesAhead * 60 * 1000)
@@ -103,7 +105,11 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Error generating route predictions:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to generate route predictions' },
+      { 
+        success: false,
+        error: error.message || 'Failed to generate route predictions',
+        data: null
+      },
       { status: 500 }
     )
   }
