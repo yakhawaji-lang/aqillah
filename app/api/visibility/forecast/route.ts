@@ -123,8 +123,20 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('Error fetching visibility forecast:', error)
+    // إذا كان الخطأ متعلق بقاعدة البيانات، إرجاع بيانات فارغة
+    if (error.message?.includes('database') || error.message?.includes('Prisma')) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        message: 'قاعدة البيانات غير متاحة حالياً'
+      })
+    }
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch visibility forecast' },
+      { 
+        success: false,
+        error: error.message || 'فشل في جلب توقعات الرؤية',
+        data: []
+      },
       { status: 500 }
     )
   }

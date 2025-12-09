@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Header } from '@/components/Header'
 import axios from 'axios'
@@ -50,8 +50,8 @@ export default function DataCenterPage() {
 
   const cities = ['الرياض', 'جدة', 'الدمام', 'المدينة المنورة', 'الخبر', 'أبها', 'خميس مشيط']
 
-  // تعريف جميع APIs المتوفرة
-  const apis: ApiData[] = [
+  // تعريف جميع APIs المتوفرة - استخدام useMemo لإعادة بناء الـ endpoints عند تغيير المدينة
+  const apis: ApiData[] = useMemo(() => [
     // Google Maps Traffic APIs
     {
       name: 'مسح شامل للازدحام',
@@ -210,7 +210,7 @@ export default function DataCenterPage() {
       category: 'other',
       description: 'القرارات المرورية المعلقة',
     },
-  ]
+  ], [selectedCity])
 
   // جلب البيانات لكل API
   const fetchApiData = async (api: ApiData) => {
@@ -335,7 +335,8 @@ function ApiCard({ api, selectedCity, isExpanded, onToggle, ApiIcon }: {
   onToggle: () => void
   ApiIcon: any
 }) {
-  const endpoint = api.endpoint.replace(/\$\{selectedCity\}/g, selectedCity)
+  // الـ endpoint تم بناؤه بالفعل في useMemo، لا حاجة للاستبدال
+  const endpoint = api.endpoint
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['api-data', endpoint],

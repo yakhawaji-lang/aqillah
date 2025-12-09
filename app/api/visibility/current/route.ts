@@ -14,11 +14,21 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const city = searchParams.get('city')
 
-    // جلب جميع المقاطع الطرقية
-    const segments = await prisma.roadSegment.findMany({
-      where: city ? { city } : {},
-      take: 100, // حد أقصى 100 مقطع
-    })
+    // محاولة الوصول إلى قاعدة البيانات
+    let segments
+    try {
+      segments = await prisma.roadSegment.findMany({
+        where: city ? { city } : {},
+        take: 100, // حد أقصى 100 مقطع
+      })
+    } catch (dbError: any) {
+      console.warn('Database not available, returning empty data:', dbError.message)
+      return NextResponse.json({
+        success: true,
+        data: [],
+        message: 'قاعدة البيانات غير متاحة حالياً'
+      })
+    }
 
     const poorVisibilitySegments: Array<{
       segmentId: string
@@ -68,8 +78,20 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('Error fetching poor visibility segments:', error)
+    // إذا كان الخطأ متعلق بقاعدة البيانات، إرجاع بيانات فارغة
+    if (error.message?.includes('database') || error.message?.includes('Prisma')) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        message: 'قاعدة البيانات غير متاحة حالياً'
+      })
+    }
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch visibility data' },
+      { 
+        success: false,
+        error: error.message || 'فشل في جلب بيانات الرؤية',
+        data: []
+      },
       { status: 500 }
     )
   }
