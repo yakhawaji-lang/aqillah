@@ -73,13 +73,12 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
   
   const watchIdRef = useRef<number | null>(null)
   const hasRequestedRef = useRef(false)
+  const optionsRef = useRef({ enableHighAccuracy, timeout, maximumAge, watch })
 
-  // محاولة استخدام Capacitor Geolocation API إذا كان متاحاً (للتطبيق المحمول)
-  const getCapacitorLocation = useCallback(async () => {
-    // ملاحظة: Capacitor Geolocation متاح فقط في تطبيق Capacitor المحمول
-    // في الويب، نستخدم navigator.geolocation مباشرة
-    return false
-  }, [])
+  // تحديث optionsRef عند تغيير الخيارات
+  useEffect(() => {
+    optionsRef.current = { enableHighAccuracy, timeout, maximumAge, watch }
+  }, [enableHighAccuracy, timeout, maximumAge, watch])
 
   // معالج نجاح تحديد الموقع
   const handleSuccess = useCallback((position: GeolocationPosition) => {
@@ -140,7 +139,18 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
         errorMessage = 'انتهت مهلة طلب الموقع. جاري المحاولة مرة أخرى...'
         // إعادة المحاولة بعد ثانيتين
         setTimeout(() => {
-          refresh()
+          if (navigator.geolocation) {
+            const opts = optionsRef.current
+            navigator.geolocation.getCurrentPosition(
+              handleSuccess,
+              handleError,
+              {
+                enableHighAccuracy: opts.enableHighAccuracy,
+                timeout: opts.timeout,
+                maximumAge: opts.maximumAge,
+              }
+            )
+          }
         }, 2000)
         return
     }
@@ -148,6 +158,14 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
     if (!hasRequestedRef.current) {
       toast.error(errorMessage, { duration: 4000 })
       hasRequestedRef.current = true
+    }
+  }, [handleSuccess])
+
+  // إيقاف مراقبة الموقع
+  const stopWatching = useCallback(() => {
+    if (watchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current)
+      watchIdRef.current = null
     }
   }, [])
 
@@ -174,13 +192,14 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
 
     setLoading(true)
     
+    const opts = optionsRef.current
     const options: PositionOptions = {
-      enableHighAccuracy,
-      timeout,
-      maximumAge,
+      enableHighAccuracy: opts.enableHighAccuracy,
+      timeout: opts.timeout,
+      maximumAge: opts.maximumAge,
     }
 
-    if (watch) {
+    if (opts.watch) {
       // استخدام watchPosition لتحديث الموقع بشكل مستمر
       watchIdRef.current = navigator.geolocation.watchPosition(
         handleSuccess,
@@ -195,24 +214,19 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
         options
       )
     }
-  }, [enableHighAccuracy, timeout, maximumAge, watch, handleSuccess, handleError])
+  }, [handleSuccess, handleError])
 
   // تحديث الموقع يدوياً
   const refresh = useCallback(() => {
     hasRequestedRef.current = false
+    stopWatching() // إيقاف أي مراقبة سابقة
     getLocation()
-  }, [getLocation])
-
-  // إيقاف مراقبة الموقع
-  const stopWatching = useCallback(() => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current)
-      watchIdRef.current = null
-    }
-  }, [])
+  }, [getLocation, stopWatching])
 
   // جلب الموقع عند تحميل المكون
   useEffect(() => {
+    console.log('📍 useGeolocation: Initializing location request...')
+    
     // محاولة استخدام آخر موقع معروف أولاً
     const lastKnown = getLastKnownLocation()
     if (lastKnown) {
@@ -221,18 +235,45 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
       console.log('📍 Using cached location:', lastKnown)
     }
 
-    // محاولة استخدام Capacitor Geolocation أولاً
-    getCapacitorLocation().then((success) => {
-      if (!success) {
-        // إذا فشل Capacitor، استخدم navigator.geolocation
-        getLocation()
-      }
-    })
+    // طلب الموقع الجديد مباشرة
+    if (!navigator.geolocation) {
+      console.error('❌ Geolocation not supported')
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    
+    const opts = optionsRef.current
+    const options: PositionOptions = {
+      enableHighAccuracy: opts.enableHighAccuracy,
+      timeout: opts.timeout,
+      maximumAge: opts.maximumAge,
+    }
+
+    if (opts.watch) {
+      console.log('📍 Starting watchPosition...')
+      // استخدام watchPosition لتحديث الموقع بشكل مستمر
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        handleSuccess,
+        handleError,
+        options
+      )
+    } else {
+      console.log('📍 Requesting getCurrentPosition...')
+      // استخدام getCurrentPosition لطلب الموقع مرة واحدة
+      navigator.geolocation.getCurrentPosition(
+        handleSuccess,
+        handleError,
+        options
+      )
+    }
 
     return () => {
+      console.log('📍 useGeolocation: Cleaning up...')
       stopWatching()
     }
-  }, []) // يتم التنفيذ مرة واحدة فقط
+  }, []) // يتم التنفيذ مرة واحدة فقط عند التحميل
 
   return {
     location,
@@ -243,4 +284,3 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
     stopWatching,
   }
 }
-
