@@ -752,15 +752,10 @@ export default function PlannedRoutePage() {
                     )
                   }
 
-                  // تحديد نوع route
-                  let routeToUse: any
-                  if (selectedRoute.route && Array.isArray(selectedRoute.route) && selectedRoute.route.length > 0) {
-                    routeToUse = selectedRoute.route
-                  } else {
-                    routeToUse = {
-                      origin: { lat: userLocation[0], lng: userLocation[1] },
-                      destination: { lat: destination[0], lng: destination[1] },
-                    }
+                  // استخدام origin و destination دائماً لضمان عرض المسار على الطرق الفعلية
+                  const routeToUse = {
+                    origin: { lat: userLocation[0], lng: userLocation[1] },
+                    destination: { lat: destination[0], lng: destination[1] },
                   }
 
                   return (
