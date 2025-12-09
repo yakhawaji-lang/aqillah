@@ -14,6 +14,7 @@ export function Header() {
     { href: '/map', label: 'الخريطة' },
     { href: '/alerts', label: 'التنبيهات' },
     { href: '/government', label: 'لوحة الحكومة' },
+    { href: '/government/data-center', label: 'مركز البيانات' },
   ]
 
   return (
