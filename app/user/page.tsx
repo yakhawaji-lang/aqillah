@@ -28,6 +28,7 @@ import { AnimatedCounter } from '@/components/AnimatedCounter'
 import { LocationPicker } from '@/components/LocationPicker'
 import { useRealtimeTraffic } from '@/lib/hooks/useRealtimeTraffic'
 import { useNotifications } from '@/lib/hooks/useNotifications'
+import { useGeolocation } from '@/lib/hooks/useGeolocation'
 import { Volume2, VolumeX } from 'lucide-react'
 import { MapMarker, Alert } from '@/types'
 import axios from 'axios'
@@ -36,65 +37,18 @@ import toast from 'react-hot-toast'
 
 export default function UserAppPage() {
   const router = useRouter()
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [destination, setDestination] = useState<[number, number] | null>(null)
   const [selectedRoute, setSelectedRoute] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'map' | 'alerts' | 'route'>('map')
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
 
-  // جلب موقع المستخدم تلقائياً عند فتح الصفحة
-  useEffect(() => {
-    console.log('📍 Requesting user location...')
-    
-    if (!navigator.geolocation) {
-      console.error('❌ Geolocation not supported')
-      toast.error('المتصفح لا يدعم تحديد الموقع')
-      // لا نضع موقع افتراضي، نتركه null حتى يطلب المستخدم الإذن
-      return
-    }
-
-    // طلب الموقع مع خيارات محسّنة
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const location: [number, number] = [
-          position.coords.latitude,
-          position.coords.longitude
-        ]
-        setUserLocation(location)
-        console.log('✅ User location fetched:', {
-          lat: location[0],
-          lng: location[1],
-          formatted: `${location[0]}, ${location[1]}`,
-          accuracy: position.coords.accuracy,
-        })
-        toast.success('تم تحديد موقعك بنجاح', { duration: 2000 })
-      },
-      (error) => {
-        console.error('❌ Error getting location:', error)
-        let errorMessage = 'فشل في تحديد موقعك'
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'تم رفض الإذن لتحديد الموقع. يرجى السماح بالوصول إلى موقعك من إعدادات المتصفح.'
-            break
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'معلومات الموقع غير متاحة'
-            break
-          case error.TIMEOUT:
-            errorMessage = 'انتهت مهلة طلب الموقع'
-            break
-        }
-        
-        toast.error(errorMessage, { duration: 4000 })
-        // لا نضع موقع افتراضي، نتركه null
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000, // 15 ثانية
-        maximumAge: 0, // لا نستخدم موقع قديم
-      }
-    )
-  }, [])
+  // جلب موقع المستخدم تلقائياً مع تحسينات
+  const { location: userLocation, loading: locationLoading, refresh: refreshLocation } = useGeolocation({
+    enableHighAccuracy: true,
+    timeout: 20000, // 20 ثانية
+    maximumAge: 60000, // دقيقة واحدة
+    watch: true, // مراقبة الموقع بشكل مستمر
+  })
 
   // Real-time traffic data
   const { data: trafficData, isLoading: trafficLoading, isConnected, lastUpdate, refetch: refetchTraffic } = useRealtimeTraffic()

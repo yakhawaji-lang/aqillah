@@ -22,6 +22,7 @@ import {
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { LocationPicker } from '@/components/LocationPicker'
+import { useGeolocation } from '@/lib/hooks/useGeolocation'
 import { Alert } from '@/types'
 
 interface RouteStep {
@@ -57,9 +58,16 @@ export default function NavigationPage() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [isNavigating, setIsNavigating] = useState(false)
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true)
-  const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null)
   const [destination, setDestination] = useState<[number, number] | null>(null) // B: الوجهة
   const [destinationName, setDestinationName] = useState<string>('') // اسم الوجهة
+  
+  // جلب موقع المستخدم تلقائياً مع تحسينات
+  const { location: currentLocation, loading: locationLoading, refresh: refreshLocation } = useGeolocation({
+    enableHighAccuracy: true,
+    timeout: 20000, // 20 ثانية
+    maximumAge: 30000, // 30 ثانية
+    watch: true, // مراقبة الموقع بشكل مستمر أثناء التنقل
+  })
   const [distanceToNextTurn, setDistanceToNextTurn] = useState<number | null>(null)
   const [isPaused, setIsPaused] = useState(false)
   const [isLoadingRoute, setIsLoadingRoute] = useState(true)
@@ -161,38 +169,20 @@ export default function NavigationPage() {
     }
   }, [route])
 
-  // جلب موقع المستخدم تلقائياً عند فتح الصفحة
+  // تحديث الموقع عند تغييره من useGeolocation
   useEffect(() => {
-    if (navigator.geolocation) {
-      console.log('📍 Requesting user location...')
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location: [number, number] = [
-            position.coords.latitude,  // خط العرض
-            position.coords.longitude  // خط الطول
-          ]
-          setCurrentLocation(location)
-          console.log('✅ User location (A) fetched:', {
-            lat: location[0],
-            lng: location[1],
-            formatted: `${location[0]}, ${location[1]}`,
-          })
-        },
-        (error) => {
-          console.error('❌ Error getting user location:', error)
-          toast.error('فشل في جلب موقعك الحالي. يرجى التأكد من تفعيل الموقع.')
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      )
-    } else {
-      console.error('❌ Geolocation not supported')
-      toast.error('المتصفح لا يدعم تحديد الموقع')
+    if (currentLocation) {
+      console.log('✅ Current location updated:', {
+        lat: currentLocation[0],
+        lng: currentLocation[1],
+      })
+      
+      // تحديث التنقل إذا كان نشطاً
+      if (isNavigating && route) {
+        updateNavigation(currentLocation)
+      }
     }
-  }, []) // يتم التنفيذ مرة واحدة عند تحميل الصفحة
+  }, [currentLocation, isNavigating, route])
 
   // الاستماع لتحديثات المسار من Google Maps Directions API
   useEffect(() => {
@@ -633,33 +623,16 @@ export default function NavigationPage() {
   useEffect(() => {
     if (!isNavigating || isPaused) return
 
-    if (navigator.geolocation) {
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (position) => {
-          const newLocation: [number, number] = [
-            position.coords.latitude,
-            position.coords.longitude
-          ]
-          setCurrentLocation(newLocation)
-          updateNavigation(newLocation)
-        },
-        (error) => {
-          console.error('Error watching position:', error)
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 1000
-        }
-      )
-    }
-
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current)
-      }
-    }
+    // useGeolocation يتولى مراقبة الموقع تلقائياً
+    // لا حاجة لـ watchPosition منفصل
   }, [isNavigating, isPaused, route, currentStepIndex])
+  
+  // تحديث الموقع من useGeolocation أثناء التنقل
+  useEffect(() => {
+    if (isNavigating && !isPaused && currentLocation && route) {
+      updateNavigation(currentLocation)
+    }
+  }, [currentLocation, isNavigating, isPaused, route])
 
   const toggleNavigation = () => {
     if (!route) {
@@ -679,57 +652,29 @@ export default function NavigationPage() {
       setIsNavigating(true)
       setIsPaused(false)
       
-          // استخدام الموقع الحالي الموجود بدلاً من طلب موقع جديد
-          if (currentLocation && currentLocation.length === 2) {
-            console.log('✅ Starting navigation with current location:', {
-              lat: currentLocation[0],
-              lng: currentLocation[1],
-              formatted: `${currentLocation[0]}, ${currentLocation[1]}`,
-            })
-            
-            // إعلان بدء التوجيه مع معلومات المسار
-            if (route && route.steps && route.steps.length > 0) {
-              const firstStep = route.steps[0]
-              const totalDistance = route.distance
-              const totalTime = route.estimatedTime
-              
-              speak(`تم بدء التوجيه. المسافة ${totalDistance.toFixed(1)} كيلومتر. الوقت المتوقع ${Math.round(totalTime)} دقيقة. ${firstStep.instruction || 'تابع المسار'}`)
-            } else {
-              speak('تم بدء التوجيه. اتبع التعليمات')
-            }
-          } else {
-            // فقط إذا لم يكن هناك موقع حالي، نطلبه
-            if (navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  const startLocation: [number, number] = [
-                    position.coords.latitude,
-                    position.coords.longitude
-                  ]
-                  setCurrentLocation(startLocation)
-                  console.log('✅ Got location for navigation start:', {
-                    lat: startLocation[0],
-                    lng: startLocation[1],
-                  })
-                  
-                  // إعلان بدء التوجيه مع معلومات المسار
-                  if (route && route.steps && route.steps.length > 0) {
-                    const firstStep = route.steps[0]
-                    const totalDistance = route.distance
-                    const totalTime = route.estimatedTime
-                    
-                    speak(`تم بدء التوجيه. المسافة ${totalDistance.toFixed(1)} كيلومتر. الوقت المتوقع ${Math.round(totalTime)} دقيقة. ${firstStep.instruction || 'تابع المسار'}`)
-                  } else {
-                    speak('تم بدء التوجيه. اتبع التعليمات')
-                  }
-                },
-                (error) => {
-                  console.error('Error getting location:', error)
-                  toast.error('فشل في جلب موقعك الحالي')
-                }
-              )
-            }
-          }
+      // استخدام الموقع الحالي من useGeolocation
+      if (currentLocation && currentLocation.length === 2) {
+        console.log('✅ Starting navigation with current location:', {
+          lat: currentLocation[0],
+          lng: currentLocation[1],
+          formatted: `${currentLocation[0]}, ${currentLocation[1]}`,
+        })
+        
+        // إعلان بدء التوجيه مع معلومات المسار
+        if (route && route.steps && route.steps.length > 0) {
+          const firstStep = route.steps[0]
+          const totalDistance = route.distance
+          const totalTime = route.estimatedTime
+          
+          speak(`تم بدء التوجيه. المسافة ${totalDistance.toFixed(1)} كيلومتر. الوقت المتوقع ${Math.round(totalTime)} دقيقة. ${firstStep.instruction || 'تابع المسار'}`)
+        } else {
+          speak('تم بدء التوجيه. اتبع التعليمات')
+        }
+      } else {
+        // إذا لم يكن هناك موقع، نطلبه
+        refreshLocation()
+        toast('جاري تحديد موقعك...', { icon: '📍' })
+      }
     }
   }
 
