@@ -102,7 +102,7 @@ export default function DataCenterPage() {
     },
     {
       name: 'حدود السرعة',
-      endpoint: `/api/traffic/speed-limits?points=${currentCityCoords.lat},${currentCityCoords.lng}|${currentCityCoords.lat + 0.01},${currentCityCoords.lng + 0.01}`,
+      endpoint: `/api/traffic/speed-limits?points=${currentCityCoords.lat},${currentCityCoords.lng}|${currentCityCoords.lat + 0.01},${currentCityCoords.lng + 0.01}`.replace(/\/$/, ''),
       icon: Gauge,
       color: 'orange',
       category: 'traffic',
@@ -352,7 +352,10 @@ function ApiCard({ api, selectedCity, isExpanded, onToggle, ApiIcon }: {
   ApiIcon: any
 }) {
   // الـ endpoint تم بناؤه بالفعل في useMemo، لكن يجب التأكد من عدم وجود `/` في النهاية
-  const endpoint = api.endpoint.replace(/\/$/, '')
+  // إزالة `/` في نهاية الـ URL أو بعد query parameters
+  let endpoint = api.endpoint.replace(/\/$/, '')
+  // إزالة `/` بعد آخر parameter في query string
+  endpoint = endpoint.replace(/([^\/])\/(\?|$)/g, '$1$2')
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['api-data', endpoint],
