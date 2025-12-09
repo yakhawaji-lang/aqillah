@@ -273,8 +273,17 @@ export default function PlannedRoutePage() {
         destinationLng: destination[1],
       })
       
+      console.log('Route API Response:', res.data)
+      
       if (res.data.success && res.data.data) {
         const routeData = res.data.data
+        console.log('Route Data:', routeData)
+        
+        // التأكد من وجود البيانات الأساسية
+        if (!routeData.route || !Array.isArray(routeData.route) || routeData.route.length === 0) {
+          console.warn('Route data missing route array, but continuing...')
+        }
+        
         setSelectedRoute(routeData)
         toast.success('تم حساب المسار بنجاح')
       } else {
@@ -282,7 +291,13 @@ export default function PlannedRoutePage() {
       }
     } catch (error: any) {
       console.error('Error calculating route:', error)
-      toast.error(error.response?.data?.error || error.message || 'حدث خطأ أثناء حساب المسار')
+      const errorMessage = error.response?.data?.error || error.message || 'حدث خطأ أثناء حساب المسار'
+      console.error('Error details:', {
+        message: errorMessage,
+        response: error.response?.data,
+        status: error.response?.status,
+      })
+      toast.error(errorMessage)
     } finally {
       setIsCalculatingRoute(false)
     }
@@ -719,52 +734,28 @@ export default function PlannedRoutePage() {
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <h3 className="font-bold text-gray-900 mb-4">خريطة المسار</h3>
             <div className="h-[400px] rounded-lg overflow-hidden">
-              {(() => {
-                try {
-                  // استخدام route ككائن مع origin و destination
-                  // إذا كان هناك polyline، نستخدمه، وإلا ستستخدم GoogleTrafficMap Directions API
-                  const routeConfig: any = {
-                    origin: { lat: userLocation[0], lng: userLocation[1] },
-                    destination: { lat: destination[0], lng: destination[1] },
-                  }
-                  
-                  // إضافة polyline إذا كان موجوداً
-                  if (selectedRoute.polyline && typeof selectedRoute.polyline === 'string') {
-                    routeConfig.polyline = selectedRoute.polyline
-                  }
-                  
-                  // إضافة route array إذا كان موجوداً
-                  if (selectedRoute.route && Array.isArray(selectedRoute.route) && selectedRoute.route.length > 0) {
-                    routeConfig.route = selectedRoute.route
-                  }
-                  
-                  return (
-                    <GoogleTrafficMap
-                      key={`planned-route-map-${selectedRoute.id || Date.now()}`}
-                      center={{
-                        lat: (userLocation[0] + destination[0]) / 2,
-                        lng: (userLocation[1] + destination[1]) / 2,
-                      }}
-                      zoom={12}
-                      markers={mapMarkers}
-                      route={routeConfig}
-                      currentLocation={userLocation}
-                      showTrafficLayer={true}
-                      className="w-full h-full"
-                    />
-                  )
-                } catch (error) {
-                  console.error('Error rendering map:', error)
-                  return (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <div className="text-center">
-                        <p className="text-red-600 mb-2">خطأ في عرض الخريطة</p>
-                        <p className="text-sm text-gray-600">{error instanceof Error ? error.message : 'حدث خطأ غير متوقع'}</p>
-                      </div>
-                    </div>
-                  )
+              <GoogleTrafficMap
+                key={`planned-route-map-${selectedRoute.id || Date.now()}`}
+                center={{
+                  lat: (userLocation[0] + destination[0]) / 2,
+                  lng: (userLocation[1] + destination[1]) / 2,
+                }}
+                zoom={12}
+                markers={mapMarkers}
+                route={
+                  // إذا كان هناك route array، استخدمه مباشرة
+                  selectedRoute.route && Array.isArray(selectedRoute.route) && selectedRoute.route.length > 0
+                    ? selectedRoute.route
+                    : // وإلا استخدم origin و destination (ستستخدم GoogleTrafficMap Directions API)
+                      {
+                        origin: { lat: userLocation[0], lng: userLocation[1] },
+                        destination: { lat: destination[0], lng: destination[1] },
+                      }
                 }
-              })()}
+                currentLocation={userLocation}
+                showTrafficLayer={true}
+                className="w-full h-full"
+              />
             </div>
           </div>
         )}
