@@ -108,6 +108,18 @@ export default function PlannedRoutePage() {
     queryFn: async () => {
       if (!destination || !departureDateTime || !isFutureDate) return null
       
+      // التحقق من صحة departureDateTime
+      if (isNaN(departureDateTime.getTime())) {
+        console.error('Invalid departureDateTime for weather:', departureDateTime)
+        return null
+      }
+      
+      // التحقق من صحة الإحداثيات
+      if (!Array.isArray(destination) || destination.length !== 2) {
+        console.error('Invalid destination coordinates:', destination)
+        return null
+      }
+      
       try {
         const res = await axios.get(`/api/weather/impact`, {
           params: {
@@ -125,7 +137,7 @@ export default function PlannedRoutePage() {
         return null
       }
     },
-    enabled: !!destination && !!departureDateTime && isFutureDate,
+    enabled: !!destination && !!departureDateTime && isFutureDate && !isNaN(departureDateTime?.getTime()),
     retry: 1,
     retryDelay: 1000,
   })
@@ -164,13 +176,31 @@ export default function PlannedRoutePage() {
   const { data: routePredictions, isLoading: routePredictionsLoading, error: routePredictionsError } = useQuery({
     queryKey: ['route-predictions', selectedRoute?.id, departureDate, departureTime],
     queryFn: async () => {
-      if (!selectedRoute || !userLocation || !destination || !departureDateTime || !isFutureDate) return null
+      // التحقق من جميع الشروط قبل المتابعة
+      if (!selectedRoute || !userLocation || !destination || !departureDateTime || !isFutureDate) {
+        return null
+      }
+      
+      // التحقق من صحة departureDateTime
+      if (isNaN(departureDateTime.getTime())) {
+        console.error('Invalid departureDateTime:', departureDateTime)
+        return null
+      }
       
       try {
         const now = new Date()
         const minutesAhead = Math.ceil((departureDateTime.getTime() - now.getTime()) / (1000 * 60))
         
-        if (minutesAhead <= 0) return null
+        if (minutesAhead <= 0 || isNaN(minutesAhead)) {
+          return null
+        }
+        
+        // التحقق من صحة الإحداثيات
+        if (!Array.isArray(userLocation) || userLocation.length !== 2 || 
+            !Array.isArray(destination) || destination.length !== 2) {
+          console.error('Invalid coordinates:', { userLocation, destination })
+          return null
+        }
         
         // استخدام API للتنبؤات المرورية للمسار
         const res = await axios.get(`/api/predictions/route`, {
@@ -195,7 +225,7 @@ export default function PlannedRoutePage() {
         return null
       }
     },
-    enabled: !!selectedRoute && !!userLocation && !!destination && !!departureDateTime && isFutureDate,
+    enabled: !!selectedRoute && !!userLocation && !!destination && !!departureDateTime && isFutureDate && !isNaN(departureDateTime?.getTime()),
     retry: 1, // إعادة المحاولة مرة واحدة فقط
     retryDelay: 1000, // انتظار ثانية واحدة قبل إعادة المحاولة
   })
