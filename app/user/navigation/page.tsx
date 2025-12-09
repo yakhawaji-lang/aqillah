@@ -724,7 +724,7 @@ export default function NavigationPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-6">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/user')}
             className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -744,7 +744,7 @@ export default function NavigationPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-6">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/user')}
             className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -778,7 +778,7 @@ export default function NavigationPage() {
         {/* زر العودة + حقل البحث عن الوجهة */}
         <div className="bg-white border-b border-gray-200 px-4 py-3 space-y-3">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/user')}
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition"
           >
             <ArrowLeft className="w-5 h-5" />
