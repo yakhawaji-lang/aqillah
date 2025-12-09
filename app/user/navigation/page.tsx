@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import GoogleTrafficMap from '@/components/GoogleTrafficMap'
 import { 
   ArrowLeft, 
@@ -13,11 +14,15 @@ import {
   Route,
   Play,
   Pause,
-  RotateCcw
+  RotateCcw,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { LocationPicker } from '@/components/LocationPicker'
+import { Alert } from '@/types'
 
 interface RouteStep {
   instruction: string
@@ -60,6 +65,7 @@ export default function NavigationPage() {
   const [isLoadingRoute, setIsLoadingRoute] = useState(true)
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
   const [routeError, setRouteError] = useState<string | null>(null)
+  const [showAlerts, setShowAlerts] = useState(true)
   
   const watchIdRef = useRef<number | null>(null)
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null)
@@ -313,6 +319,193 @@ export default function NavigationPage() {
 
     return R * c
   }
+
+  // حساب المسافة من نقطة إلى أقرب نقطة على المسار
+  const distanceToRoute = (
+    point: [number, number],
+    route: Array<[number, number]>
+  ): number => {
+    if (!route || route.length === 0) return Infinity
+    
+    let minDistance = Infinity
+    for (let i = 0; i < route.length - 1; i++) {
+      const segmentStart = route[i]
+      const segmentEnd = route[i + 1]
+      
+      // حساب المسافة من النقطة إلى القطعة المستقيمة
+      const distance = pointToLineDistance(point, segmentStart, segmentEnd)
+      minDistance = Math.min(minDistance, distance)
+    }
+    
+    return minDistance
+  }
+
+  // حساب المسافة من نقطة إلى قطعة مستقيمة
+  const pointToLineDistance = (
+    point: [number, number],
+    lineStart: [number, number],
+    lineEnd: [number, number]
+  ): number => {
+    const A = point[0] - lineStart[0]
+    const B = point[1] - lineStart[1]
+    const C = lineEnd[0] - lineStart[0]
+    const D = lineEnd[1] - lineStart[1]
+
+    const dot = A * C + B * D
+    const lenSq = C * C + D * D
+    let param = -1
+    if (lenSq !== 0) param = dot / lenSq
+
+    let xx, yy
+
+    if (param < 0) {
+      xx = lineStart[0]
+      yy = lineStart[1]
+    } else if (param > 1) {
+      xx = lineEnd[0]
+      yy = lineEnd[1]
+    } else {
+      xx = lineStart[0] + param * C
+      yy = lineStart[1] + param * D
+    }
+
+    const dx = point[0] - xx
+    const dy = point[1] - yy
+    return Math.sqrt(dx * dx + dy * dy) * 111000 // تحويل إلى متر تقريباً
+  }
+
+  // جلب التنبيهات المرتبطة بالمسار
+  const { data: allAlerts } = useQuery({
+    queryKey: ['route-alerts', route?.id],
+    queryFn: async () => {
+      if (!route) return []
+      
+      try {
+        // جلب جميع التنبيهات النشطة
+        const res = await axios.get('/api/alerts?activeOnly=true')
+        return res.data.data || []
+      } catch (error) {
+        console.error('Error fetching alerts:', error)
+        return []
+      }
+    },
+    enabled: !!route,
+    refetchInterval: 60000, // تحديث كل دقيقة
+  })
+
+  // تصفية وترتيب التنبيهات حسب المسار
+  const routeAlerts = useMemo(() => {
+    if (!route || !route.route || !allAlerts || allAlerts.length === 0) return []
+
+    const MAX_DISTANCE_FROM_ROUTE = 500 // متر - التنبيهات ضمن 500 متر من المسار
+
+    // تصفية التنبيهات القريبة من المسار
+    const nearbyAlerts = allAlerts
+      .map((alert: Alert) => {
+        // استخراج الإحداثيات من التنبيه
+        let alertLat: number | null = null
+        let alertLng: number | null = null
+
+        // محاولة استخراج الإحداثيات من التنبيه
+        const alertAny = alert as any
+        if (alertAny.location) {
+          alertLat = alertAny.location.lat || alertAny.location[0]
+          alertLng = alertAny.location.lng || alertAny.location[1]
+        } else if (alertAny.lat && alertAny.lng) {
+          alertLat = alertAny.lat
+          alertLng = alertAny.lng
+        } else if (alertAny.segmentId) {
+          // محاولة الحصول على الإحداثيات من segmentId إذا كان متوفراً
+          // في هذه الحالة سنستخدم إحداثيات تقريبية من المدينة
+          const cityCoords: Record<string, { lat: number; lng: number }> = {
+            'الرياض': { lat: 24.7136, lng: 46.6753 },
+            'جدة': { lat: 21.4858, lng: 39.1925 },
+            'الدمام': { lat: 26.4207, lng: 50.0888 },
+            'المدينة المنورة': { lat: 24.5247, lng: 39.5692 },
+            'الخبر': { lat: 26.2794, lng: 50.2080 },
+            'أبها': { lat: 18.2164, lng: 42.5042 },
+            'خميس مشيط': { lat: 18.3000, lng: 42.7333 },
+          }
+          const coords = cityCoords[(alert as any).city || 'الرياض']
+          if (coords) {
+            alertLat = coords.lat
+            alertLng = coords.lng
+          }
+        }
+
+        if (!alertLat || !alertLng) return null
+
+        const alertPoint: [number, number] = [alertLat, alertLng]
+        const distance = distanceToRoute(alertPoint, route.route)
+
+        if (distance <= MAX_DISTANCE_FROM_ROUTE) {
+          // حساب موضع التنبيه على المسار (نسبة المسافة من البداية)
+          let routePosition = 0
+          let cumulativeDistance = 0
+          let totalDistance = 0
+
+          // حساب المسافة الإجمالية للمسار
+          for (let i = 0; i < route.route.length - 1; i++) {
+            totalDistance += calculateDistance(route.route[i], route.route[i + 1])
+          }
+
+          // إيجاد أقرب نقطة على المسار
+          let minDistToRoute = Infinity
+          let closestIndex = 0
+          for (let i = 0; i < route.route.length - 1; i++) {
+            const dist = pointToLineDistance(alertPoint, route.route[i], route.route[i + 1])
+            if (dist < minDistToRoute) {
+              minDistToRoute = dist
+              closestIndex = i
+            }
+          }
+
+          // حساب المسافة المتراكمة حتى أقرب نقطة
+          for (let i = 0; i < closestIndex; i++) {
+            cumulativeDistance += calculateDistance(route.route[i], route.route[i + 1])
+          }
+
+          routePosition = totalDistance > 0 ? cumulativeDistance / totalDistance : 0
+
+          return {
+            ...alert,
+            distanceFromRoute: distance,
+            routePosition, // 0 = البداية، 1 = النهاية
+            routeDistance: cumulativeDistance, // المسافة من البداية
+          }
+        }
+
+        return null
+      })
+      .filter((alert: any): alert is Alert & { distanceFromRoute: number; routePosition: number; routeDistance: number } => alert !== null)
+
+    // ترتيب التنبيهات حسب موضعها على المسار (من البداية إلى النهاية)   
+    return nearbyAlerts.sort((a: any, b: any) => a.routePosition - b.routePosition)
+  }, [route, allAlerts])
+
+  // حساب المسافة المتبقية حتى التنبيه التالي
+  const nextAlertDistance = useMemo(() => {
+    if (!route || !routeAlerts || routeAlerts.length === 0 || !currentLocation) return null
+
+    const currentRoutePosition = route.route.findIndex((point, index) => {
+      if (index === route.route.length - 1) return false
+      const dist = calculateDistance(currentLocation, point)
+      return dist < 100 // ضمن 100 متر
+    })
+
+    if (currentRoutePosition === -1) return null
+
+    // إيجاد التنبيه التالي بعد الموقع الحالي
+    let currentRouteDistance = 0
+    for (let i = 0; i < currentRoutePosition; i++) {
+      currentRouteDistance += calculateDistance(route.route[i], route.route[i + 1])
+    }
+
+    const nextAlert = routeAlerts.find((alert: any) => alert.routeDistance > currentRouteDistance)
+    if (!nextAlert) return null
+
+    return nextAlert.routeDistance - currentRouteDistance
+  }, [route, routeAlerts, currentLocation])
 
   const speak = (text: string) => {
     if (!isVoiceEnabled) return
@@ -898,7 +1091,81 @@ export default function NavigationPage() {
               )}
             </div>
 
-            {/* القسم الرابع: قائمة الخطوات */}
+            {/* القسم الرابع: التنبيهات على المسار */}
+            {routeAlerts && routeAlerts.length > 0 && (
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                <button
+                  onClick={() => setShowAlerts(!showAlerts)}
+                  className="w-full flex items-center justify-between mb-3"
+                >
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-orange-500" />
+                    تنبيهات على المسار ({routeAlerts.length})
+                  </h3>
+                  {showAlerts ? (
+                    <ChevronUp className="w-5 h-5 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                  )}
+                </button>
+                
+                {showAlerts && (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {routeAlerts.map((alert: any, index: number) => {
+                      const severityColors = {
+                        critical: 'bg-red-50 border-red-300 text-red-800',
+                        high: 'bg-orange-50 border-orange-300 text-orange-800',
+                        medium: 'bg-yellow-50 border-yellow-300 text-yellow-800',
+                        low: 'bg-blue-50 border-blue-300 text-blue-800',
+                      }
+                      
+                      const severityColor = severityColors[alert.severity as keyof typeof severityColors] || severityColors.low
+                      
+                      return (
+                        <div
+                          key={alert.id || index}
+                          className={`p-3 rounded-lg border-2 ${severityColor}`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                              alert.severity === 'critical' ? 'text-red-600' :
+                              alert.severity === 'high' ? 'text-orange-600' :
+                              alert.severity === 'medium' ? 'text-yellow-600' :
+                              'text-blue-600'
+                            }`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm mb-1">{(alert as any).roadName || alert.message.split(' ').slice(0, 3).join(' ') || 'تنبيه'}</p>
+                              <p className="text-xs mb-2">{alert.message}</p>
+                              <div className="flex items-center gap-3 text-xs opacity-75">
+                                <span className="flex items-center gap-1">
+                                  <Route className="w-3 h-3" />
+                                  {formatDistance(alert.routeDistance || 0)} على المسار
+                                </span>
+                                {alert.distanceFromRoute && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {Math.round(alert.distanceFromRoute)}م من المسار
+                                  </span>
+                                )}
+                              </div>
+                              {nextAlertDistance !== null && index === 0 && (
+                                <div className="mt-2 pt-2 border-t border-current/20">
+                                  <p className="text-xs font-medium">
+                                    التنبيه التالي بعد: {formatDistance(nextAlertDistance)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* القسم الخامس: قائمة الخطوات */}
             {route.steps && route.steps.length > 0 && (
               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
                 <h3 className="font-bold text-gray-900 mb-3">خطوات المسار</h3>
