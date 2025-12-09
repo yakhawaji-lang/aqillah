@@ -865,8 +865,8 @@ export default function PlannedRoutePage() {
                   
                   <div className="space-y-3">
                     {routePredictions.predictions.map((prediction: any, index: number) => {
-                      const congestionIndex = prediction.predictedIndex || prediction.congestionIndex || 0
-                      const delayMinutes = prediction.predictedDelayMinutes || prediction.delayMinutes || 0
+                      const congestionIndex = Number(prediction.predictedIndex || prediction.congestionIndex || 0)
+                      const delayMinutes = Number(prediction.predictedDelayMinutes || prediction.delayMinutes || 0)
                       const congestionColor = 
                         congestionIndex >= 70 ? 'bg-red-100 border-red-300 text-red-800' :
                         congestionIndex >= 50 ? 'bg-orange-100 border-orange-300 text-orange-800' :
@@ -891,24 +891,24 @@ export default function PlannedRoutePage() {
                             <div>
                               <p className="text-xs opacity-80 mb-1">التأخير المتوقع</p>
                               <p className="font-bold text-lg">
-                                {delayMinutes > 0 ? `${delayMinutes.toFixed(1)} دقيقة` : 'غير محدد'}
+                                {delayMinutes > 0 ? `${Number(delayMinutes).toFixed(1)} دقيقة` : 'غير محدد'}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs opacity-80 mb-1">مستوى الثقة</p>
                               <p className="font-bold text-lg">
-                                {prediction.confidence ? `${Math.round(prediction.confidence * 100)}%` : 'غير محدد'}
+                                {prediction.confidence ? `${Math.round(Number(prediction.confidence) * 100)}%` : 'غير محدد'}
                               </p>
                             </div>
                           </div>
                           
-                          {prediction.factors && prediction.factors.length > 0 && (
+                          {prediction.factors && Array.isArray(prediction.factors) && prediction.factors.length > 0 && (
                             <div className="mt-3 pt-3 border-t border-current border-opacity-20">
                               <p className="text-xs font-medium mb-2">العوامل المؤثرة:</p>
                               <div className="flex flex-wrap gap-2">
                                 {prediction.factors.map((factor: string, idx: number) => (
                                   <span key={idx} className="text-xs bg-white bg-opacity-50 px-2 py-1 rounded">
-                                    {factor}
+                                    {String(factor)}
                                   </span>
                                 ))}
                               </div>
@@ -919,7 +919,7 @@ export default function PlannedRoutePage() {
                     })}
                   </div>
 
-                  {routePredictions.avgCongestion !== undefined && routePredictions.avgCongestion !== null && (
+                  {routePredictions.avgCongestion !== undefined && routePredictions.avgCongestion !== null && !isNaN(Number(routePredictions.avgCongestion)) && (
                     <div className="mt-4 pt-4 border-t border-gray-300">
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-gray-700">متوسط الازدحام المتوقع</span>
@@ -972,7 +972,7 @@ export default function PlannedRoutePage() {
                         <span className="text-sm text-gray-600">الأمطار</span>
                       </div>
                       <p className="text-lg font-bold text-gray-900">
-                        {weatherData.precipitation ? `${weatherData.precipitation.toFixed(1)} ملم` : '0 ملم'}
+                        {weatherData.precipitation ? `${Number(weatherData.precipitation).toFixed(1)} ملم` : '0 ملم'}
                       </p>
                     </div>
 
@@ -982,7 +982,7 @@ export default function PlannedRoutePage() {
                         <span className="text-sm text-gray-600">الرؤية</span>
                       </div>
                       <p className="text-lg font-bold text-gray-900">
-                        {weatherData.visibility ? `${(weatherData.visibility / 1000).toFixed(1)} كم` : 'غير محدد'}
+                        {weatherData.visibility ? `${(Number(weatherData.visibility) / 1000).toFixed(1)} كم` : 'غير محدد'}
                       </p>
                     </div>
 
@@ -992,7 +992,7 @@ export default function PlannedRoutePage() {
                         <span className="text-sm text-gray-600">سرعة الرياح</span>
                       </div>
                       <p className="text-lg font-bold text-gray-900">
-                        {weatherData.windSpeed ? `${weatherData.windSpeed.toFixed(1)} كم/س` : 'غير محدد'}
+                        {weatherData.windSpeed ? `${Number(weatherData.windSpeed).toFixed(1)} كم/س` : 'غير محدد'}
                       </p>
                     </div>
                   </div>
