@@ -53,11 +53,11 @@ export default function UserAppPage() {
   // Real-time traffic data
   const { data: trafficData, isLoading: trafficLoading, isConnected, lastUpdate, refetch: refetchTraffic } = useRealtimeTraffic()
   
-  // Notifications
-  const { alerts: apiAlerts, hasNewAlerts, soundEnabled, setSoundEnabled } = useNotifications(true)
+  // Notifications - فقط إذا كان هناك مسار محدد
+  const { alerts: apiAlerts, hasNewAlerts, soundEnabled, setSoundEnabled } = useNotifications(!!selectedRoute)
   
   // استخدام البيانات من API فقط
-  const alerts = apiAlerts || []
+  const allAlerts = apiAlerts || []
 
   // Search and filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -77,6 +77,149 @@ export default function UserAppPage() {
     }
     return true
   }) || []
+
+  // حساب المسافة بين نقطتين (Haversine formula)
+  const calculateDistance = (point1: [number, number], point2: [number, number]): number => {
+    const R = 6371000 // نصف قطر الأرض بالمتر
+    const lat1 = point1[0] * Math.PI / 180
+    const lat2 = point2[0] * Math.PI / 180
+    const deltaLat = (point2[0] - point1[0]) * Math.PI / 180
+    const deltaLng = (point2[1] - point1[1]) * Math.PI / 180
+
+    const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) *
+      Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c
+  }
+
+  // حساب المسافة من نقطة إلى قطعة مستقيمة
+  const pointToLineDistance = (
+    point: [number, number],
+    lineStart: [number, number],
+    lineEnd: [number, number]
+  ): number => {
+    const A = point[0] - lineStart[0]
+    const B = point[1] - lineStart[1]
+    const C = lineEnd[0] - lineStart[0]
+    const D = lineEnd[1] - lineStart[1]
+
+    const dot = A * C + B * D
+    const lenSq = C * C + D * D
+    let param = -1
+
+    if (lenSq !== 0) {
+      param = dot / lenSq
+    }
+
+    let xx: number, yy: number
+
+    if (param < 0) {
+      xx = lineStart[0]
+      yy = lineStart[1]
+    } else if (param > 1) {
+      xx = lineEnd[0]
+      yy = lineEnd[1]
+    } else {
+      xx = lineStart[0] + param * C
+      yy = lineStart[1] + param * D
+    }
+
+    const dx = point[0] - xx
+    const dy = point[1] - yy
+    return Math.sqrt(dx * dx + dy * dy) * 111000 // تحويل إلى متر تقريباً
+  }
+
+  // حساب المسافة من نقطة إلى أقرب نقطة على المسار
+  const distanceToRoute = (
+    point: [number, number],
+    route: Array<[number, number]>
+  ): number => {
+    if (!route || route.length === 0) return Infinity
+    
+    let minDistance = Infinity
+    for (let i = 0; i < route.length - 1; i++) {
+      const segmentStart = route[i]
+      const segmentEnd = route[i + 1]
+      
+      const distance = pointToLineDistance(point, segmentStart, segmentEnd)
+      minDistance = Math.min(minDistance, distance)
+    }
+    
+    return minDistance
+  }
+
+  // تصفية الإشعارات المتعلقة بالمسار
+  const routeAlerts = useMemo(() => {
+    if (!selectedRoute || !selectedRoute.route || !allAlerts || allAlerts.length === 0) return []
+
+    const MAX_DISTANCE_FROM_ROUTE = 500 // متر - التنبيهات ضمن 500 متر من المسار
+
+    const nearbyAlerts = allAlerts
+      .map((alert: any) => {
+        // استخراج الإحداثيات من التنبيه
+        let alertLat: number | null = null
+        let alertLng: number | null = null
+
+        if (alert.location) {
+          if (Array.isArray(alert.location)) {
+            alertLat = alert.location[0]
+            alertLng = alert.location[1]
+          } else if (typeof alert.location === 'object' && 'lat' in alert.location && 'lng' in alert.location) {
+            alertLat = alert.location.lat
+            alertLng = alert.location.lng
+          }
+        }
+
+        if (!alertLat || !alertLng) return null
+
+        const alertPoint: [number, number] = [alertLat, alertLng]
+        const distance = distanceToRoute(alertPoint, selectedRoute.route)
+
+        if (distance <= MAX_DISTANCE_FROM_ROUTE) {
+          // حساب موضع التنبيه على المسار
+          let routePosition = 0
+          let cumulativeDistance = 0
+          let totalDistance = 0
+
+          for (let i = 0; i < selectedRoute.route.length - 1; i++) {
+            totalDistance += calculateDistance(selectedRoute.route[i], selectedRoute.route[i + 1])
+          }
+
+          let minDistToRoute = Infinity
+          let closestIndex = 0
+          for (let i = 0; i < selectedRoute.route.length - 1; i++) {
+            const dist = pointToLineDistance(alertPoint, selectedRoute.route[i], selectedRoute.route[i + 1])
+            if (dist < minDistToRoute) {
+              minDistToRoute = dist
+              closestIndex = i
+            }
+          }
+
+          for (let i = 0; i < closestIndex; i++) {
+            cumulativeDistance += calculateDistance(selectedRoute.route[i], selectedRoute.route[i + 1])
+          }
+
+          routePosition = totalDistance > 0 ? cumulativeDistance / totalDistance : 0
+
+          return {
+            ...alert,
+            distanceFromRoute: distance,
+            routePosition,
+            routeDistance: cumulativeDistance,
+          }
+        }
+
+        return null
+      })
+      .filter((alert): alert is Alert & { distanceFromRoute: number; routePosition: number; routeDistance: number } => alert !== null)
+
+    return nearbyAlerts.sort((a: any, b: any) => a.routePosition - b.routePosition)
+  }, [selectedRoute, allAlerts])
+
+  // استخدام routeAlerts إذا كان هناك مسار محدد، وإلا قائمة فارغة
+  const alerts = selectedRoute ? routeAlerts : []
 
   const filteredAlerts = alerts?.filter((alert) => {
     if (filters.severity !== 'all' && alert.severity !== filters.severity) {
@@ -378,47 +521,71 @@ export default function UserAppPage() {
 
         {activeTab === 'alerts' && (
           <div className="space-y-3">
-            {/* البحث والفلاتر */}
-            <div className="space-y-3">
-              <SearchBar
-                placeholder="ابحث في التنبيهات..."
-                onSearch={setSearchQuery}
-              />
-              <AdvancedFilters
-                severity={[
-                  { label: 'منخفض', value: 'low' },
-                  { label: 'متوسط', value: 'medium' },
-                  { label: 'عالي', value: 'high' },
-                  { label: 'حرج', value: 'critical' },
-                ]}
-                types={[
-                  { label: 'ازدحام', value: 'congestion' },
-                  { label: 'حادث', value: 'accident' },
-                  { label: 'فعالية', value: 'event' },
-                  { label: 'طقس', value: 'weather' },
-                ]}
-                onFilterChange={setFilters}
-              />
-            </div>
-
-            {filteredAlerts && filteredAlerts.length > 0 ? (
-              filteredAlerts.map((alert) => (
-                <AlertCard
-                  key={alert.id}
-                  alert={alert}
-                  onRouteClick={() => {
-                    // فتح في تطبيق الملاحة
-                    const url = `https://www.google.com/maps/dir/?api=1&destination=${alert.segmentId}`
-                    window.open(url, '_blank')
-                  }}
-                />
-              ))
-            ) : (
+            {!selectedRoute ? (
               <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-                <Bell className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد تنبيهات</h3>
-                <p className="text-gray-600">جميع الطرق سلسة حالياً</p>
+                <Route className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">حدد المسار أولاً</h3>
+                <p className="text-gray-600 mb-4">يجب تحديد الوجهة وحساب المسار لعرض التنبيهات المتعلقة بالمسار</p>
+                <button
+                  onClick={() => setActiveTab('route')}
+                  className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                >
+                  الانتقال إلى تحديد المسار
+                </button>
               </div>
+            ) : (
+              <>
+                {/* البحث والفلاتر */}
+                <div className="space-y-3">
+                  <SearchBar
+                    placeholder="ابحث في التنبيهات..."
+                    onSearch={setSearchQuery}
+                  />
+                  <AdvancedFilters
+                    severity={[
+                      { label: 'منخفض', value: 'low' },
+                      { label: 'متوسط', value: 'medium' },
+                      { label: 'عالي', value: 'high' },
+                      { label: 'حرج', value: 'critical' },
+                    ]}
+                    types={[
+                      { label: 'ازدحام', value: 'congestion' },
+                      { label: 'حادث', value: 'accident' },
+                      { label: 'فعالية', value: 'event' },
+                      { label: 'طقس', value: 'weather' },
+                    ]}
+                    onFilterChange={setFilters}
+                  />
+                </div>
+
+                {filteredAlerts && filteredAlerts.length > 0 ? (
+                  <>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-blue-800">
+                        <AlertTriangle className="h-4 w-4 inline-block mr-1" />
+                        عرض {filteredAlerts.length} تنبيه متعلق بالمسار المحدد
+                      </p>
+                    </div>
+                    {filteredAlerts.map((alert: any) => (
+                      <AlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onRouteClick={() => {
+                          // فتح في تطبيق الملاحة
+                          const url = `https://www.google.com/maps/dir/?api=1&destination=${alert.segmentId}`
+                          window.open(url, '_blank')
+                        }}
+                      />
+                    ))}
+                  </>
+                ) : (
+                  <div className="bg-white rounded-xl p-8 text-center shadow-sm">
+                    <Bell className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد تنبيهات على المسار</h3>
+                    <p className="text-gray-600">لا توجد تنبيهات متعلقة بالمسار المحدد حالياً</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
