@@ -228,22 +228,45 @@ export default function DataCenterPage() {
   ]
   }, [selectedCity])
 
-  // جلب البيانات لكل API
-  const fetchApiData = async (api: ApiData) => {
-    try {
-      const response = await axios.get(api.endpoint)
-      return { data: response.data, error: null }
-    } catch (error: any) {
-      return { data: null, error: error.message || 'فشل في جلب البيانات' }
-    }
-  }
+  // جلب البيانات لكل API تلقائياً لحساب الإحصائيات
+  const apiQueries = apis.map((api) => {
+    // تنظيف الـ endpoint
+    let endpoint = api.endpoint.replace(/\/$/, '')
+    endpoint = endpoint.replace(/([^\/\?&])\/(\?|&|$)/g, '$1$2')
+    endpoint = endpoint.replace(/([^\/])\/$/, '$1')
+    
+    return useQuery({
+      queryKey: ['api-stats', endpoint, selectedCity],
+      queryFn: async () => {
+        try {
+          const response = await axios.get(endpoint)
+          return response.data
+        } catch (error: any) {
+          throw error
+        }
+      },
+      enabled: true, // جلب البيانات تلقائياً للإحصائيات
+      refetchInterval: 60000, // تحديث كل دقيقة
+      staleTime: 30000, // البيانات صالحة لمدة 30 ثانية
+      retry: 1, // إعادة المحاولة مرة واحدة فقط
+    })
+  })
 
-  // تجميع APIs حسب الفئة
-  const apisByCategory = apis.reduce((acc, api) => {
+  // تجميع APIs حسب الفئة مع البيانات
+  const apisByCategory = apis.reduce((acc, api, index) => {
+    const query = apiQueries[index]
+    const responseData = query.data
+    const apiWithData = {
+      ...api,
+      data: responseData?.data || (responseData?.success ? responseData : responseData || null),
+      loading: query.isLoading,
+      error: query.error ? (query.error instanceof Error ? query.error.message : String(query.error)) : undefined,
+    }
+    
     if (!acc[api.category]) {
       acc[api.category] = []
     }
-    acc[api.category].push(api)
+    acc[api.category].push(apiWithData)
     return acc
   }, {} as Record<string, ApiData[]>)
 
@@ -254,6 +277,125 @@ export default function DataCenterPage() {
     places: { label: 'الأماكن', icon: MapPin, color: 'green' },
     other: { label: 'أخرى', icon: Database, color: 'gray' },
   }
+
+  // حساب الإحصائيات من جميع الـ APIs
+  const statistics = useMemo(() => {
+    let totalApis = apis.length
+    let totalDataPoints = 0
+    let successfulApis = 0
+    let failedApis = 0
+    let totalTrafficSegments = 0
+    let totalAlerts = 0
+    let totalBottlenecks = 0
+    let avgCongestion = 0
+    let highCongestionCount = 0
+    let totalWeatherData = 0
+    let totalVisibilityData = 0
+    let totalPlacesData = 0
+    let congestionValues: number[] = []
+
+    // جمع البيانات من جميع الـ APIs
+    apiQueries.forEach((query, index) => {
+      const api = apis[index]
+      const responseData = query.data
+      
+      if (responseData && !query.error) {
+        successfulApis++
+        
+        // استخراج البيانات من response
+        let dataToProcess: any = null
+        if (responseData.data) {
+          dataToProcess = responseData.data
+        } else if (responseData.success && responseData.data) {
+          dataToProcess = responseData.data
+        } else if (Array.isArray(responseData)) {
+          dataToProcess = responseData
+        } else if (typeof responseData === 'object') {
+          dataToProcess = responseData
+        }
+
+        if (dataToProcess) {
+          if (Array.isArray(dataToProcess)) {
+            totalDataPoints += dataToProcess.length
+
+            // إحصائيات المرور
+            if (api.category === 'traffic' && dataToProcess.length > 0) {
+              totalTrafficSegments += dataToProcess.length
+              const trafficCongestion = dataToProcess
+                .map((item: any) => item.congestionIndex || 0)
+                .filter((val: number) => val > 0)
+              congestionValues.push(...trafficCongestion)
+            }
+
+            // إحصائيات الطقس
+            if (api.category === 'weather') {
+              totalWeatherData += dataToProcess.length
+            }
+
+            // إحصائيات الرؤية
+            if (api.category === 'visibility') {
+              totalVisibilityData += dataToProcess.length
+            }
+
+            // إحصائيات الأماكن
+            if (api.category === 'places') {
+              totalPlacesData += dataToProcess.length
+            }
+
+            // إحصائيات خاصة
+            if (api.name === 'التنبيهات') {
+              totalAlerts = dataToProcess.length
+            }
+            if (api.name === 'نقاط الاختناق') {
+              totalBottlenecks = dataToProcess.length
+            }
+          } else if (typeof dataToProcess === 'object') {
+            totalDataPoints += Object.keys(dataToProcess).length
+
+            // إحصائيات خاصة من objects
+            if (api.name === 'التنبيهات' && Array.isArray(dataToProcess.data)) {
+              totalAlerts = dataToProcess.data.length
+            }
+            if (api.name === 'نقاط الاختناق' && Array.isArray(dataToProcess.data)) {
+              totalBottlenecks = dataToProcess.data.length
+            }
+            if (api.category === 'traffic' && Array.isArray(dataToProcess.data)) {
+              totalTrafficSegments += dataToProcess.data.length
+              const trafficCongestion = dataToProcess.data
+                .map((item: any) => item.congestionIndex || 0)
+                .filter((val: number) => val > 0)
+              congestionValues.push(...trafficCongestion)
+            }
+          } else {
+            totalDataPoints += 1
+          }
+        }
+      } else if (query.error) {
+        failedApis++
+      }
+    })
+
+    // حساب متوسط الازدحام
+    if (congestionValues.length > 0) {
+      avgCongestion = congestionValues.reduce((sum, val) => sum + val, 0) / congestionValues.length
+      highCongestionCount = congestionValues.filter((val) => val >= 70).length
+    }
+
+    return {
+      totalApis,
+      successfulApis,
+      failedApis,
+      totalDataPoints,
+      totalTrafficSegments,
+      totalAlerts,
+      totalBottlenecks,
+      avgCongestion: Math.round(avgCongestion * 10) / 10,
+      highCongestionCount,
+      totalWeatherData,
+      totalVisibilityData,
+      totalPlacesData,
+    }
+  }, [apis, apiQueries])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
@@ -280,6 +422,111 @@ export default function DataCenterPage() {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+        </div>
+
+        {/* قسم الإحصائيات الشامل */}
+        <div className="mb-8">
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">إحصائيات شاملة</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* إحصائيات عامة */}
+            <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-lg p-6 text-white">
+              <div className="flex items-center justify-between mb-4">
+                <Database className="h-8 w-8" />
+                <div className="text-right">
+                  <p className="text-sm text-blue-100">إجمالي APIs</p>
+                  <p className="text-3xl font-bold">{statistics.totalApis}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-green-300">✓ {statistics.successfulApis} ناجح</span>
+                <span className="text-red-300">✗ {statistics.failedApis} فاشل</span>
+              </div>
+            </div>
+
+            {/* إجمالي نقاط البيانات */}
+            <div className="bg-gradient-to-br from-green-500 to-green-700 rounded-xl shadow-lg p-6 text-white">
+              <div className="flex items-center justify-between mb-4">
+                <BarChart3 className="h-8 w-8" />
+                <div className="text-right">
+                  <p className="text-sm text-green-100">إجمالي نقاط البيانات</p>
+                  <p className="text-3xl font-bold">{statistics.totalDataPoints.toLocaleString()}</p>
+                </div>
+              </div>
+              <p className="text-xs text-green-200">من جميع المصادر</p>
+            </div>
+
+            {/* مقاطع المرور */}
+            <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-lg p-6 text-white">
+              <div className="flex items-center justify-between mb-4">
+                <Route className="h-8 w-8" />
+                <div className="text-right">
+                  <p className="text-sm text-purple-100">مقاطع المرور</p>
+                  <p className="text-3xl font-bold">{statistics.totalTrafficSegments}</p>
+                </div>
+              </div>
+              <p className="text-xs text-purple-200">مراقبة مستمرة</p>
+            </div>
+
+            {/* متوسط الازدحام */}
+            <div className="bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl shadow-lg p-6 text-white">
+              <div className="flex items-center justify-between mb-4">
+                <Gauge className="h-8 w-8" />
+                <div className="text-right">
+                  <p className="text-sm text-orange-100">متوسط الازدحام</p>
+                  <p className="text-3xl font-bold">{statistics.avgCongestion}%</p>
+                </div>
+              </div>
+              <p className="text-xs text-orange-200">{statistics.highCongestionCount} نقطة ازدحام عالي</p>
+            </div>
+          </div>
+
+          {/* إحصائيات تفصيلية */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* التنبيهات */}
+            <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-red-500">
+              <div className="flex items-center justify-between mb-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <span className="text-2xl font-bold text-gray-900">{statistics.totalAlerts}</span>
+              </div>
+              <p className="text-sm text-gray-600">تنبيهات نشطة</p>
+            </div>
+
+            {/* نقاط الاختناق */}
+            <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-orange-500">
+              <div className="flex items-center justify-between mb-2">
+                <Zap className="h-5 w-5 text-orange-500" />
+                <span className="text-2xl font-bold text-gray-900">{statistics.totalBottlenecks}</span>
+              </div>
+              <p className="text-sm text-gray-600">نقاط اختناق</p>
+            </div>
+
+            {/* بيانات الطقس */}
+            <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-sky-500">
+              <div className="flex items-center justify-between mb-2">
+                <Cloud className="h-5 w-5 text-sky-500" />
+                <span className="text-2xl font-bold text-gray-900">{statistics.totalWeatherData}</span>
+              </div>
+              <p className="text-sm text-gray-600">بيانات الطقس</p>
+            </div>
+
+            {/* بيانات الرؤية */}
+            <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-indigo-500">
+              <div className="flex items-center justify-between mb-2">
+                <Eye className="h-5 w-5 text-indigo-500" />
+                <span className="text-2xl font-bold text-gray-900">{statistics.totalVisibilityData}</span>
+              </div>
+              <p className="text-sm text-gray-600">بيانات الرؤية</p>
+            </div>
+
+            {/* بيانات الأماكن */}
+            <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
+              <div className="flex items-center justify-between mb-2">
+                <MapPin className="h-5 w-5 text-green-500" />
+                <span className="text-2xl font-bold text-gray-900">{statistics.totalPlacesData}</span>
+              </div>
+              <p className="text-sm text-gray-600">بيانات الأماكن</p>
             </div>
           </div>
         </div>
