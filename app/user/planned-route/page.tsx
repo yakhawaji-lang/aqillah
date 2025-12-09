@@ -1,0 +1,543 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { 
+  MapPin, 
+  Navigation, 
+  Calendar,
+  Clock,
+  Route,
+  AlertTriangle,
+  CloudRain,
+  Wind,
+  Eye,
+  RefreshCw,
+  ChevronRight,
+  Cloud,
+  Sun,
+  CloudSnow,
+  Droplets
+} from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import GoogleTrafficMap from '@/components/GoogleTrafficMap'
+import { LocationPicker } from '@/components/LocationPicker'
+import { useGeolocation } from '@/lib/hooks/useGeolocation'
+import { AlertCard } from '@/components/AlertCard'
+import { AnimatedCounter } from '@/components/AnimatedCounter'
+import axios from 'axios'
+import toast from 'react-hot-toast'
+
+export default function PlannedRoutePage() {
+  const router = useRouter()
+  const [destination, setDestination] = useState<[number, number] | null>(null)
+  const [selectedRoute, setSelectedRoute] = useState<any>(null)
+  const [departureDate, setDepartureDate] = useState<string>('')
+  const [departureTime, setDepartureTime] = useState<string>('')
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
+
+  // جلب موقع المستخدم تلقائياً
+  const { location: userLocation, loading: locationLoading, refresh: refreshLocation } = useGeolocation({
+    enableHighAccuracy: true,
+    timeout: 20000,
+    maximumAge: 60000,
+    watch: false,
+  })
+
+  // تعيين التاريخ والوقت الافتراضي (اليوم + ساعة من الآن)
+  useEffect(() => {
+    const now = new Date()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(now.getHours() + 1, 0, 0, 0)
+    
+    const dateStr = tomorrow.toISOString().split('T')[0]
+    const timeStr = `${String(tomorrow.getHours()).padStart(2, '0')}:${String(tomorrow.getMinutes()).padStart(2, '0')}`
+    
+    if (!departureDate) setDepartureDate(dateStr)
+    if (!departureTime) setDepartureTime(timeStr)
+  }, [])
+
+  // حساب تاريخ ووقت المغادرة الكامل
+  const departureDateTime = useMemo(() => {
+    if (!departureDate || !departureTime) return null
+    const [year, month, day] = departureDate.split('-').map(Number)
+    const [hours, minutes] = departureTime.split(':').map(Number)
+    return new Date(year, month - 1, day, hours, minutes)
+  }, [departureDate, departureTime])
+
+  // التحقق من أن التاريخ في المستقبل
+  const isFutureDate = useMemo(() => {
+    if (!departureDateTime) return false
+    return departureDateTime > new Date()
+  }, [departureDateTime])
+
+  // جلب بيانات الطقس للتاريخ المحدد
+  const { data: weatherData, isLoading: weatherLoading } = useQuery({
+    queryKey: ['weather-forecast', destination, departureDate, departureTime],
+    queryFn: async () => {
+      if (!destination || !departureDateTime || !isFutureDate) return null
+      
+      try {
+        const res = await axios.get(`/api/weather/impact`, {
+          params: {
+            lat: destination[0],
+            lng: destination[1],
+            date: departureDate,
+            time: departureTime,
+          }
+        })
+        return res.data.data || null
+      } catch (error) {
+        console.error('Error fetching weather:', error)
+        return null
+      }
+    },
+    enabled: !!destination && !!departureDateTime && isFutureDate,
+  })
+
+  // جلب تنبيهات الطقس
+  const { data: weatherAlerts, isLoading: alertsLoading } = useQuery({
+    queryKey: ['weather-alerts', destination, departureDate],
+    queryFn: async () => {
+      if (!destination || !departureDateTime || !isFutureDate) return []
+      
+      try {
+        const alerts: any[] = []
+        
+        // جلب بيانات الطقس
+        if (weatherData) {
+          // تحذيرات الطقس بناءً على البيانات
+          if (weatherData.visibility && weatherData.visibility < 1000) {
+            alerts.push({
+              id: 'low-visibility',
+              type: 'weather',
+              severity: 'high',
+              message: `انخفاض في الرؤية: ${weatherData.visibility} متر. يُنصح بتوخي الحذر أثناء القيادة.`,
+              createdAt: new Date().toISOString(),
+              expiresAt: departureDateTime.toISOString(),
+              isActive: true,
+              weatherCondition: 'low_visibility',
+              visibility: weatherData.visibility,
+            })
+          }
+          
+          if (weatherData.windSpeed && weatherData.windSpeed > 50) {
+            alerts.push({
+              id: 'high-wind',
+              type: 'weather',
+              severity: 'medium',
+              message: `رياح قوية: ${weatherData.windSpeed} كم/ساعة. قد تؤثر على استقرار المركبة.`,
+              createdAt: new Date().toISOString(),
+              expiresAt: departureDateTime.toISOString(),
+              isActive: true,
+              weatherCondition: 'high_wind',
+              windSpeed: weatherData.windSpeed,
+            })
+          }
+          
+          if (weatherData.precipitation && weatherData.precipitation > 5) {
+            alerts.push({
+              id: 'heavy-rain',
+              type: 'weather',
+              severity: 'high',
+              message: `أمطار غزيرة متوقعة: ${weatherData.precipitation} ملم. يُنصح بتأجيل الرحلة أو توخي الحذر الشديد.`,
+              createdAt: new Date().toISOString(),
+              expiresAt: departureDateTime.toISOString(),
+              isActive: true,
+              weatherCondition: 'heavy_rain',
+              precipitation: weatherData.precipitation,
+            })
+          }
+          
+          if (weatherData.temperature && weatherData.temperature < 0) {
+            alerts.push({
+              id: 'freezing',
+              type: 'weather',
+              severity: 'critical',
+              message: `درجات حرارة تحت الصفر: ${weatherData.temperature}°C. خطر الصقيع على الطرق.`,
+              createdAt: new Date().toISOString(),
+              expiresAt: departureDateTime.toISOString(),
+              isActive: true,
+              weatherCondition: 'freezing',
+              temperature: weatherData.temperature,
+            })
+          }
+        }
+        
+        return alerts
+      } catch (error) {
+        console.error('Error fetching weather alerts:', error)
+        return []
+      }
+    },
+    enabled: !!destination && !!departureDateTime && isFutureDate && !!weatherData,
+  })
+
+  // حساب المسار
+  const handleCalculateRoute = async () => {
+    if (!userLocation) {
+      toast.error('الرجاء السماح بالوصول إلى موقعك')
+      return
+    }
+    
+    if (!destination) {
+      toast.error('الرجاء تحديد الوجهة')
+      return
+    }
+
+    if (!departureDate || !departureTime) {
+      toast.error('الرجاء تحديد تاريخ ووقت المغادرة')
+      return
+    }
+
+    if (!isFutureDate) {
+      toast.error('الرجاء اختيار تاريخ ووقت في المستقبل')
+      return
+    }
+
+    setIsCalculatingRoute(true)
+    try {
+      const res = await axios.post('/api/emergency-route', {
+        originLat: userLocation[0],
+        originLng: userLocation[1],
+        destinationLat: destination[0],
+        destinationLng: destination[1],
+      })
+      
+      if (res.data.success && res.data.data) {
+        const routeData = res.data.data
+        setSelectedRoute(routeData)
+        toast.success('تم حساب المسار بنجاح')
+      } else {
+        throw new Error(res.data.error || 'فشل في حساب المسار')
+      }
+    } catch (error: any) {
+      console.error('Error calculating route:', error)
+      toast.error(error.response?.data?.error || error.message || 'حدث خطأ أثناء حساب المسار')
+    } finally {
+      setIsCalculatingRoute(false)
+    }
+  }
+
+  const mapMarkers: any[] = useMemo(() => {
+    if (!selectedRoute) return []
+    return []
+  }, [selectedRoute])
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Header */}
+      <div className="bg-primary-600 text-white p-4 sticky top-0 z-50 shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-xl font-bold">تخطيط المسار المستقبلي</h1>
+            <p className="text-sm opacity-90">تحديد مسار مع تنبؤات الطقس</p>
+          </div>
+          <button
+            onClick={() => router.push('/user')}
+            className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition"
+          >
+            <ChevronRight className="h-5 w-5 rotate-180" />
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 space-y-4">
+        {/* تحديد التاريخ والوقت */}
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary-600" />
+            تاريخ ووقت المغادرة
+          </h2>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                التاريخ
+              </label>
+              <input
+                type="date"
+                value={departureDate}
+                onChange={(e) => setDepartureDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                الوقت
+              </label>
+              <input
+                type="time"
+                value={departureTime}
+                onChange={(e) => setDepartureTime(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {departureDateTime && (
+            <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <Clock className="h-4 w-4 inline-block mr-1" />
+                المغادرة المحددة: {departureDateTime.toLocaleString('ar-SA', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+              {!isFutureDate && (
+                <p className="text-sm text-red-600 mt-1">
+                  ⚠️ يجب اختيار تاريخ ووقت في المستقبل
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* تحديد الوجهة */}
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <h2 className="font-bold text-gray-900 mb-4">تحديد المسار</h2>
+          
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                موقعك الحالي
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <MapPin className="h-5 w-5 text-primary-600" />
+                  <span className="text-sm text-gray-600 flex-1">
+                    {locationLoading ? (
+                      <span className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                        جاري تحديد الموقع...
+                      </span>
+                    ) : userLocation ? (
+                      `${userLocation[0].toFixed(4)}, ${userLocation[1].toFixed(4)}`
+                    ) : (
+                      'لم يتم تحديد الموقع'
+                    )}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    refreshLocation()
+                    toast('جاري تحديد موقعك...', { icon: '📍' })
+                  }}
+                  disabled={locationLoading}
+                  className="p-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  title="تحديد موقعي"
+                >
+                  {locationLoading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  ) : (
+                    <Navigation className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                الوجهة
+              </label>
+              <LocationPicker
+                onLocationSelect={(location) => {
+                  setDestination([location.lat, location.lng])
+                }}
+                currentLocation={userLocation || undefined}
+                placeholder="ابحث عن موقع أو اختر من الخريطة..."
+              />
+            </div>
+
+            <button
+              onClick={handleCalculateRoute}
+              disabled={!userLocation || !destination || !departureDate || !departureTime || !isFutureDate || isCalculatingRoute}
+              className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isCalculatingRoute ? (
+                <>
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  جاري الحساب...
+                </>
+              ) : (
+                <>
+                  <Route className="h-5 w-5" />
+                  حساب المسار مع تنبؤات الطقس
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* معلومات الطقس */}
+        {destination && departureDateTime && isFutureDate && (
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <CloudRain className="h-5 w-5 text-blue-600" />
+              تنبؤات الطقس للتاريخ المحدد
+            </h2>
+
+            {weatherLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">جاري جلب بيانات الطقس...</p>
+              </div>
+            ) : weatherData ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Cloud className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-gray-700">الحالة</span>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900">
+                      {weatherData.condition || 'غير محدد'}
+                    </p>
+                  </div>
+
+                  <div className="bg-orange-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Droplets className="h-4 w-4 text-orange-600" />
+                      <span className="text-sm font-medium text-gray-700">الأمطار</span>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900">
+                      {weatherData.precipitation ? `${weatherData.precipitation.toFixed(1)} ملم` : '0 ملم'}
+                    </p>
+                  </div>
+
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Eye className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-gray-700">الرؤية</span>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900">
+                      {weatherData.visibility ? `${(weatherData.visibility / 1000).toFixed(1)} كم` : 'غير محدد'}
+                    </p>
+                  </div>
+
+                  <div className="bg-purple-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Wind className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm font-medium text-gray-700">الرياح</span>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900">
+                      {weatherData.windSpeed ? `${weatherData.windSpeed.toFixed(1)} كم/س` : 'غير محدد'}
+                    </p>
+                  </div>
+                </div>
+
+                {weatherData.impactLevel && (
+                  <div className={`p-3 rounded-lg ${
+                    weatherData.impactLevel === 'high' ? 'bg-red-50 border border-red-200' :
+                    weatherData.impactLevel === 'medium' ? 'bg-yellow-50 border border-yellow-200' :
+                    'bg-green-50 border border-green-200'
+                  }`}>
+                    <p className={`text-sm font-medium ${
+                      weatherData.impactLevel === 'high' ? 'text-red-800' :
+                      weatherData.impactLevel === 'medium' ? 'text-yellow-800' :
+                      'text-green-800'
+                    }`}>
+                      مستوى التأثير: {
+                        weatherData.impactLevel === 'high' ? 'عالي - يُنصح بتأجيل الرحلة' :
+                        weatherData.impactLevel === 'medium' ? 'متوسط - توخي الحذر' :
+                        'منخفض - ظروف جيدة'
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Cloud className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">لا توجد بيانات طقس متاحة للتاريخ المحدد</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* تنبيهات الطقس */}
+        {weatherAlerts && weatherAlerts.length > 0 && (
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              تحذيرات الطقس ({weatherAlerts.length})
+            </h2>
+            
+            <div className="space-y-3">
+              {weatherAlerts.map((alert: any) => (
+                <AlertCard
+                  key={alert.id}
+                  alert={alert}
+                  onRouteClick={() => {}}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* معلومات المسار */}
+        {selectedRoute && (
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <h3 className="font-bold text-gray-900 mb-4">معلومات المسار</h3>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Route className="h-5 w-5 text-primary-600" />
+                  <span className="text-sm text-gray-600">المسافة</span>
+                </div>
+                <span className="font-bold text-gray-900">
+                  {selectedRoute.distance ? selectedRoute.distance.toFixed(1) : '0.0'} كم
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary-600" />
+                  <span className="text-sm text-gray-600">الوقت المتوقع</span>
+                </div>
+                <span className="font-bold text-gray-900">
+                  {selectedRoute.estimatedTime ? Math.round(selectedRoute.estimatedTime) : 0} دقيقة
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* خريطة المسار */}
+        {selectedRoute && userLocation && destination && (
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <h3 className="font-bold text-gray-900 mb-4">خريطة المسار</h3>
+            <div className="h-[400px] rounded-lg overflow-hidden">
+              <GoogleTrafficMap
+                key={`planned-route-map-${selectedRoute.id}`}
+                center={{
+                  lat: (userLocation[0] + destination[0]) / 2,
+                  lng: (userLocation[1] + destination[1]) / 2,
+                }}
+                zoom={12}
+                markers={mapMarkers}
+                route={{
+                  origin: { lat: userLocation[0], lng: userLocation[1] },
+                  destination: { lat: destination[0], lng: destination[1] },
+                  polyline: selectedRoute.polyline,
+                }}
+                showTrafficLayer={true}
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+

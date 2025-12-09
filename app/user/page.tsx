@@ -13,7 +13,8 @@ import {
   ChevronRight,
   RefreshCw,
   Settings,
-  BarChart3
+  BarChart3,
+  Calendar
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import RoutePlanner from '@/components/user/RoutePlanner'
@@ -316,6 +317,13 @@ export default function UserAppPage() {
               title="التنبؤات"
             >
               <BarChart3 className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => router.push('/user/planned-route')}
+              className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition"
+              title="تخطيط المسار المستقبلي"
+            >
+              <Calendar className="h-5 w-5" />
             </button>
             <button className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition">
               <Settings className="h-5 w-5" />
