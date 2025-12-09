@@ -160,22 +160,6 @@ export default function GovernmentDashboardPage() {
     staleTime: 30000, // البيانات صالحة لمدة 30 ثانية
   })
 
-  // جلب التنبيهات النشطة مباشرة من API
-  const { data: activeAlertsData, isLoading: alertsLoading, refetch: refetchAlerts } = useQuery({
-    queryKey: ['alerts', selectedCity],
-    queryFn: async () => {
-      try {
-        const res = await axios.get(`/api/alerts?city=${selectedCity}&activeOnly=true`)
-        return res.data.data || []
-      } catch (error: any) {
-        console.error('Error fetching alerts:', error)
-        return []
-      }
-    },
-    refetchInterval: 60000, // تحديث كل دقيقة
-    staleTime: 30000, // البيانات صالحة لمدة 30 ثانية
-  })
-
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['stats'],
     queryFn: async () => {
