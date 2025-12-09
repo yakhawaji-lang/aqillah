@@ -64,7 +64,11 @@ export default function PlannedRoutePage() {
   useEffect(() => {
     if (departureDate && departureTime) {
       // إعادة تعيين المسار والتنبؤات عند تغيير التاريخ/الوقت
-      setSelectedRoute(null)
+      // استخدام setTimeout للتأكد من أن التغيير يحدث بعد تحديث state
+      const timer = setTimeout(() => {
+        setSelectedRoute(null)
+      }, 0)
+      return () => clearTimeout(timer)
     }
   }, [departureDate, departureTime])
 
