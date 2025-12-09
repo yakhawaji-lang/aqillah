@@ -352,15 +352,13 @@ function ApiCard({ api, selectedCity, isExpanded, onToggle, ApiIcon }: {
   ApiIcon: any
 }) {
   // الـ endpoint تم بناؤه بالفعل في useMemo، لكن يجب التأكد من عدم وجود `/` في النهاية أو بعد query parameters
-  // إزالة `/` في نهاية الـ URL
+  // إزالة `/` في نهاية الـ URL أولاً
   let endpoint = api.endpoint.replace(/\/$/, '')
   // إزالة `/` بعد آخر قيمة في query parameter (مثل: ?points=1,2|3,4/ -> ?points=1,2|3,4)
   // هذا regex يزيل `/` بعد أي حرف ليس `/` أو `?` أو `&` إذا كان يليه `?` أو `&` أو نهاية السطر
   endpoint = endpoint.replace(/([^\/\?&])\/(\?|&|$)/g, '$1$2')
   // إزالة `/` بعد آخر parameter في query string إذا كان في النهاية مباشرة
   endpoint = endpoint.replace(/([^\/])\/$/, '$1')
-  // إزالة `/` بعد آخر قيمة في query parameter (مثل: points=1,2|3,4/ -> points=1,2|3,4)
-  endpoint = endpoint.replace(/([^\/\?&])\/(\?|&|$)/g, '$1$2')
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['api-data', endpoint],
