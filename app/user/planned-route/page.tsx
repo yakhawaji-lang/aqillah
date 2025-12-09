@@ -63,9 +63,29 @@ export default function PlannedRoutePage() {
   // حساب تاريخ ووقت المغادرة الكامل
   const departureDateTime = useMemo(() => {
     if (!departureDate || !departureTime) return null
-    const [year, month, day] = departureDate.split('-').map(Number)
-    const [hours, minutes] = departureTime.split(':').map(Number)
-    return new Date(year, month - 1, day, hours, minutes)
+    try {
+      const [year, month, day] = departureDate.split('-').map(Number)
+      const [hours, minutes] = departureTime.split(':').map(Number)
+      
+      // التحقق من صحة التاريخ والوقت
+      if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
+        console.error('Invalid date or time values:', { departureDate, departureTime })
+        return null
+      }
+      
+      const date = new Date(year, month - 1, day, hours, minutes)
+      
+      // التحقق من أن التاريخ صحيح
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date created:', { year, month, day, hours, minutes })
+        return null
+      }
+      
+      return date
+    } catch (error) {
+      console.error('Error parsing departure date/time:', error)
+      return null
+    }
   }, [departureDate, departureTime])
 
   // التحقق من أن التاريخ في المستقبل
@@ -267,10 +287,18 @@ export default function PlannedRoutePage() {
       return
     }
 
+    if (!departureDateTime) {
+      toast.error('تاريخ أو وقت غير صحيح')
+      return
+    }
+
     if (!isFutureDate) {
       toast.error('الرجاء اختيار تاريخ ووقت في المستقبل')
       return
     }
+
+    // إعادة تعيين المسار السابق
+    setSelectedRoute(null)
 
     setIsCalculatingRoute(true)
     try {
