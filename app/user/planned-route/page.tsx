@@ -596,24 +596,24 @@ export default function PlannedRoutePage() {
                             <div className="text-sm">
                               <span className="text-gray-600">التأخير المتوقع:</span>
                               <span className="font-medium text-gray-900 mr-1">
-                                {prediction.predictedDelayMinutes || prediction.delayMinutes ? `${(prediction.predictedDelayMinutes || prediction.delayMinutes).toFixed(1)} دقيقة` : 'غير محدد'}
+                                {prediction.predictedDelayMinutes || prediction.delayMinutes ? `${Number(prediction.predictedDelayMinutes || prediction.delayMinutes).toFixed(1)} دقيقة` : 'غير محدد'}
                               </span>
                             </div>
                             <div className="text-sm">
                               <span className="text-gray-600">مستوى الثقة:</span>
                               <span className="font-medium text-gray-900 mr-1">
-                                {prediction.confidence ? `${Math.round(prediction.confidence * 100)}%` : 'غير محدد'}
+                                {prediction.confidence ? `${Math.round(Number(prediction.confidence) * 100)}%` : 'غير محدد'}
                               </span>
                             </div>
                           </div>
                           
-                          {prediction.factors && prediction.factors.length > 0 && (
+                          {prediction.factors && Array.isArray(prediction.factors) && prediction.factors.length > 0 && (
                             <div className="mt-3 pt-3 border-t border-gray-200">
                               <p className="text-xs text-gray-600 mb-1">العوامل المؤثرة:</p>
                               <div className="flex flex-wrap gap-2">
-                                {prediction.factors.map((factor: string, idx: number) => (
+                                {prediction.factors.filter((f: any) => f != null).map((factor: any, idx: number) => (
                                   <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                    {factor}
+                                    {String(factor || '')}
                                   </span>
                                 ))}
                               </div>
@@ -641,7 +641,7 @@ export default function PlannedRoutePage() {
                         </p>
                       </div>
                       <div className="text-2xl font-bold text-blue-600">
-                        {routePredictions.avgCongestion.toFixed(0)}%
+                        {Number(routePredictions.avgCongestion || 0).toFixed(0)}%
                       </div>
                     </div>
                   </div>
