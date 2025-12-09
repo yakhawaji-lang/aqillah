@@ -22,6 +22,7 @@ import {
   BarChart3
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import GoogleTrafficMap from '@/components/GoogleTrafficMap'
 import { LocationPicker } from '@/components/LocationPicker'
 import { useGeolocation } from '@/lib/hooks/useGeolocation'
 import { AlertCard } from '@/components/AlertCard'
@@ -720,6 +721,37 @@ export default function PlannedRoutePage() {
                   {selectedRoute.estimatedTime ? Math.round(selectedRoute.estimatedTime) : 0} دقيقة
                 </span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* خريطة المسار */}
+        {selectedRoute && userLocation && destination && (
+          <div className="bg-white rounded-xl p-4 shadow-sm">
+            <h3 className="font-bold text-gray-900 mb-4">خريطة المسار</h3>
+            <div className="h-[400px] rounded-lg overflow-hidden">
+              <GoogleTrafficMap
+                key={`planned-route-map-${selectedRoute.id || Date.now()}`}
+                center={{
+                  lat: (userLocation[0] + destination[0]) / 2,
+                  lng: (userLocation[1] + destination[1]) / 2,
+                }}
+                zoom={12}
+                markers={[]}
+                route={
+                  // إذا كان هناك route array، استخدمه مباشرة
+                  selectedRoute.route && Array.isArray(selectedRoute.route) && selectedRoute.route.length > 0
+                    ? selectedRoute.route
+                    : // وإلا استخدم origin و destination (ستستخدم GoogleTrafficMap Directions API)
+                      {
+                        origin: { lat: userLocation[0], lng: userLocation[1] },
+                        destination: { lat: destination[0], lng: destination[1] },
+                      }
+                }
+                currentLocation={userLocation}
+                showTrafficLayer={true}
+                className="w-full h-full"
+              />
             </div>
           </div>
         )}
