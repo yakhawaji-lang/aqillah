@@ -60,6 +60,14 @@ export default function PlannedRoutePage() {
     if (!departureTime) setDepartureTime(timeStr)
   }, [])
 
+  // إعادة تعيين المسار عند تغيير التاريخ أو الوقت
+  useEffect(() => {
+    if (departureDate && departureTime) {
+      // إعادة تعيين المسار والتنبؤات عند تغيير التاريخ/الوقت
+      setSelectedRoute(null)
+    }
+  }, [departureDate, departureTime])
+
   // حساب تاريخ ووقت المغادرة الكامل
   const departureDateTime = useMemo(() => {
     if (!departureDate || !departureTime) return null
