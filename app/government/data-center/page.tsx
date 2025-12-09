@@ -49,9 +49,24 @@ export default function DataCenterPage() {
   const [expandedApi, setExpandedApi] = useState<string | null>(null)
 
   const cities = ['الرياض', 'جدة', 'الدمام', 'المدينة المنورة', 'الخبر', 'أبها', 'خميس مشيط']
+  
+  // إحداثيات المدن
+  const cityCoordinates: Record<string, { lat: number; lng: number }> = {
+    'الرياض': { lat: 24.7136, lng: 46.6753 },
+    'جدة': { lat: 21.4858, lng: 39.1925 },
+    'الدمام': { lat: 26.4207, lng: 50.0888 },
+    'المدينة المنورة': { lat: 24.5247, lng: 39.5692 },
+    'الخبر': { lat: 26.2794, lng: 50.2080 },
+    'أبها': { lat: 18.2164, lng: 42.5042 },
+    'خميس مشيط': { lat: 18.3000, lng: 42.7333 },
+  }
+  
+  const currentCityCoords = cityCoordinates[selectedCity] || cityCoordinates['الرياض']
 
   // تعريف جميع APIs المتوفرة - استخدام useMemo لإعادة بناء الـ endpoints عند تغيير المدينة
-  const apis: ApiData[] = useMemo(() => [
+  const apis: ApiData[] = useMemo(() => {
+    const currentCityCoords = cityCoordinates[selectedCity] || cityCoordinates['الرياض']
+    return [
     // Google Maps Traffic APIs
     {
       name: 'مسح شامل للازدحام',
@@ -87,7 +102,7 @@ export default function DataCenterPage() {
     },
     {
       name: 'حدود السرعة',
-      endpoint: `/api/traffic/speed-limits?city=${selectedCity}`,
+      endpoint: `/api/traffic/speed-limits?points=${currentCityCoords.lat},${currentCityCoords.lng}|${currentCityCoords.lat + 0.01},${currentCityCoords.lng + 0.01}`,
       icon: Gauge,
       color: 'orange',
       category: 'traffic',
@@ -112,7 +127,7 @@ export default function DataCenterPage() {
     },
     {
       name: 'تأثير الطقس',
-      endpoint: `/api/weather/impact?city=${selectedCity}`,
+      endpoint: `/api/weather/impact?lat=${currentCityCoords.lat}&lng=${currentCityCoords.lng}`,
       icon: CloudRain,
       color: 'blue',
       category: 'weather',
@@ -120,7 +135,7 @@ export default function DataCenterPage() {
     },
     {
       name: 'طرق آمنة للطقس',
-      endpoint: `/api/weather/safe-routes?city=${selectedCity}`,
+      endpoint: `/api/weather/safe-routes?city=${encodeURIComponent(selectedCity)}`,
       icon: Shield,
       color: 'green',
       category: 'weather',
@@ -210,7 +225,8 @@ export default function DataCenterPage() {
       category: 'other',
       description: 'القرارات المرورية المعلقة',
     },
-  ], [selectedCity])
+  ]
+  }, [selectedCity])
 
   // جلب البيانات لكل API
   const fetchApiData = async (api: ApiData) => {
