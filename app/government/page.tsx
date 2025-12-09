@@ -144,6 +144,38 @@ export default function GovernmentDashboardPage() {
     }
   }, [trafficData, trafficLoading])
 
+  // جلب التنبيهات النشطة مباشرة من API
+  const { data: activeAlertsData, isLoading: alertsLoading, refetch: refetchAlerts } = useQuery({
+    queryKey: ['alerts', selectedCity],
+    queryFn: async () => {
+      try {
+        const res = await axios.get(`/api/alerts?city=${selectedCity}&activeOnly=true`)
+        return res.data.data || []
+      } catch (error: any) {
+        console.error('Error fetching alerts:', error)
+        return []
+      }
+    },
+    refetchInterval: 60000, // تحديث كل دقيقة
+    staleTime: 30000, // البيانات صالحة لمدة 30 ثانية
+  })
+
+  // جلب التنبيهات النشطة مباشرة من API
+  const { data: activeAlertsData, isLoading: alertsLoading, refetch: refetchAlerts } = useQuery({
+    queryKey: ['alerts', selectedCity],
+    queryFn: async () => {
+      try {
+        const res = await axios.get(`/api/alerts?city=${selectedCity}&activeOnly=true`)
+        return res.data.data || []
+      } catch (error: any) {
+        console.error('Error fetching alerts:', error)
+        return []
+      }
+    },
+    refetchInterval: 60000, // تحديث كل دقيقة
+    staleTime: 30000, // البيانات صالحة لمدة 30 ثانية
+  })
+
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['stats'],
     queryFn: async () => {
@@ -539,9 +571,20 @@ export default function GovernmentDashboardPage() {
             </div>
             <h3 className="text-sm font-medium text-red-100 mb-2">تنبيهات نشطة</h3>
             <div className="text-3xl font-bold mb-1">
-              <AnimatedCounter value={stats?.activeAlerts || 0} />
+              {alertsLoading ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  <span>...</span>
+                </div>
+              ) : (
+                <AnimatedCounter value={activeAlertsData?.length || stats?.activeAlerts || 0} />
+              )}
             </div>
-            <p className="text-xs text-red-200">يتطلب مراجعة فورية</p>
+            <p className="text-xs text-red-200">
+              {activeAlertsData && activeAlertsData.length > 0 
+                ? `${activeAlertsData.length} تنبيه نشط - يتطلب مراجعة فورية`
+                : 'يتطلب مراجعة فورية'}
+            </p>
           </div>
 
           <div className="bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
