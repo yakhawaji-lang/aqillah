@@ -146,7 +146,7 @@ export default function DataCenterPage() {
     // Places APIs
     {
       name: 'البحث التلقائي',
-      endpoint: `/api/places/autocomplete?query=الرياض`,
+      endpoint: `/api/places/autocomplete?input=${encodeURIComponent(selectedCity)}`,
       icon: Search,
       color: 'blue',
       category: 'places',
@@ -154,7 +154,7 @@ export default function DataCenterPage() {
     },
     {
       name: 'تفاصيل المكان',
-      endpoint: `/api/places/details?placeId=ChIJN1t_tDeuEmsRUsoyG83frY4`,
+      endpoint: `/api/places/details?place_id=ChIJN1t_tDeuEmsRUsoyG83frY4`,
       icon: Info,
       color: 'purple',
       category: 'places',
@@ -162,7 +162,7 @@ export default function DataCenterPage() {
     },
     {
       name: 'Geocoding',
-      endpoint: `/api/places/geocode?address=${selectedCity}`,
+      endpoint: `/api/places/geocode?address=${encodeURIComponent(selectedCity)}`,
       icon: MapPin,
       color: 'green',
       category: 'places',
@@ -335,8 +335,8 @@ function ApiCard({ api, selectedCity, isExpanded, onToggle, ApiIcon }: {
   onToggle: () => void
   ApiIcon: any
 }) {
-  // الـ endpoint تم بناؤه بالفعل في useMemo، لا حاجة للاستبدال
-  const endpoint = api.endpoint
+  // الـ endpoint تم بناؤه بالفعل في useMemo، لكن يجب التأكد من عدم وجود `/` في النهاية
+  const endpoint = api.endpoint.replace(/\/$/, '')
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['api-data', endpoint],
