@@ -719,22 +719,52 @@ export default function PlannedRoutePage() {
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <h3 className="font-bold text-gray-900 mb-4">خريطة المسار</h3>
             <div className="h-[400px] rounded-lg overflow-hidden">
-              <GoogleTrafficMap
-                key={`planned-route-map-${selectedRoute.id}`}
-                center={{
-                  lat: (userLocation[0] + destination[0]) / 2,
-                  lng: (userLocation[1] + destination[1]) / 2,
-                }}
-                zoom={12}
-                markers={mapMarkers}
-                route={{
-                  origin: { lat: userLocation[0], lng: userLocation[1] },
-                  destination: { lat: destination[0], lng: destination[1] },
-                  polyline: selectedRoute.polyline,
-                }}
-                showTrafficLayer={true}
-                className="w-full h-full"
-              />
+              {(() => {
+                try {
+                  // استخدام route ككائن مع origin و destination
+                  // إذا كان هناك polyline، نستخدمه، وإلا ستستخدم GoogleTrafficMap Directions API
+                  const routeConfig: any = {
+                    origin: { lat: userLocation[0], lng: userLocation[1] },
+                    destination: { lat: destination[0], lng: destination[1] },
+                  }
+                  
+                  // إضافة polyline إذا كان موجوداً
+                  if (selectedRoute.polyline && typeof selectedRoute.polyline === 'string') {
+                    routeConfig.polyline = selectedRoute.polyline
+                  }
+                  
+                  // إضافة route array إذا كان موجوداً
+                  if (selectedRoute.route && Array.isArray(selectedRoute.route) && selectedRoute.route.length > 0) {
+                    routeConfig.route = selectedRoute.route
+                  }
+                  
+                  return (
+                    <GoogleTrafficMap
+                      key={`planned-route-map-${selectedRoute.id || Date.now()}`}
+                      center={{
+                        lat: (userLocation[0] + destination[0]) / 2,
+                        lng: (userLocation[1] + destination[1]) / 2,
+                      }}
+                      zoom={12}
+                      markers={mapMarkers}
+                      route={routeConfig}
+                      currentLocation={userLocation}
+                      showTrafficLayer={true}
+                      className="w-full h-full"
+                    />
+                  )
+                } catch (error) {
+                  console.error('Error rendering map:', error)
+                  return (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <div className="text-center">
+                        <p className="text-red-600 mb-2">خطأ في عرض الخريطة</p>
+                        <p className="text-sm text-gray-600">{error instanceof Error ? error.message : 'حدث خطأ غير متوقع'}</p>
+                      </div>
+                    </div>
+                  )
+                }
+              })()}
             </div>
           </div>
         )}
