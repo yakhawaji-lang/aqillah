@@ -741,7 +741,7 @@ export default function PlannedRoutePage() {
                     <span className="text-sm font-medium text-gray-700">المسافة الإجمالية</span>
                   </div>
                   <p className="text-2xl font-bold text-blue-600">
-                    {selectedRoute.distance ? selectedRoute.distance.toFixed(1) : '0.0'} كم
+                    {selectedRoute?.distance ? Number(selectedRoute.distance).toFixed(1) : '0.0'} كم
                   </p>
                 </div>
 
@@ -751,18 +751,25 @@ export default function PlannedRoutePage() {
                     <span className="text-sm font-medium text-gray-700">الوقت المتوقع للوصول</span>
                   </div>
                   <p className="text-2xl font-bold text-green-600">
-                    {selectedRoute.estimatedTime ? Math.round(selectedRoute.estimatedTime) : 0} دقيقة
+                    {selectedRoute?.estimatedTime ? Math.round(Number(selectedRoute.estimatedTime)) : 0} دقيقة
                   </p>
-                  {selectedRoute.estimatedTimeInTraffic && (
+                  {selectedRoute?.estimatedTimeInTraffic && (
                     <p className="text-xs text-gray-600 mt-1">
-                      مع الازدحام: {Math.round(selectedRoute.estimatedTimeInTraffic)} دقيقة
+                      مع الازدحام: {Math.round(Number(selectedRoute.estimatedTimeInTraffic))} دقيقة
                     </p>
                   )}
                 </div>
               </div>
 
               {/* تنبؤات حركة المرور التفصيلية */}
-              {routePredictions && routePredictions.predictions && routePredictions.predictions.length > 0 && (
+              {routePredictionsLoading ? (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+                    <p className="text-sm text-gray-600">جاري تحليل حركة المرور المتوقعة...</p>
+                  </div>
+                </div>
+              ) : routePredictions && Array.isArray(routePredictions.predictions) && routePredictions.predictions.length > 0 && (
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-orange-600" />
@@ -797,7 +804,7 @@ export default function PlannedRoutePage() {
                             <div>
                               <p className="text-xs opacity-80 mb-1">التأخير المتوقع</p>
                               <p className="font-bold text-lg">
-                                {delayMinutes ? `${delayMinutes.toFixed(1)} دقيقة` : 'غير محدد'}
+                                {delayMinutes > 0 ? `${delayMinutes.toFixed(1)} دقيقة` : 'غير محدد'}
                               </p>
                             </div>
                             <div>
@@ -839,7 +846,14 @@ export default function PlannedRoutePage() {
               )}
 
               {/* حالة الطقس التفصيلية */}
-              {weatherData && (
+              {weatherLoading ? (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p className="text-sm text-gray-600">جاري جلب بيانات الطقس...</p>
+                  </div>
+                </div>
+              ) : weatherData && (
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <CloudRain className="h-5 w-5 text-blue-600" />
