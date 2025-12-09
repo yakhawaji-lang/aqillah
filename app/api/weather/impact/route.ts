@@ -48,7 +48,16 @@ export async function GET(request: NextRequest) {
             if (targetDay) {
               weather = {
                 current: {
-                  ...targetDay,
+                  temperature: targetDay.high || targetDay.low || 20,
+                  humidity: 70, // افتراضي
+                  windSpeed: targetDay.windSpeed || 20,
+                  windDirection: 0,
+                  visibility: targetDay.visibility || 10000,
+                  pressure: 1013,
+                  precipitation: targetDay.precipitation || 0,
+                  rainRate: targetDay.precipitation || 0,
+                  condition: targetDay.condition || 'clear',
+                  cloudCover: 50,
                   timestamp: targetDate,
                 },
               }
@@ -66,7 +75,16 @@ export async function GET(request: NextRequest) {
             if (targetHour) {
               weather = {
                 current: {
-                  ...targetHour,
+                  temperature: targetHour.temperature || 20,
+                  humidity: 70,
+                  windSpeed: targetHour.windSpeed || 20,
+                  windDirection: 0,
+                  visibility: targetHour.visibility || 10000,
+                  pressure: 1013,
+                  precipitation: targetHour.precipitation || 0,
+                  rainRate: targetHour.precipitation || 0,
+                  condition: targetHour.condition || 'clear',
+                  cloudCover: 50,
                   timestamp: targetDate,
                 },
               }
@@ -89,9 +107,25 @@ export async function GET(request: NextRequest) {
     // Analyze impact
     const impact = weatherDrivingAssistant.analyze(weather.current || weather)
 
+    // إرجاع بيانات الطقس الكاملة مع التأثير
+    const currentWeather = weather.current || weather
+    
     return NextResponse.json({
       success: true,
-      data: impact,
+      data: {
+        ...impact,
+        // بيانات الطقس الأساسية
+        condition: currentWeather.condition || currentWeather.weather || 'غير محدد',
+        temperature: currentWeather.temperature || currentWeather.temp || null,
+        precipitation: currentWeather.precipitation || currentWeather.rain || currentWeather.rainfall || 0,
+        visibility: currentWeather.visibility || currentWeather.vis || null,
+        windSpeed: currentWeather.windSpeed || currentWeather.wind?.speed || currentWeather.ws || null,
+        windDirection: currentWeather.windDirection || currentWeather.wind?.direction || null,
+        humidity: currentWeather.humidity || null,
+        pressure: currentWeather.pressure || null,
+        cloudCover: currentWeather.cloudCover || currentWeather.clouds || null,
+        timestamp: currentWeather.timestamp || new Date(),
+      },
     })
   } catch (error: any) {
     console.error('Error analyzing weather impact:', error)

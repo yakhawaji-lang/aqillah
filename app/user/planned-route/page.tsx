@@ -957,7 +957,16 @@ export default function PlannedRoutePage() {
                         <span className="text-sm text-gray-600">الحالة</span>
                       </div>
                       <p className="text-lg font-bold text-gray-900">
-                        {weatherData.condition || 'غير محدد'}
+                        {weatherData.condition ? (
+                          weatherData.condition === 'clear' || weatherData.condition === 'sunny' ? '☀️ مشمس' :
+                          weatherData.condition === 'cloudy' ? '☁️ غائم' :
+                          weatherData.condition === 'rainy' || weatherData.condition === 'rain' ? '🌧️ ممطر' :
+                          weatherData.condition === 'snowy' || weatherData.condition === 'snow' ? '❄️ ثلجي' :
+                          weatherData.condition === 'foggy' || weatherData.condition === 'fog' ? '🌫️ ضبابي' :
+                          weatherData.condition === 'windy' ? '💨 عاصف' :
+                          weatherData.condition === 'stormy' ? '⛈️ عاصفة' :
+                          String(weatherData.condition)
+                        ) : 'غير محدد'}
                       </p>
                     </div>
 
@@ -977,7 +986,11 @@ export default function PlannedRoutePage() {
                         <span className="text-sm text-gray-600">الرؤية</span>
                       </div>
                       <p className="text-lg font-bold text-gray-900">
-                        {weatherData.visibility ? `${(Number(weatherData.visibility) / 1000).toFixed(1)} كم` : 'غير محدد'}
+                        {weatherData.visibility && !isNaN(Number(weatherData.visibility)) && Number(weatherData.visibility) > 0 
+                          ? `${(Number(weatherData.visibility) / 1000).toFixed(1)} كم` 
+                          : weatherData.visibility === 0 || weatherData.visibility === null 
+                            ? 'غير محدد' 
+                            : `${Number(weatherData.visibility).toFixed(0)} م`}
                       </p>
                     </div>
 
