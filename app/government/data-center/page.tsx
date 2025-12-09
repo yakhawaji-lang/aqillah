@@ -102,7 +102,7 @@ export default function DataCenterPage() {
     },
     {
       name: 'حدود السرعة',
-      endpoint: `/api/traffic/speed-limits?points=${currentCityCoords.lat},${currentCityCoords.lng}|${currentCityCoords.lat + 0.01},${currentCityCoords.lng + 0.01}`.replace(/\/$/, ''),
+      endpoint: `/api/traffic/speed-limits?points=${currentCityCoords.lat},${currentCityCoords.lng}|${currentCityCoords.lat + 0.01},${currentCityCoords.lng + 0.01}`,
       icon: Gauge,
       color: 'orange',
       category: 'traffic',
@@ -351,11 +351,16 @@ function ApiCard({ api, selectedCity, isExpanded, onToggle, ApiIcon }: {
   onToggle: () => void
   ApiIcon: any
 }) {
-  // الـ endpoint تم بناؤه بالفعل في useMemo، لكن يجب التأكد من عدم وجود `/` في النهاية
-  // إزالة `/` في نهاية الـ URL أو بعد query parameters
+  // الـ endpoint تم بناؤه بالفعل في useMemo، لكن يجب التأكد من عدم وجود `/` في النهاية أو بعد query parameters
+  // إزالة `/` في نهاية الـ URL
   let endpoint = api.endpoint.replace(/\/$/, '')
-  // إزالة `/` بعد آخر parameter في query string
-  endpoint = endpoint.replace(/([^\/])\/(\?|$)/g, '$1$2')
+  // إزالة `/` بعد آخر قيمة في query parameter (مثل: ?points=1,2|3,4/ -> ?points=1,2|3,4)
+  // هذا regex يزيل `/` بعد أي حرف ليس `/` أو `?` أو `&` إذا كان يليه `?` أو `&` أو نهاية السطر
+  endpoint = endpoint.replace(/([^\/\?&])\/(\?|&|$)/g, '$1$2')
+  // إزالة `/` بعد آخر parameter في query string إذا كان في النهاية مباشرة
+  endpoint = endpoint.replace(/([^\/])\/$/, '$1')
+  // إزالة `/` بعد آخر قيمة في query parameter (مثل: points=1,2|3,4/ -> points=1,2|3,4)
+  endpoint = endpoint.replace(/([^\/\?&])\/(\?|&|$)/g, '$1$2')
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['api-data', endpoint],
