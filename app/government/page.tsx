@@ -153,35 +153,44 @@ export default function GovernmentDashboardPage() {
     refetchInterval: 30000,
   })
 
-  // جلب التنبؤات الحقيقية من Google Traffic API
-  const { data: predictions, refetch: refetchPredictions, isLoading: predictionsLoading } = useQuery({
-    queryKey: ['predictions-real', selectedCity],
+  // جلب التنبؤات الحقيقية من Google Traffic API - 30 دقيقة و 60 دقيقة
+  const { data: predictions30, isLoading: predictions30Loading } = useQuery({
+    queryKey: ['predictions-real-30', selectedCity],
     queryFn: async () => {
       try {
-        // محاولة استخدام API التنبؤات الحقيقية أولاً
-        const res = await axios.get(`/api/predictions/real?city=${selectedCity}&minutesAhead=60`)
+        const res = await axios.get(`/api/predictions/real?city=${selectedCity}&minutesAhead=30`)
         if (res.data.success && res.data.data && res.data.data.length > 0) {
-          console.log('✅ Real predictions received:', res.data.data.length, 'predictions')
           return res.data.data
         }
-        // Fallback إلى API القديم
-        const fallbackRes = await axios.get(`/api/predictions?minutesAhead=60`)
-        return fallbackRes.data.data || []
+        return []
       } catch (error: any) {
-        console.error('❌ Error fetching predictions:', error.message)
-        // Fallback إلى API القديم في حالة الخطأ
-        try {
-          const fallbackRes = await axios.get(`/api/predictions?minutesAhead=60`)
-          return fallbackRes.data.data || []
-        } catch (fallbackError: any) {
-          console.error('❌ Fallback predictions API also failed:', fallbackError.message)
-          return []
-        }
+        console.error('❌ Error fetching 30min predictions:', error.message)
+        return []
       }
     },
-    refetchInterval: 2 * 60 * 1000, // تحديث كل دقيقتين
-    staleTime: 60 * 1000, // البيانات صالحة لمدة دقيقة
+    refetchInterval: 2 * 60 * 1000,
+    staleTime: 60 * 1000,
   })
+
+  const { data: predictions60, isLoading: predictions60Loading } = useQuery({
+    queryKey: ['predictions-real-60', selectedCity],
+    queryFn: async () => {
+      try {
+        const res = await axios.get(`/api/predictions/real?city=${selectedCity}&minutesAhead=60`)
+        if (res.data.success && res.data.data && res.data.data.length > 0) {
+          return res.data.data
+        }
+        return []
+      } catch (error: any) {
+        console.error('❌ Error fetching 60min predictions:', error.message)
+        return []
+      }
+    },
+    refetchInterval: 2 * 60 * 1000,
+    staleTime: 60 * 1000,
+  })
+
+  const predictionsLoading = predictions30Loading || predictions60Loading
 
   const { data: decisions } = useQuery({
     queryKey: ['decisions', selectedCity],
@@ -448,7 +457,6 @@ export default function GovernmentDashboardPage() {
                 onRefresh={() => {
                   refetchTraffic()
                   refetchStats()
-                  refetchPredictions()
                 }}
               />
               <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
@@ -629,14 +637,21 @@ export default function GovernmentDashboardPage() {
                 <TrendingUp className="h-6 w-6 text-blue-600" />
               </div>
               <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">
-                {predictions?.length || 0} نشط
+                {((predictions30?.length || 0) + (predictions60?.length || 0))} نشط
               </span>
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-1">تنبؤات نشطة</h3>
             <p className="text-sm text-gray-600 mb-3">تحليل ذكي للازدحام</p>
             <div className="flex items-center gap-2 text-sm">
               <Target className="h-4 w-4 text-blue-500" />
-              <span className="text-gray-600">متوسط الثقة: {predictions?.length > 0 ? Math.round((predictions.reduce((sum: number, p: any) => sum + (p.confidence || 0), 0) / predictions.length) * 100) : 0}%</span>
+              <span className="text-gray-600">متوسط الثقة: {
+                (() => {
+                  const allPredictions = [...(predictions30 || []), ...(predictions60 || [])]
+                  return allPredictions.length > 0 
+                    ? Math.round((allPredictions.reduce((sum: number, p: any) => sum + (p.confidence || 0), 0) / allPredictions.length) * 100)
+                    : 0
+                })()
+              }%</span>
             </div>
           </div>
         </div>
@@ -724,85 +739,238 @@ export default function GovernmentDashboardPage() {
             />
           </div>
 
-          {/* التنبؤات - تصميم محسّن */}
+          {/* التنبؤات - تصميم محسّن مع تفاصيل 30 دقيقة وساعة */}
           <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-1">التنبؤات القادمة</h3>
                 <p className="text-sm text-gray-600">تحليل ذكي للازدحام المتوقع</p>
               </div>
-              <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">
-                {predictions?.length || 0} تنبؤ
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold">
+                  {predictions30?.length || 0} خلال 30 د
+                </div>
+                <div className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-bold">
+                  {predictions60?.length || 0} خلال ساعة
+                </div>
               </div>
             </div>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
-              {predictions && predictions.length > 0 ? (
-                predictions.slice(0, 8).map((pred: any) => (
-                  <div
-                    key={pred.id}
-                    className={`p-4 rounded-xl border-2 transition-all cursor-pointer transform hover:scale-[1.02] ${
-                      selectedSegment === pred.id
-                        ? 'bg-gradient-to-r from-primary-50 to-primary-100 border-primary-400 shadow-md'
-                        : 'bg-gray-50 border-gray-200 hover:border-primary-300 hover:shadow-sm'
-                    }`}
-                    onClick={() => setSelectedSegment(selectedSegment === pred.id ? null : pred.id)}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          <span className="font-bold text-gray-900">{pred.roadName}</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mb-2">{pred.city} • {pred.direction}</p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-lg text-xs font-bold shadow-sm ${
-                        pred.predictedIndex >= 70 ? 'bg-red-500 text-white' :
-                        pred.predictedIndex >= 50 ? 'bg-yellow-500 text-white' :
-                        'bg-green-500 text-white'
-                      }`}>
-                        {pred.predictedIndex}%
-                      </span>
+
+            {predictionsLoading ? (
+              <div className="text-center py-8">
+                <RefreshCw className="h-8 w-8 mx-auto mb-2 text-primary-600 animate-spin" />
+                <p className="text-gray-600">جاري تحليل التنبؤات...</p>
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar">
+                {/* التنبؤات خلال 30 دقيقة */}
+                {predictions30 && predictions30.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-1 w-8 bg-blue-500 rounded"></div>
+                      <h4 className="text-sm font-bold text-gray-700">خلال 30 دقيقة</h4>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div className="flex items-center gap-1 text-xs text-gray-600">
-                        <Clock className="h-3 w-3" />
-                        <span>خلال {Math.round((new Date(pred.predictedFor).getTime() - Date.now()) / 60000)} دقيقة</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-600">
-                        <Target className="h-3 w-3" />
-                        <span>ثقة: {Math.round(pred.confidence * 100)}%</span>
-                      </div>
-                    </div>
-                    {selectedSegment === pred.id && (
-                      <div className="mt-3 pt-3 border-t border-gray-300 space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">التأخير المتوقع:</span>
-                          <span className="font-bold text-gray-900">{pred.predictedDelayMinutes?.toFixed(1) || '0'} دقيقة</span>
-                        </div>
-                        {pred.factors && pred.factors.length > 0 && (
-                          <div>
-                            <p className="text-xs text-gray-600 mb-1">العوامل:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {pred.factors.map((factor: string, idx: number) => (
-                                <span key={idx} className="px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">
-                                  {factor}
+                    <div className="space-y-2">
+                      {predictions30.slice(0, 5).map((pred: any) => {
+                        const minutesAway = Math.round((new Date(pred.predictedFor).getTime() - Date.now()) / 60000)
+                        const severityColor = pred.predictedIndex >= 70 ? 'red' : pred.predictedIndex >= 50 ? 'yellow' : 'green'
+                        const severityBg = {
+                          red: 'bg-red-50 border-red-200',
+                          yellow: 'bg-yellow-50 border-yellow-200',
+                          green: 'bg-green-50 border-green-200'
+                        }[severityColor]
+                        const severityText = {
+                          red: 'text-red-700',
+                          yellow: 'text-yellow-700',
+                          green: 'text-green-700'
+                        }[severityColor]
+                        const severityBadge = {
+                          red: 'bg-red-500',
+                          yellow: 'bg-yellow-500',
+                          green: 'bg-green-500'
+                        }[severityColor]
+
+                        return (
+                          <div
+                            key={pred.id}
+                            className={`p-4 rounded-lg border-2 ${severityBg} transition-all cursor-pointer hover:shadow-md`}
+                            onClick={() => setSelectedSegment(selectedSegment === pred.id ? null : pred.id)}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <MapPin className={`h-4 w-4 ${severityText}`} />
+                                  <span className={`font-bold ${severityText}`}>{pred.roadName}</span>
+                                </div>
+                                <p className="text-xs text-gray-600 mb-2">{pred.city} • {pred.direction}</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className={`px-3 py-1 rounded-lg text-xs font-bold text-white shadow-sm ${severityBadge}`}>
+                                  {pred.predictedIndex}%
                                 </span>
-                              ))}
+                                <span className="text-xs text-gray-500">خلال {minutesAway} د</span>
+                              </div>
                             </div>
+                            <div className="grid grid-cols-2 gap-2 mb-2 text-xs">
+                              <div className="flex items-center gap-1 text-gray-600">
+                                <Clock className="h-3 w-3" />
+                                <span>تأخير: {pred.predictedDelayMinutes?.toFixed(1) || 0} دقيقة</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-gray-600">
+                                <TrendingUp className="h-3 w-3" />
+                                <span>ثقة: {Math.round((pred.confidence || 0) * 100)}%</span>
+                              </div>
+                            </div>
+                            {selectedSegment === pred.id && (
+                              <div className="mt-3 pt-3 border-t border-gray-300">
+                                <div className="mb-2">
+                                  <p className="text-xs font-bold text-gray-700 mb-1">السبب:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {Array.isArray(pred.factors) ? pred.factors.map((factor: string, idx: number) => (
+                                      <span key={idx} className="px-2 py-1 bg-white rounded text-xs text-gray-700 border border-gray-200">
+                                        {factor}
+                                      </span>
+                                    )) : (
+                                      <span className="px-2 py-1 bg-white rounded text-xs text-gray-700 border border-gray-200">
+                                        {pred.factors || 'غير محدد'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {pred.trend && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <span className="text-gray-600">الاتجاه:</span>
+                                    <span className={`font-bold ${
+                                      pred.trend === 'increasing' ? 'text-red-600' :
+                                      pred.trend === 'decreasing' ? 'text-green-600' :
+                                      'text-gray-600'
+                                    }`}>
+                                      {pred.trend === 'increasing' ? '↗ تزايد' :
+                                       pred.trend === 'decreasing' ? '↘ تناقص' :
+                                       '→ مستقر'}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    )}
+                        )
+                      })}
+                    </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <Info className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p className="text-gray-500 font-medium">لا توجد تنبؤات حالياً</p>
-                  <p className="text-xs text-gray-400 mt-1">سيتم تحديث البيانات تلقائياً</p>
-                </div>
-              )}
-            </div>
+                )}
+
+                {/* التنبؤات خلال ساعة */}
+                {predictions60 && predictions60.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-1 w-8 bg-purple-500 rounded"></div>
+                      <h4 className="text-sm font-bold text-gray-700">خلال ساعة</h4>
+                    </div>
+                    <div className="space-y-2">
+                      {predictions60
+                        .filter((p: any) => {
+                          const minutesAway = Math.round((new Date(p.predictedFor).getTime() - Date.now()) / 60000)
+                          return minutesAway > 30 // فقط التنبؤات بعد 30 دقيقة
+                        })
+                        .slice(0, 5)
+                        .map((pred: any) => {
+                          const minutesAway = Math.round((new Date(pred.predictedFor).getTime() - Date.now()) / 60000)
+                          const severityColor = pred.predictedIndex >= 70 ? 'red' : pred.predictedIndex >= 50 ? 'yellow' : 'green'
+                          const severityBg = {
+                            red: 'bg-red-50 border-red-200',
+                            yellow: 'bg-yellow-50 border-yellow-200',
+                            green: 'bg-green-50 border-green-200'
+                          }[severityColor]
+                          const severityText = {
+                            red: 'text-red-700',
+                            yellow: 'text-yellow-700',
+                            green: 'text-green-700'
+                          }[severityColor]
+                          const severityBadge = {
+                            red: 'bg-red-500',
+                            yellow: 'bg-yellow-500',
+                            green: 'bg-green-500'
+                          }[severityColor]
+
+                          return (
+                            <div
+                              key={pred.id}
+                              className={`p-4 rounded-lg border-2 ${severityBg} transition-all cursor-pointer hover:shadow-md`}
+                              onClick={() => setSelectedSegment(selectedSegment === pred.id ? null : pred.id)}
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <MapPin className={`h-4 w-4 ${severityText}`} />
+                                    <span className={`font-bold ${severityText}`}>{pred.roadName}</span>
+                                  </div>
+                                  <p className="text-xs text-gray-600 mb-2">{pred.city} • {pred.direction}</p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className={`px-3 py-1 rounded-lg text-xs font-bold text-white shadow-sm ${severityBadge}`}>
+                                    {pred.predictedIndex}%
+                                  </span>
+                                  <span className="text-xs text-gray-500">خلال {minutesAway} د</span>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mb-2 text-xs">
+                                <div className="flex items-center gap-1 text-gray-600">
+                                  <Clock className="h-3 w-3" />
+                                  <span>تأخير: {pred.predictedDelayMinutes?.toFixed(1) || 0} دقيقة</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-600">
+                                  <TrendingUp className="h-3 w-3" />
+                                  <span>ثقة: {Math.round((pred.confidence || 0) * 100)}%</span>
+                                </div>
+                              </div>
+                              {selectedSegment === pred.id && (
+                                <div className="mt-3 pt-3 border-t border-gray-300">
+                                  <div className="mb-2">
+                                    <p className="text-xs font-bold text-gray-700 mb-1">السبب:</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {Array.isArray(pred.factors) ? pred.factors.map((factor: string, idx: number) => (
+                                        <span key={idx} className="px-2 py-1 bg-white rounded text-xs text-gray-700 border border-gray-200">
+                                          {factor}
+                                        </span>
+                                      )) : (
+                                        <span className="px-2 py-1 bg-white rounded text-xs text-gray-700 border border-gray-200">
+                                          {pred.factors || 'غير محدد'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {pred.trend && (
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <span className="text-gray-600">الاتجاه:</span>
+                                      <span className={`font-bold ${
+                                        pred.trend === 'increasing' ? 'text-red-600' :
+                                        pred.trend === 'decreasing' ? 'text-green-600' :
+                                        'text-gray-600'
+                                      }`}>
+                                        {pred.trend === 'increasing' ? '↗ تزايد' :
+                                         pred.trend === 'decreasing' ? '↘ تناقص' :
+                                         '→ مستقر'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {(!predictions30 || predictions30.length === 0) && (!predictions60 || predictions60.length === 0) && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Clock className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                    <p>لا توجد تنبؤات متاحة حالياً</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
