@@ -22,7 +22,6 @@ import {
   BarChart3
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import GoogleTrafficMap from '@/components/GoogleTrafficMap'
 import { LocationPicker } from '@/components/LocationPicker'
 import { useGeolocation } from '@/lib/hooks/useGeolocation'
 import { AlertCard } from '@/components/AlertCard'
@@ -303,10 +302,6 @@ export default function PlannedRoutePage() {
     }
   }
 
-  const mapMarkers: any[] = useMemo(() => {
-    if (!selectedRoute) return []
-    return []
-  }, [selectedRoute])
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -315,7 +310,7 @@ export default function PlannedRoutePage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold">تخطيط المسار المستقبلي</h1>
-            <p className="text-sm opacity-90">تحديد مسار مع تنبؤات الطقس</p>
+            <p className="text-sm opacity-90">تحديد مسار مع تنبؤات حركة المرور و الطقس</p>
           </div>
           <button
             onClick={() => router.push('/user')}
@@ -453,7 +448,7 @@ export default function PlannedRoutePage() {
               ) : (
                 <>
                   <Route className="h-5 w-5" />
-                  حساب المسار مع تنبؤات الطقس
+                  حساب المسار
                 </>
               )}
             </button>
@@ -729,33 +724,187 @@ export default function PlannedRoutePage() {
           </div>
         )}
 
-        {/* خريطة المسار */}
-        {selectedRoute && userLocation && destination && (
+        {/* البيانات التفصيلية للمسار */}
+        {selectedRoute && (
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <h3 className="font-bold text-gray-900 mb-4">خريطة المسار</h3>
-            <div className="h-[400px] rounded-lg overflow-hidden">
-              <GoogleTrafficMap
-                key={`planned-route-map-${selectedRoute.id || Date.now()}`}
-                center={{
-                  lat: (userLocation[0] + destination[0]) / 2,
-                  lng: (userLocation[1] + destination[1]) / 2,
-                }}
-                zoom={12}
-                markers={mapMarkers}
-                route={
-                  // إذا كان هناك route array، استخدمه مباشرة
-                  selectedRoute.route && Array.isArray(selectedRoute.route) && selectedRoute.route.length > 0
-                    ? selectedRoute.route
-                    : // وإلا استخدم origin و destination (ستستخدم GoogleTrafficMap Directions API)
-                      {
-                        origin: { lat: userLocation[0], lng: userLocation[1] },
-                        destination: { lat: destination[0], lng: destination[1] },
-                      }
-                }
-                currentLocation={userLocation}
-                showTrafficLayer={true}
-                className="w-full h-full"
-              />
+            <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary-600" />
+              البيانات التفصيلية للمسار
+            </h2>
+
+            <div className="space-y-4">
+              {/* معلومات المسار الأساسية */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Route className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm font-medium text-gray-700">المسافة الإجمالية</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {selectedRoute.distance ? selectedRoute.distance.toFixed(1) : '0.0'} كم
+                  </p>
+                </div>
+
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-5 w-5 text-green-600" />
+                    <span className="text-sm font-medium text-gray-700">الوقت المتوقع للوصول</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600">
+                    {selectedRoute.estimatedTime ? Math.round(selectedRoute.estimatedTime) : 0} دقيقة
+                  </p>
+                  {selectedRoute.estimatedTimeInTraffic && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      مع الازدحام: {Math.round(selectedRoute.estimatedTimeInTraffic)} دقيقة
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* تنبؤات حركة المرور التفصيلية */}
+              {routePredictions && routePredictions.predictions && routePredictions.predictions.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-orange-600" />
+                    تنبؤات حركة المرور التفصيلية
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    {routePredictions.predictions.map((prediction: any, index: number) => {
+                      const congestionIndex = prediction.predictedIndex || prediction.congestionIndex || 0
+                      const delayMinutes = prediction.predictedDelayMinutes || prediction.delayMinutes || 0
+                      const congestionColor = 
+                        congestionIndex >= 70 ? 'bg-red-100 border-red-300 text-red-800' :
+                        congestionIndex >= 50 ? 'bg-orange-100 border-orange-300 text-orange-800' :
+                        congestionIndex >= 30 ? 'bg-yellow-100 border-yellow-300 text-yellow-800' :
+                        'bg-green-100 border-green-300 text-green-800'
+                      
+                      return (
+                        <div key={index} className={`rounded-lg p-4 border ${congestionColor}`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4" />
+                              <span className="font-medium">
+                                بعد {prediction.minutesAhead || (index + 1) * 15} دقيقة
+                              </span>
+                            </div>
+                            <div className="text-xl font-bold">
+                              {congestionIndex}% ازدحام
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3 mt-3">
+                            <div>
+                              <p className="text-xs opacity-80 mb-1">التأخير المتوقع</p>
+                              <p className="font-bold text-lg">
+                                {delayMinutes ? `${delayMinutes.toFixed(1)} دقيقة` : 'غير محدد'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs opacity-80 mb-1">مستوى الثقة</p>
+                              <p className="font-bold text-lg">
+                                {prediction.confidence ? `${Math.round(prediction.confidence * 100)}%` : 'غير محدد'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {prediction.factors && prediction.factors.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-current border-opacity-20">
+                              <p className="text-xs font-medium mb-2">العوامل المؤثرة:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {prediction.factors.map((factor: string, idx: number) => (
+                                  <span key={idx} className="text-xs bg-white bg-opacity-50 px-2 py-1 rounded">
+                                    {factor}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {routePredictions.avgCongestion !== undefined && (
+                    <div className="mt-4 pt-4 border-t border-gray-300">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700">متوسط الازدحام المتوقع</span>
+                        <span className="text-xl font-bold text-gray-900">
+                          {routePredictions.avgCongestion.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* حالة الطقس التفصيلية */}
+              {weatherData && (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <CloudRain className="h-5 w-5 text-blue-600" />
+                    حالة الطقس المتوقعة
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Cloud className="h-4 w-4 text-gray-600" />
+                        <span className="text-sm text-gray-600">الحالة</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {weatherData.condition || 'غير محدد'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Droplets className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm text-gray-600">الأمطار</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {weatherData.precipitation ? `${weatherData.precipitation.toFixed(1)} ملم` : '0 ملم'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Eye className="h-4 w-4 text-gray-600" />
+                        <span className="text-sm text-gray-600">الرؤية</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {weatherData.visibility ? `${(weatherData.visibility / 1000).toFixed(1)} كم` : 'غير محدد'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Wind className="h-4 w-4 text-gray-600" />
+                        <span className="text-sm text-gray-600">سرعة الرياح</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {weatherData.windSpeed ? `${weatherData.windSpeed.toFixed(1)} كم/س` : 'غير محدد'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {weatherData.impactLevel && (
+                    <div className={`mt-3 p-3 rounded-lg ${
+                      weatherData.impactLevel === 'high' ? 'bg-red-100 border border-red-300' :
+                      weatherData.impactLevel === 'medium' ? 'bg-orange-100 border border-orange-300' :
+                      'bg-green-100 border border-green-300'
+                    }`}>
+                      <p className="font-medium text-sm">
+                        مستوى التأثير: {
+                          weatherData.impactLevel === 'high' ? 'عالي - يُنصح بتأجيل الرحلة' :
+                          weatherData.impactLevel === 'medium' ? 'متوسط - توخي الحذر' :
+                          'منخفض - ظروف جيدة'
+                        }
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
