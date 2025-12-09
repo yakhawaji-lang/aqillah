@@ -292,6 +292,52 @@ export default function GovernmentDashboardPage() {
     setMapMarkers([])
   }, [])
 
+  // تحديث مركز الخريطة والزوم عند تغيير المدينة
+  useEffect(() => {
+    if (!selectedBottleneck) {
+      // تحديد الإحداثيات والزوم حسب المدينة
+      let newCenter: { lat: number; lng: number }
+      let newZoom: number
+
+      switch (selectedCity) {
+        case 'الرياض':
+          newCenter = { lat: 24.7136, lng: 46.6753 }
+          newZoom = 11
+          break
+        case 'جدة':
+          newCenter = { lat: 21.4858, lng: 39.1925 }
+          newZoom = 12
+          break
+        case 'الدمام':
+          newCenter = { lat: 26.4207, lng: 50.0888 }
+          newZoom = 12
+          break
+        case 'المدينة المنورة':
+          newCenter = { lat: 24.5247, lng: 39.5692 }
+          newZoom = 12
+          break
+        case 'الخبر':
+          newCenter = { lat: 26.2794, lng: 50.2080 }
+          newZoom = 12
+          break
+        case 'أبها':
+          newCenter = { lat: 18.2164, lng: 42.5042 }
+          newZoom = 12
+          break
+        case 'خميس مشيط':
+          newCenter = { lat: 18.3000, lng: 42.7333 }
+          newZoom = 12
+          break
+        default:
+          newCenter = { lat: 24.7136, lng: 46.6753 }
+          newZoom = 11
+      }
+
+      setMapCenter(newCenter)
+      setMapZoom(newZoom)
+    }
+  }, [selectedCity, selectedBottleneck])
+
   // جلب بيانات الازدحام التاريخية خلال اليوم
   const { data: trafficHistoryData, isLoading: historyLoading } = useQuery({
     queryKey: ['traffic-history', selectedCity],
