@@ -9,25 +9,43 @@ export async function GET(request: NextRequest) {
     const segmentId = searchParams.get('segmentId')
     const activeOnly = searchParams.get('activeOnly') !== 'false'
 
-    const bottlenecks = await prisma.bottleneck.findMany({
-      where: {
-        ...(segmentId && { segmentId }),
-        ...(activeOnly && { isResolved: false }),
-      },
-      include: {
-        segment: true,
-      },
-      orderBy: {
-        detectedAt: 'desc',
-      },
-      take: 100,
-    })
+    // محاولة الوصول إلى قاعدة البيانات
+    try {
+      const bottlenecks = await prisma.bottleneck.findMany({
+        where: {
+          ...(segmentId && { segmentId }),
+          ...(activeOnly && { isResolved: false }),
+        },
+        include: {
+          segment: true,
+        },
+        orderBy: {
+          detectedAt: 'desc',
+        },
+        take: 100,
+      })
 
-    return NextResponse.json({ data: bottlenecks })
-  } catch (error) {
+      return NextResponse.json({ 
+        success: true,
+        data: bottlenecks 
+      })
+    } catch (dbError: any) {
+      // إذا فشل الاتصال بقاعدة البيانات، إرجاع بيانات فارغة بدلاً من خطأ
+      console.warn('Database not available, returning empty data:', dbError.message)
+      return NextResponse.json({ 
+        success: true,
+        data: [],
+        message: 'قاعدة البيانات غير متاحة حالياً'
+      })
+    }
+  } catch (error: any) {
     console.error('Error fetching bottlenecks:', error)
     return NextResponse.json(
-      { error: 'فشل في جلب نقاط الازدحام' },
+      { 
+        success: false,
+        error: error.message || 'فشل في جلب نقاط الازدحام',
+        data: []
+      },
       { status: 500 }
     )
   }

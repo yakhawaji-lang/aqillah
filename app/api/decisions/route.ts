@@ -9,25 +9,43 @@ export async function GET(request: NextRequest) {
     const segmentId = searchParams.get('segmentId')
     const status = searchParams.get('status')
 
-    const decisions = await prisma.trafficDecision.findMany({
-      where: {
-        ...(segmentId && { segmentId }),
-        ...(status && { status }),
-      },
-      include: {
-        segment: true,
-      },
-      orderBy: {
-        recommendedAt: 'desc',
-      },
-      take: 100,
-    })
+    // محاولة الوصول إلى قاعدة البيانات
+    try {
+      const decisions = await prisma.trafficDecision.findMany({
+        where: {
+          ...(segmentId && { segmentId }),
+          ...(status && { status }),
+        },
+        include: {
+          segment: true,
+        },
+        orderBy: {
+          recommendedAt: 'desc',
+        },
+        take: 100,
+      })
 
-    return NextResponse.json({ data: decisions })
-  } catch (error) {
+      return NextResponse.json({ 
+        success: true,
+        data: decisions 
+      })
+    } catch (dbError: any) {
+      // إذا فشل الاتصال بقاعدة البيانات، إرجاع بيانات فارغة بدلاً من خطأ
+      console.warn('Database not available, returning empty data:', dbError.message)
+      return NextResponse.json({ 
+        success: true,
+        data: [],
+        message: 'قاعدة البيانات غير متاحة حالياً'
+      })
+    }
+  } catch (error: any) {
     console.error('Error fetching decisions:', error)
     return NextResponse.json(
-      { error: 'فشل في جلب القرارات' },
+      { 
+        success: false,
+        error: error.message || 'فشل في جلب القرارات',
+        data: []
+      },
       { status: 500 }
     )
   }
