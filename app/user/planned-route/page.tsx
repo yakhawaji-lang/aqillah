@@ -997,12 +997,12 @@ export default function PlannedRoutePage() {
                 </div>
               )}
 
-              {/* حالة الطقس التفصيلية */}
+              {/* حالة الطقس التفصيلية - بيانات شاملة من مصادر متعددة */}
               {weatherLoading ? (
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <div className="text-center py-4">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                    <p className="text-sm text-gray-600">جاري جلب بيانات الطقس...</p>
+                    <p className="text-sm text-gray-600">جاري جلب بيانات الطقس من مصادر متعددة...</p>
                   </div>
                 </div>
               ) : weatherError ? (
@@ -1015,12 +1015,21 @@ export default function PlannedRoutePage() {
                 </div>
               ) : weatherData && (
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <CloudRain className="h-5 w-5 text-blue-600" />
-                    حالة الطقس المتوقعة
-                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                      <CloudRain className="h-5 w-5 text-blue-600" />
+                      حالة الطقس المتوقعة
+                    </h3>
+                    {weatherData.source && (
+                      <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
+                        مصدر: {weatherData.source === 'google' ? 'Google Weather' : 
+                                weatherData.source === 'openweather' ? 'OpenWeatherMap' : 
+                                weatherData.source}
+                      </span>
+                    )}
+                  </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3 mb-3">
                     <div className="bg-white rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
                         <Cloud className="h-4 w-4 text-gray-600" />
@@ -1057,10 +1066,8 @@ export default function PlannedRoutePage() {
                       </div>
                       <p className="text-lg font-bold text-gray-900">
                         {weatherData.visibility && !isNaN(Number(weatherData.visibility)) && Number(weatherData.visibility) > 0 
-                          ? `${(Number(weatherData.visibility) / 1000).toFixed(1)} كم` 
-                          : weatherData.visibility === 0 || weatherData.visibility === null 
-                            ? 'غير محدد' 
-                            : `${Number(weatherData.visibility).toFixed(0)} م`}
+                          ? `${(Number(weatherData.visibility) >= 1000 ? Number(weatherData.visibility) / 1000 : Number(weatherData.visibility)).toFixed(1)} ${Number(weatherData.visibility) >= 1000 ? 'كم' : 'متر'}` 
+                          : 'غير محدد'}
                       </p>
                     </div>
 
@@ -1073,7 +1080,48 @@ export default function PlannedRoutePage() {
                         {weatherData.windSpeed ? `${Number(weatherData.windSpeed).toFixed(1)} كم/س` : 'غير محدد'}
                       </p>
                     </div>
+
+                    {weatherData.temperature && (
+                      <div className="bg-white rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Sun className="h-4 w-4 text-orange-600" />
+                          <span className="text-sm text-gray-600">درجة الحرارة</span>
+                        </div>
+                        <p className="text-lg font-bold text-gray-900">
+                          {Number(weatherData.temperature).toFixed(1)}°C
+                        </p>
+                      </div>
+                    )}
+
+                    {weatherData.humidity && (
+                      <div className="bg-white rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Droplets className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm text-gray-600">الرطوبة</span>
+                        </div>
+                        <p className="text-lg font-bold text-gray-900">
+                          {Number(weatherData.humidity).toFixed(0)}%
+                        </p>
+                      </div>
+                    )}
                   </div>
+
+                  {/* تنبيهات الطقس */}
+                  {weatherData.alerts && Array.isArray(weatherData.alerts) && weatherData.alerts.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {weatherData.alerts.map((alert: any, index: number) => (
+                        <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-3">
+                          <p className="text-sm font-medium text-red-800">{alert.title || 'تنبيه طقس'}</p>
+                          <p className="text-xs text-red-700 mt-1">{alert.description}</p>
+                          <p className="text-xs text-red-600 mt-1">
+                            الشدة: {alert.severity === 'extreme' ? 'شديد جداً' :
+                                    alert.severity === 'severe' ? 'شديد' :
+                                    alert.severity === 'moderate' ? 'متوسط' : 'خفيف'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {weatherData.impactLevel && (
                     <div className={`mt-3 p-3 rounded-lg ${
