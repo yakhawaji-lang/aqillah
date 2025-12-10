@@ -15,11 +15,11 @@ import {
   Settings,
   BarChart3,
   Calendar,
-  X
+  X,
+  Search,
+  Sparkles
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import RoutePlanner from '@/components/user/RoutePlanner'
-import WeatherLayer from '@/components/user/WeatherLayer'
 import GoogleTrafficMap from '@/components/GoogleTrafficMap'
 import { CongestionIndicator } from '@/components/CongestionIndicator'
 import { AlertCard } from '@/components/AlertCard'
@@ -31,7 +31,6 @@ import { LocationPicker } from '@/components/LocationPicker'
 import { useRealtimeTraffic } from '@/lib/hooks/useRealtimeTraffic'
 import { useNotifications } from '@/lib/hooks/useNotifications'
 import { useGeolocation } from '@/lib/hooks/useGeolocation'
-import { Volume2, VolumeX } from 'lucide-react'
 import { MapMarker, Alert } from '@/types'
 import axios from 'axios'
 import { formatTime } from '@/lib/utils'
@@ -47,9 +46,9 @@ export default function UserAppPage() {
   // جلب موقع المستخدم تلقائياً (مرة واحدة فقط، ليس مراقبة مستمرة)
   const { location: userLocation, loading: locationLoading, refresh: refreshLocation } = useGeolocation({
     enableHighAccuracy: true,
-    timeout: 20000, // 20 ثانية
-    maximumAge: 300000, // 5 دقائق - استخدام آخر موقع إذا كان حديثاً
-    watch: false, // لا نراقب الموقع بشكل مستمر في صفحة اختيار المسار
+    timeout: 20000,
+    maximumAge: 300000,
+    watch: false,
   })
 
   // Real-time traffic data
@@ -82,7 +81,7 @@ export default function UserAppPage() {
 
   // حساب المسافة بين نقطتين (Haversine formula)
   const calculateDistance = (point1: [number, number], point2: [number, number]): number => {
-    const R = 6371000 // نصف قطر الأرض بالمتر
+    const R = 6371000
     const lat1 = point1[0] * Math.PI / 180
     const lat2 = point2[0] * Math.PI / 180
     const deltaLat = (point2[0] - point1[0]) * Math.PI / 180
@@ -130,7 +129,7 @@ export default function UserAppPage() {
 
     const dx = point[0] - xx
     const dy = point[1] - yy
-    return Math.sqrt(dx * dx + dy * dy) * 111000 // تحويل إلى متر تقريباً
+    return Math.sqrt(dx * dx + dy * dy) * 111000
   }
 
   // حساب المسافة من نقطة إلى أقرب نقطة على المسار
@@ -156,11 +155,10 @@ export default function UserAppPage() {
   const routeAlerts = useMemo(() => {
     if (!selectedRoute || !selectedRoute.route || !allAlerts || allAlerts.length === 0) return []
 
-    const MAX_DISTANCE_FROM_ROUTE = 500 // متر - التنبيهات ضمن 500 متر من المسار
+    const MAX_DISTANCE_FROM_ROUTE = 500
 
     const nearbyAlerts = allAlerts
       .map((alert: any) => {
-        // استخراج الإحداثيات من التنبيه
         let alertLat: number | null = null
         let alertLng: number | null = null
 
@@ -180,7 +178,6 @@ export default function UserAppPage() {
         const distance = distanceToRoute(alertPoint, selectedRoute.route)
 
         if (distance <= MAX_DISTANCE_FROM_ROUTE) {
-          // حساب موضع التنبيه على المسار
           let routePosition = 0
           let cumulativeDistance = 0
           let totalDistance = 0
@@ -220,7 +217,6 @@ export default function UserAppPage() {
     return nearbyAlerts.sort((a: any, b: any) => a.routePosition - b.routePosition)
   }, [selectedRoute, allAlerts])
 
-  // استخدام routeAlerts إذا كان هناك مسار محدد، وإلا قائمة فارغة
   const alerts = selectedRoute ? routeAlerts : []
 
   const filteredAlerts = alerts?.filter((alert) => {
@@ -280,104 +276,112 @@ export default function UserAppPage() {
     : null
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <div className="bg-primary-600 text-white p-4 sticky top-0 z-50 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-bold">عَقِلْها</h1>
-            <p className="text-sm opacity-90">نظام تحليل الازدحام المروري</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <RealtimeIndicator isConnected={isConnected} lastUpdate={lastUpdate} />
-            <button
-              onClick={() => {
-                console.log('📍 Manual location refresh requested from header')
-                refreshLocation()
-                toast('جاري تحديد موقعك...', { icon: '📍' })
-              }}
-              disabled={locationLoading}
-              className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              title="تحديد موقعي"
-            >
-              {locationLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : (
-                <Navigation className="h-5 w-5" />
-              )}
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition"
-            >
-              <RefreshCw className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => router.push('/user/predictions')}
-              className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition"
-              title="التنبؤات"
-            >
-              <BarChart3 className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => router.push('/user/planned-route')}
-              className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition"
-              title="تخطيط المسار المستقبلي"
-            >
-              <Calendar className="h-5 w-5" />
-            </button>
-            <button className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition">
-              <Settings className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* البحث عن وجهة */}
-        <div className="bg-white/20 rounded-lg p-3 backdrop-blur-sm">
-          <button
-            onClick={() => setActiveTab('route')}
-            className="w-full flex items-center gap-3 text-right"
-          >
-            <div className="flex-1 text-right">
-              <p className="text-sm opacity-90">إلى أين تريد الذهاب؟</p>
-              <p className="font-medium">
-                {destination ? `${destination[0].toFixed(4)}, ${destination[1].toFixed(4)}` : 'حدد الوجهة'}
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 pb-20">
+      {/* Header - تصميم محسّن */}
+      <div className="bg-gradient-to-r from-primary-600 via-primary-700 to-primary-600 text-white shadow-xl sticky top-0 z-50">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">عَقِلْها</h1>
+                <p className="text-sm opacity-90">نظام تحليل الازدحام المروري الذكي</p>
+              </div>
             </div>
-            <ChevronRight className="h-5 w-5" />
-          </button>
+            <div className="flex items-center gap-2">
+              <RealtimeIndicator isConnected={isConnected} lastUpdate={lastUpdate} />
+              <button
+                onClick={() => {
+                  refreshLocation()
+                  toast('جاري تحديد موقعك...', { icon: '📍' })
+                }}
+                disabled={locationLoading}
+                className="p-2.5 bg-white/20 rounded-xl hover:bg-white/30 transition disabled:opacity-50 backdrop-blur-sm"
+                title="تحديد موقعي"
+              >
+                {locationLoading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <Navigation className="h-5 w-5" />
+                )}
+              </button>
+              <button
+                onClick={() => router.push('/user/planned-route')}
+                className="p-2.5 bg-white/20 rounded-xl hover:bg-white/30 transition backdrop-blur-sm"
+                title="تخطيط المسار المستقبلي"
+              >
+                <Calendar className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => router.push('/user/predictions')}
+                className="p-2.5 bg-white/20 rounded-xl hover:bg-white/30 transition backdrop-blur-sm"
+                title="التنبؤات"
+              >
+                <BarChart3 className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* البحث السريع عن الوجهة - تصميم محسّن */}
+          <div 
+            onClick={() => setActiveTab('route')}
+            className="bg-white/20 backdrop-blur-md rounded-xl p-4 border border-white/30 cursor-pointer hover:bg-white/30 transition-all duration-200 shadow-lg"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/30 rounded-lg">
+                <Search className="h-5 w-5" />
+              </div>
+              <div className="flex-1 text-right">
+                <p className="text-sm opacity-90 mb-1">إلى أين تريد الذهاب؟</p>
+                <p className="font-semibold text-lg">
+                  {destination 
+                    ? `الوجهة محددة` 
+                    : 'ابحث عن وجهة أو اختر من الخريطة'}
+                </p>
+              </div>
+              <ChevronRight className="h-6 w-6 opacity-75" />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white border-b border-gray-200 sticky top-[140px] z-40">
+      {/* Tabs - تصميم محسّن */}
+      <div className="bg-white border-b border-gray-200 sticky top-[180px] z-40 shadow-sm">
         <div className="flex">
           <button
             onClick={() => setActiveTab('map')}
-            className={`flex-1 py-3 text-center font-medium transition ${
+            className={`flex-1 py-4 text-center font-medium transition-all duration-200 relative ${
               activeTab === 'map'
-                ? 'text-primary-600 border-b-2 border-primary-600'
-                : 'text-gray-600'
+                ? 'text-primary-600'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
+            {activeTab === 'map' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
+            )}
             <div className="flex items-center justify-center gap-2">
-              <MapPin className="h-4 w-4" />
-              الخريطة
+              <MapPin className="h-5 w-5" />
+              <span>الخريطة</span>
             </div>
           </button>
           <button
             onClick={() => setActiveTab('alerts')}
-            className={`flex-1 py-3 text-center font-medium transition ${
+            className={`flex-1 py-4 text-center font-medium transition-all duration-200 relative ${
               activeTab === 'alerts'
-                ? 'text-primary-600 border-b-2 border-primary-600'
-                : 'text-gray-600'
+                ? 'text-primary-600'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
+            {activeTab === 'alerts' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
+            )}
             <div className="flex items-center justify-center gap-2">
-              <Bell className="h-4 w-4" />
-              التنبيهات
+              <Bell className="h-5 w-5" />
+              <span>التنبيهات</span>
               {alerts && alerts.length > 0 && (
-                <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                   {alerts.length}
                 </span>
               )}
@@ -385,31 +389,36 @@ export default function UserAppPage() {
           </button>
           <button
             onClick={() => setActiveTab('route')}
-            className={`flex-1 py-3 text-center font-medium transition ${
+            className={`flex-1 py-4 text-center font-medium transition-all duration-200 relative ${
               activeTab === 'route'
-                ? 'text-primary-600 border-b-2 border-primary-600'
-                : 'text-gray-600'
+                ? 'text-primary-600'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
+            {activeTab === 'route' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
+            )}
             <div className="flex items-center justify-center gap-2">
-              <Route className="h-4 w-4" />
-              المسار
+              <Route className="h-5 w-5" />
+              <span>المسار</span>
             </div>
           </button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-4 max-w-7xl mx-auto">
         {activeTab === 'map' && (
           <div className="space-y-4">
-            {/* البحث والفلاتر */}
+            {/* البحث والفلاتر - تصميم محسّن */}
             <div className="space-y-3">
-              <SearchBar
-                placeholder="ابحث عن طريق..."
-                onSearch={setSearchQuery}
-                suggestions={trafficData?.map((item: any) => item.roadName) || []}
-              />
+              <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
+                <SearchBar
+                  placeholder="ابحث عن طريق أو موقع..."
+                  onSearch={setSearchQuery}
+                  suggestions={trafficData?.map((item: any) => item.roadName) || []}
+                />
+              </div>
               <AdvancedFilters
                 cities={[
                   { label: 'الرياض', value: 'الرياض' },
@@ -424,15 +433,18 @@ export default function UserAppPage() {
               />
             </div>
 
-            {/* حالة الازدحام الحالية */}
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-bold text-gray-900">حالة الازدحام الحالية</h2>
+            {/* حالة الازدحام الحالية - تصميم محسّن */}
+            <div className="bg-white rounded-2xl p-4 shadow-xl border border-gray-100 overflow-hidden">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-xl text-gray-900 flex items-center gap-2">
+                  <MapPin className="h-6 w-6 text-primary-600" />
+                  حالة الازدحام الحالية
+                </h2>
                 {trafficLoading && (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
                 )}
               </div>
-              <div className="h-[400px] rounded-lg overflow-hidden">
+              <div className="h-[500px] rounded-xl overflow-hidden border border-gray-200 shadow-inner">
                 {userLocation ? (
                   <GoogleTrafficMap
                     key={`google-traffic-map-${userLocation[0]}-${userLocation[1]}-${mapMarkers.length}`}
@@ -449,32 +461,33 @@ export default function UserAppPage() {
                     className="w-full h-full"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <div className="text-center">
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                    <div className="text-center p-8">
                       {locationLoading ? (
                         <>
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                          <p className="text-gray-600 mb-2">جاري تحديد موقعك...</p>
+                          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                          <p className="text-gray-700 mb-2 font-medium">جاري تحديد موقعك...</p>
                           <p className="text-sm text-gray-500">يرجى السماح بالوصول إلى موقعك</p>
                         </>
                       ) : (
                         <>
-                          <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-600 mb-2">لم يتم تحديد موقعك</p>
-                          <p className="text-sm text-gray-500 mb-4">اضغط على زر تحديد الموقع أعلاه</p>
+                          <div className="p-4 bg-primary-100 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                            <MapPin className="h-10 w-10 text-primary-600" />
+                          </div>
+                          <p className="text-gray-700 mb-2 font-medium text-lg">لم يتم تحديد موقعك</p>
+                          <p className="text-sm text-gray-500 mb-6">اضغط على زر تحديد الموقع أعلاه</p>
                           <button
                             onClick={() => {
-                              console.log('📍 Manual location refresh requested from map area')
                               refreshLocation()
                               toast('جاري تحديد موقعك...', { icon: '📍' })
                             }}
                             disabled={locationLoading}
-                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                            className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto font-medium"
                           >
                             {locationLoading ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                             ) : (
-                              <Navigation className="h-4 w-4" />
+                              <Navigation className="h-5 w-5" />
                             )}
                             تحديد موقعي
                           </button>
@@ -486,41 +499,49 @@ export default function UserAppPage() {
               </div>
             </div>
 
-            {/* إحصائيات سريعة */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="h-5 w-5 text-primary-600" />
-                  <span className="text-sm text-gray-600">متوسط الازدحام</span>
+            {/* إحصائيات سريعة - تصميم محسّن */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5 shadow-lg border border-blue-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-blue-500 rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-blue-900">متوسط الازدحام</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-blue-900">
                   <AnimatedCounter value={avgCongestion} suffix="%" />
                 </p>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  <span className="text-sm text-gray-600">تنبيهات نشطة</span>
+              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-5 shadow-lg border border-red-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-red-500 rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-red-900">تنبيهات نشطة</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-red-900">
                   <AnimatedCounter value={filteredAlerts.length} />
                 </p>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                  <span className="text-sm text-gray-600">متوسط التأخير</span>
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-5 shadow-lg border border-purple-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-purple-500 rounded-lg">
+                    <Clock className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-purple-900">متوسط التأخير</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-purple-900">
                   <AnimatedCounter value={avgDelay} decimals={1} suffix=" د" />
                 </p>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="h-5 w-5 text-green-600" />
-                  <span className="text-sm text-gray-600">مقاطع مراقبة</span>
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-5 shadow-lg border border-green-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-green-500 rounded-lg">
+                    <MapPin className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-green-900">مقاطع مراقبة</span>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-green-900">
                   <AnimatedCounter value={filteredTrafficData.length} />
                 </p>
               </div>
@@ -529,15 +550,17 @@ export default function UserAppPage() {
         )}
 
         {activeTab === 'alerts' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {!selectedRoute ? (
-              <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-                <Route className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">حدد المسار أولاً</h3>
-                <p className="text-gray-600 mb-4">يجب تحديد الوجهة وحساب المسار لعرض التنبيهات المتعلقة بالمسار</p>
+              <div className="bg-white rounded-2xl p-12 text-center shadow-xl border border-gray-100">
+                <div className="p-6 bg-primary-100 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                  <Route className="h-12 w-12 text-primary-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">حدد المسار أولاً</h3>
+                <p className="text-gray-600 mb-6 text-lg">يجب تحديد الوجهة وحساب المسار لعرض التنبيهات المتعلقة بالمسار</p>
                 <button
                   onClick={() => setActiveTab('route')}
-                  className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                  className="px-8 py-4 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition shadow-lg font-medium text-lg"
                 >
                   الانتقال إلى تحديد المسار
                 </button>
@@ -546,10 +569,12 @@ export default function UserAppPage() {
               <>
                 {/* البحث والفلاتر */}
                 <div className="space-y-3">
-                  <SearchBar
-                    placeholder="ابحث في التنبيهات..."
-                    onSearch={setSearchQuery}
-                  />
+                  <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
+                    <SearchBar
+                      placeholder="ابحث في التنبيهات..."
+                      onSearch={setSearchQuery}
+                    />
+                  </div>
                   <AdvancedFilters
                     severity={[
                       { label: 'منخفض', value: 'low' },
@@ -569,28 +594,31 @@ export default function UserAppPage() {
 
                 {filteredAlerts && filteredAlerts.length > 0 ? (
                   <>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                      <p className="text-sm text-blue-800">
-                        <AlertTriangle className="h-4 w-4 inline-block mr-1" />
+                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-4 shadow-lg">
+                      <p className="text-sm text-blue-900 font-medium flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5" />
                         عرض {filteredAlerts.length} تنبيه متعلق بالمسار المحدد
                       </p>
                     </div>
-                    {filteredAlerts.map((alert: any) => (
-                      <AlertCard
-                        key={alert.id}
-                        alert={alert}
-                        onRouteClick={() => {
-                          // فتح في تطبيق الملاحة
-                          const url = `https://www.google.com/maps/dir/?api=1&destination=${alert.segmentId}`
-                          window.open(url, '_blank')
-                        }}
-                      />
-                    ))}
+                    <div className="space-y-3">
+                      {filteredAlerts.map((alert: any) => (
+                        <AlertCard
+                          key={alert.id}
+                          alert={alert}
+                          onRouteClick={() => {
+                            const url = `https://www.google.com/maps/dir/?api=1&destination=${alert.segmentId}`
+                            window.open(url, '_blank')
+                          }}
+                        />
+                      ))}
+                    </div>
                   </>
                 ) : (
-                  <div className="bg-white rounded-xl p-8 text-center shadow-sm">
-                    <Bell className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد تنبيهات على المسار</h3>
+                  <div className="bg-white rounded-2xl p-12 text-center shadow-xl border border-gray-100">
+                    <div className="p-6 bg-gray-100 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                      <Bell className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">لا توجد تنبيهات على المسار</h3>
                     <p className="text-gray-600">لا توجد تنبيهات متعلقة بالمسار المحدد حالياً</p>
                   </div>
                 )}
@@ -601,19 +629,25 @@ export default function UserAppPage() {
 
         {activeTab === 'route' && (
           <div className="space-y-4">
-            {/* تحديد الوجهة */}
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <h2 className="font-bold text-gray-900 mb-4">تحديد المسار</h2>
+            {/* تحديد الوجهة - تصميم محسّن */}
+            <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-primary-100 rounded-lg">
+                  <Route className="h-6 w-6 text-primary-600" />
+                </div>
+                <h2 className="font-bold text-2xl text-gray-900">تحديد المسار</h2>
+              </div>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Navigation className="h-4 w-4 text-primary-600" />
                     موقعك الحالي
                   </label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                      <MapPin className="h-5 w-5 text-primary-600" />
-                      <span className="text-sm text-gray-600 flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 flex items-center gap-3 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                      <MapPin className="h-5 w-5 text-primary-600 flex-shrink-0" />
+                      <span className="text-sm text-gray-700 flex-1">
                         {locationLoading ? (
                           <span className="flex items-center gap-2">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
@@ -628,12 +662,11 @@ export default function UserAppPage() {
                     </div>
                     <button
                       onClick={() => {
-                        console.log('📍 Manual location refresh requested')
                         refreshLocation()
                         toast('جاري تحديد موقعك...', { icon: '📍' })
                       }}
                       disabled={locationLoading}
-                      className="p-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="p-4 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
                       title="تحديد موقعي"
                     >
                       {locationLoading ? (
@@ -646,16 +679,20 @@ export default function UserAppPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary-600" />
                     الوجهة
                   </label>
-                  <LocationPicker
-                    onLocationSelect={(location) => {
-                      setDestination([location.lat, location.lng])
-                    }}
-                    currentLocation={userLocation || undefined}
-                    placeholder="ابحث عن موقع أو اختر من الخريطة..."
-                  />
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
+                    <LocationPicker
+                      onLocationSelect={(location) => {
+                        setDestination([location.lat, location.lng])
+                        toast.success(`تم تحديد الوجهة: ${location.name || 'موقع مختار'}`)
+                      }}
+                      currentLocation={userLocation || undefined}
+                      placeholder="ابحث عن موقع أو اختر من الخريطة..."
+                    />
+                  </div>
                 </div>
 
                 <button
@@ -679,20 +716,13 @@ export default function UserAppPage() {
                         destinationLng: destination[1],
                       })
                       
-                      console.log('API Response:', res.data)
-                      
                       if (res.data.success && res.data.data) {
                         const routeData = res.data.data
-                        console.log('Route Data:', routeData)
                         
-                        // التحقق من وجود البيانات المطلوبة
                         if (routeData.distance !== undefined && routeData.estimatedTime !== undefined && routeData.route && Array.isArray(routeData.route) && routeData.route.length > 0) {
                           setSelectedRoute(routeData)
-                          console.log('Route set successfully:', routeData)
                           
-                          // حفظ المسار في localStorage قبل الانتقال
                           try {
-                            // التأكد من أن البيانات كاملة قبل الحفظ
                             const routeToSave = {
                               ...routeData,
                               id: routeData.id || `emergency-${Date.now()}`,
@@ -700,28 +730,21 @@ export default function UserAppPage() {
                               steps: routeData.steps || [],
                             }
                             localStorage.setItem('currentRoute', JSON.stringify(routeToSave))
-                            console.log('Route saved to localStorage')
                           } catch (e) {
                             console.error('Error saving route to localStorage:', e)
-                            toast.error('فشل في حفظ المسار محلياً')
                           }
                           
                           toast.success('تم حساب المسار بنجاح')
                           
-                          // الانتقال إلى صفحة التوجيه مباشرة بدون تأخير
                           try {
                             const routeId = routeData.id || `emergency-${Date.now()}`
-                            // استخدام window.location بدلاً من router.push لتجنب أخطاء React
                             window.location.href = `/user/navigation?routeId=${routeId}`
                           } catch (navError: any) {
-                            console.error('Error navigating to navigation page:', navError)
-                            // إذا فشل الانتقال، جرب router.push كبديل
+                            console.error('Error navigating:', navError)
                             try {
                               const routeId = routeData.id || `emergency-${Date.now()}`
                               router.push(`/user/navigation?routeId=${routeId}`)
                             } catch (e) {
-                              console.error('Error with router.push:', e)
-                              // إذا فشل كلاهما، أظهر رسالة للمستخدم
                               toast.error('تم حساب المسار بنجاح. سيتم الانتقال تلقائياً...', { duration: 3000 })
                               setTimeout(() => {
                                 const routeId = routeData.id || `emergency-${Date.now()}`
@@ -730,43 +753,32 @@ export default function UserAppPage() {
                             }
                           }
                         } else {
-                          console.error('Incomplete route data:', routeData)
-                          throw new Error('البيانات المستلمة غير كاملة. تأكد من وجود المسار والإحداثيات.')
+                          throw new Error('البيانات المستلمة غير كاملة')
                         }
                       } else {
-                        console.error('API Error:', res.data.error)
                         throw new Error(res.data.error || 'فشل في حساب المسار')
                       }
                     } catch (error: any) {
                       console.error('Error calculating route:', error)
-                      console.error('Error details:', {
-                        message: error.message,
-                        response: error.response?.data,
-                        status: error.response?.status,
-                      })
-                      
-                      // منع إلقاء الخطأ لتجنب ظهور صفحة الخطأ
                       const errorMessage = error.response?.data?.error || error.message || 'حدث خطأ أثناء حساب المسار'
                       toast.error(errorMessage)
                       setIsCalculatingRoute(false)
-                      
-                      // لا نرمي الخطأ مرة أخرى لتجنب Error Boundary
                       return
                     }
                     
                     setIsCalculatingRoute(false)
                   }}
                   disabled={!userLocation || !destination || isCalculatingRoute}
-                  className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl font-bold hover:from-primary-700 hover:to-primary-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl text-lg"
                 >
                   {isCalculatingRoute ? (
                     <>
-                      <RefreshCw className="h-5 w-5 animate-spin" />
+                      <RefreshCw className="h-6 w-6 animate-spin" />
                       جاري الحساب...
                     </>
                   ) : (
                     <>
-                      <Route className="h-5 w-5" />
+                      <Route className="h-6 w-6" />
                       حساب المسار الأسرع
                     </>
                   )}
@@ -774,147 +786,146 @@ export default function UserAppPage() {
               </div>
             </div>
 
-            {/* خريطة المسار مع معلومات المسار - تصميم محسّن للجوال */}
+            {/* خريطة المسار مع معلومات المسار - تصميم محسّن */}
             {selectedRoute && userLocation && destination && (
               <div className="space-y-4">
-                {/* معلومات المسار المهمة - بطاقة علوية */}
-                <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-4 shadow-lg text-white">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    {/* الوقت */}
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Clock className="h-4 w-4" />
-                        <span className="text-xs opacity-90">الوقت</span>
-                      </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-bold">
-                          {selectedRoute.estimatedTimeInTraffic 
-                            ? Math.round(selectedRoute.estimatedTimeInTraffic)
-                            : selectedRoute.estimatedTime 
-                            ? Math.round(selectedRoute.estimatedTime)
-                            : 0}
-                        </span>
-                        <span className="text-sm opacity-90">دقيقة</span>
-                      </div>
-                      {selectedRoute.estimatedTimeInTraffic && selectedRoute.estimatedTime && (
-                        <div className="text-xs opacity-75 mt-1">
-                          مع الازدحام والطقس +{Math.round(selectedRoute.estimatedTimeInTraffic - selectedRoute.estimatedTime)} د
+                {/* معلومات المسار المهمة - بطاقة علوية محسّنة */}
+                <div className="bg-gradient-to-br from-primary-600 via-primary-700 to-primary-600 rounded-2xl p-6 shadow-2xl text-white overflow-hidden relative">
+                  <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+                  <div className="relative z-10">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="bg-white/20 backdrop-blur-md rounded-xl p-4 border border-white/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="h-5 w-5" />
+                          <span className="text-sm opacity-90">الوقت المتوقع</span>
                         </div>
-                      )}
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold">
+                            {selectedRoute.estimatedTimeInTraffic 
+                              ? Math.round(selectedRoute.estimatedTimeInTraffic)
+                              : selectedRoute.estimatedTime 
+                              ? Math.round(selectedRoute.estimatedTime)
+                              : 0}
+                          </span>
+                          <span className="text-sm opacity-90">دقيقة</span>
+                        </div>
+                        {selectedRoute.estimatedTimeInTraffic && selectedRoute.estimatedTime && (
+                          <div className="text-xs opacity-75 mt-2">
+                            مع الازدحام +{Math.round(selectedRoute.estimatedTimeInTraffic - selectedRoute.estimatedTime)} د
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-white/20 backdrop-blur-md rounded-xl p-4 border border-white/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Route className="h-5 w-5" />
+                          <span className="text-sm opacity-90">المسافة</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold">
+                            {selectedRoute.distance ? selectedRoute.distance.toFixed(1) : '0.0'}
+                          </span>
+                          <span className="text-sm opacity-90">كم</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* المسافة */}
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Route className="h-4 w-4" />
-                        <span className="text-xs opacity-90">المسافة</span>
+                    {routeCongestion && (
+                      <div className="bg-white/20 backdrop-blur-md rounded-xl p-4 border border-white/30 mb-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5" />
+                            <span className="text-sm opacity-90">حالة الازدحام</span>
+                          </div>
+                          <CongestionIndicator index={Math.round(routeCongestion)} />
+                        </div>
                       </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-bold">
-                          {selectedRoute.distance ? selectedRoute.distance.toFixed(1) : '0.0'}
-                        </span>
-                        <span className="text-sm opacity-90">كم</span>
-                      </div>
-                    </div>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        const routeId = selectedRoute.id || `emergency-${Date.now()}`
+                        router.push(`/user/navigation?routeId=${routeId}`)
+                      }}
+                      className="w-full py-4 bg-white text-primary-600 rounded-xl font-bold hover:bg-gray-100 transition flex items-center justify-center gap-3 shadow-xl text-lg"
+                    >
+                      <Navigation className="h-6 w-6" />
+                      بدء التوجيه
+                    </button>
                   </div>
-
-                  {/* حالة الازدحام */}
-                  {routeCongestion && (
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <TrendingUp className="h-4 w-4" />
-                          <span className="text-sm opacity-90">حالة الازدحام</span>
-                        </div>
-                        <CongestionIndicator index={Math.round(routeCongestion)} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* زر البدء */}
-                  <button
-                    onClick={() => {
-                      const routeId = selectedRoute.id || `emergency-${Date.now()}`
-                      router.push(`/user/navigation?routeId=${routeId}`)
-                    }}
-                    className="w-full mt-3 py-3 bg-white text-primary-600 rounded-lg font-bold hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    <Navigation className="h-5 w-5" />
-                    بدء التوجيه
-                  </button>
                 </div>
 
-                {/* خريطة المسار - تصميم محسّن للجوال */}
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                  <div className="relative">
-                    <div className="h-[60vh] min-h-[400px] max-h-[600px]">
-                      <GoogleTrafficMap
-                        key={`google-route-map-${selectedRoute.id}`}
-                        center={{
-                          lat: (userLocation[0] + destination[0]) / 2,
-                          lng: (userLocation[1] + destination[1]) / 2,
-                        }}
-                        zoom={12}
-                        markers={mapMarkers.map(m => ({
-                          lat: m.position[0],
-                          lng: m.position[1],
-                          title: m.roadName,
-                          congestionIndex: m.congestionIndex,
-                        }))}
-                        route={{
-                          origin: { lat: userLocation[0], lng: userLocation[1] },
-                          destination: { lat: destination[0], lng: destination[1] },
-                          polyline: selectedRoute.polyline,
-                        }}
-                        showTrafficLayer={true}
-                        currentLocation={userLocation}
-                        className="w-full h-full"
-                      />
-                    </div>
+                {/* خريطة المسار */}
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                  <div className="h-[60vh] min-h-[400px] max-h-[600px]">
+                    <GoogleTrafficMap
+                      key={`google-route-map-${selectedRoute.id}`}
+                      center={{
+                        lat: (userLocation[0] + destination[0]) / 2,
+                        lng: (userLocation[1] + destination[1]) / 2,
+                      }}
+                      zoom={12}
+                      markers={mapMarkers.map(m => ({
+                        lat: m.position[0],
+                        lng: m.position[1],
+                        title: m.roadName,
+                        congestionIndex: m.congestionIndex,
+                      }))}
+                      route={{
+                        origin: { lat: userLocation[0], lng: userLocation[1] },
+                        destination: { lat: destination[0], lng: destination[1] },
+                        polyline: selectedRoute.polyline,
+                      }}
+                      showTrafficLayer={true}
+                      currentLocation={userLocation}
+                      className="w-full h-full"
+                    />
                   </div>
                 </div>
 
                 {/* معلومات إضافية */}
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <h3 className="font-bold text-gray-900 mb-3 text-sm">تفاصيل المسار</h3>
+                <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-4 text-lg flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-primary-600" />
+                    تفاصيل المسار
+                  </h3>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {selectedRoute.estimatedTime && selectedRoute.estimatedTimeInTraffic && (
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-600">الوقت بدون ازدحام</span>
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-semibold text-gray-900">
                           {Math.round(selectedRoute.estimatedTime)} دقيقة
                         </span>
                       </div>
                     )}
                     
                     {selectedRoute.weatherDelay && (
-                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <div className="flex items-center justify-between py-3 border-b border-gray-100">
                         <span className="text-sm text-gray-600">تأخير الطقس</span>
-                        <span className="text-sm font-medium text-orange-600">
+                        <span className="text-sm font-semibold text-orange-600">
                           +{Math.round(selectedRoute.weatherDelay)} دقيقة
                         </span>
                       </div>
                     )}
 
                     {selectedRoute.steps && selectedRoute.steps.length > 0 && (
-                      <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center justify-between py-3">
                         <span className="text-sm text-gray-600">عدد الخطوات</span>
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-semibold text-gray-900">
                           {selectedRoute.steps.length} خطوة
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* أزرار إضافية */}
-                  <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="grid grid-cols-2 gap-3 mt-6">
                     <button
                       onClick={() => {
                         const url = `https://www.google.com/maps/dir/${userLocation?.[0]},${userLocation?.[1]}/${destination?.[0]},${destination?.[1]}`
                         window.open(url, '_blank')
                       }}
-                      className="py-2.5 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition flex items-center justify-center gap-2 text-sm"
+                      className="py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition flex items-center justify-center gap-2"
                     >
                       <MapPin className="h-4 w-4" />
                       فتح في الخرائط
@@ -925,7 +936,7 @@ export default function UserAppPage() {
                         setDestination(null)
                         toast.success('تم إلغاء المسار')
                       }}
-                      className="py-2.5 px-4 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition flex items-center justify-center gap-2 text-sm"
+                      className="py-3 px-4 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition flex items-center justify-center gap-2"
                     >
                       <X className="h-4 w-4" />
                       إلغاء المسار
@@ -938,44 +949,43 @@ export default function UserAppPage() {
         )}
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-        <div className="flex">
+      {/* Bottom Navigation - تصميم محسّن */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-2xl">
+        <div className="flex max-w-7xl mx-auto">
           <button
             onClick={() => setActiveTab('map')}
-            className={`flex-1 py-3 text-center transition ${
+            className={`flex-1 py-4 text-center transition-all duration-200 ${
               activeTab === 'map' ? 'text-primary-600' : 'text-gray-600'
             }`}
           >
-            <MapPin className="h-5 w-5 mx-auto mb-1" />
-            <span className="text-xs">الخريطة</span>
+            <MapPin className="h-6 w-6 mx-auto mb-1" />
+            <span className="text-xs font-medium">الخريطة</span>
           </button>
           <button
             onClick={() => setActiveTab('alerts')}
-            className={`flex-1 py-3 text-center transition relative ${
+            className={`flex-1 py-4 text-center transition-all duration-200 relative ${
               activeTab === 'alerts' ? 'text-primary-600' : 'text-gray-600'
             }`}
           >
-            <Bell className="h-5 w-5 mx-auto mb-1" />
-            <span className="text-xs">التنبيهات</span>
+            <Bell className="h-6 w-6 mx-auto mb-1" />
+            <span className="text-xs font-medium">التنبيهات</span>
             {alerts && alerts.length > 0 && (
-              <span className="absolute top-2 right-1/2 translate-x-4 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+              <span className="absolute top-2 right-1/2 translate-x-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                 {alerts.length}
               </span>
             )}
           </button>
           <button
             onClick={() => setActiveTab('route')}
-            className={`flex-1 py-3 text-center transition ${
+            className={`flex-1 py-4 text-center transition-all duration-200 ${
               activeTab === 'route' ? 'text-primary-600' : 'text-gray-600'
             }`}
           >
-            <Route className="h-5 w-5 mx-auto mb-1" />
-            <span className="text-xs">المسار</span>
+            <Route className="h-6 w-6 mx-auto mb-1" />
+            <span className="text-xs font-medium">المسار</span>
           </button>
         </div>
       </div>
     </div>
   )
 }
-

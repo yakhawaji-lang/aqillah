@@ -291,16 +291,18 @@ export function LocationPicker({
 
   return (
     <div className="space-y-4">
-      {/* البحث */}
+      {/* البحث - تصميم محسّن */}
       <div className="relative">
-        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10">
+          <Search className="h-5 w-5 text-gray-400" />
+        </div>
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onFocus={() => setShowMap(false)}
           placeholder={placeholder}
-          className="w-full pr-10 pl-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full pr-12 pl-4 py-3.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-white shadow-sm hover:border-gray-300"
         />
         {searchQuery && (
           <button
@@ -308,20 +310,21 @@ export function LocationPicker({
               setSearchQuery('')
               setSelectedLocation(null)
             }}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 p-1.5 hover:bg-gray-100 rounded-lg transition"
+            title="مسح البحث"
           >
-            <X className="h-4 w-4 text-gray-400" />
+            <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
           </button>
         )}
       </div>
 
-      {/* اقتراحات البحث من Google Places API */}
+      {/* اقتراحات البحث من Google Places API - تصميم محسّن */}
       {searchQuery && searchQuery.length >= 2 && !showMap && (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div className="bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-72 overflow-y-auto z-50">
           {isSearching ? (
-            <div className="flex items-center justify-center px-4 py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-primary-600 ml-2" />
-              <span className="text-gray-600">جاري البحث...</span>
+            <div className="flex items-center justify-center px-4 py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary-600 ml-3" />
+              <span className="text-gray-700 font-medium">جاري البحث...</span>
             </div>
           ) : searchError ? (
             <div className="px-4 py-8 text-center">
@@ -364,11 +367,13 @@ export function LocationPicker({
               <button
                 key={prediction.place_id || index}
                 onClick={() => handleSelectPlace(prediction)}
-                className="w-full text-right px-4 py-3 hover:bg-gray-50 transition flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                className="w-full text-right px-5 py-4 hover:bg-primary-50 transition-all duration-200 flex items-center gap-4 border-b border-gray-100 last:border-b-0 group"
               >
-                <MapPin className="h-5 w-5 text-primary-600 flex-shrink-0" />
+                <div className="p-2 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition">
+                  <MapPin className="h-5 w-5 text-primary-600 flex-shrink-0" />
+                </div>
                 <div className="flex-1 text-right">
-                  <div className="text-gray-900 font-medium">
+                  <div className="text-gray-900 font-semibold text-base mb-1">
                     {prediction.structured_formatting?.main_text || prediction.description}
                   </div>
                   {prediction.structured_formatting?.secondary_text && (
@@ -380,9 +385,12 @@ export function LocationPicker({
               </button>
             ))
           ) : searchQuery.length >= 2 ? (
-            <div className="px-4 py-8 text-center text-gray-500">
-              <p>لا توجد نتائج للبحث</p>
-              <p className="text-xs text-gray-400 mt-2">
+            <div className="px-4 py-10 text-center">
+              <div className="p-4 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Search className="h-8 w-8 text-gray-400" />
+              </div>
+              <p className="text-gray-700 font-medium mb-2">لا توجد نتائج للبحث</p>
+              <p className="text-xs text-gray-500">
                 جرب بحث آخر أو تحقق من تفعيل Places API
               </p>
             </div>
@@ -390,14 +398,14 @@ export function LocationPicker({
         </div>
       )}
 
-      {/* زر استخدام الموقع الحالي */}
+      {/* زر استخدام الموقع الحالي - تصميم محسّن */}
       {!showMap && !selectedLocation && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <button
             onClick={handleUseCurrentLocation}
-            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-200 font-semibold flex items-center justify-center gap-3 shadow-lg"
           >
-            <MapPin className="h-5 w-5" />
+            <Navigation className="h-5 w-5" />
             استخدام الموقع الحالي
           </button>
           <p className="text-xs text-gray-500 text-center">
@@ -406,15 +414,17 @@ export function LocationPicker({
         </div>
       )}
 
-      {/* الموقع المحدد */}
+      {/* الموقع المحدد - تصميم محسّن */}
       {selectedLocation && !showMap && (
-        <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
+        <div className="p-5 bg-gradient-to-r from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl shadow-lg">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-primary-600" />
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-primary-600 rounded-lg">
+                <MapPin className="h-6 w-6 text-white" />
+              </div>
               <div>
-                <p className="font-medium text-gray-900">{selectedLocation.name}</p>
-                <p className="text-sm text-gray-600">
+                <p className="font-bold text-gray-900 text-lg mb-1">{selectedLocation.name}</p>
+                <p className="text-sm text-gray-600 font-mono">
                   {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
                 </p>
               </div>
@@ -424,9 +434,10 @@ export function LocationPicker({
                 setSelectedLocation(null)
                 setSearchQuery('')
               }}
-              className="p-2 hover:bg-primary-100 rounded-lg transition"
+              className="p-2 hover:bg-primary-200 rounded-lg transition"
+              title="إلغاء الاختيار"
             >
-              <X className="h-5 w-5 text-gray-600" />
+              <X className="h-5 w-5 text-gray-600 hover:text-gray-900" />
             </button>
           </div>
         </div>
