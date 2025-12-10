@@ -524,24 +524,6 @@ export default function PlannedRoutePage() {
                 placeholder="ابحث عن موقع أو اختر من الخريطة..."
               />
             </div>
-
-            <button
-              onClick={handleCalculateRoute}
-              disabled={!userLocation || !destination || !departureDate || !departureTime || !isFutureDate || isCalculatingRoute}
-              className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isCalculatingRoute ? (
-                <>
-                  <RefreshCw className="h-5 w-5 animate-spin" />
-                  جاري الحساب...
-                </>
-              ) : (
-                <>
-                  <Route className="h-5 w-5" />
-                  حساب المسار
-                </>
-              )}
-            </button>
           </div>
         </div>
 
