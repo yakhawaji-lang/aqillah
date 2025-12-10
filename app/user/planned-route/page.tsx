@@ -1153,6 +1153,30 @@ export default function PlannedRoutePage() {
                     </div>
                   )}
 
+                  {/* بيانات الطقس الساعية (إن وجدت) */}
+                  {weatherData.hourlyForecast && Array.isArray(weatherData.hourlyForecast) && weatherData.hourlyForecast.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <p className="text-xs font-medium text-gray-700 mb-2">التنبؤات الساعية القادمة:</p>
+                      <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
+                        {weatherData.hourlyForecast.slice(0, 6).map((hour: any, idx: number) => (
+                          <div key={idx} className="bg-white rounded p-2 text-center">
+                            <p className="text-xs text-gray-600">
+                              {new Date(hour.timestamp).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            <p className="text-xs font-medium text-gray-900 mt-1">
+                              {hour.temperature ? `${Number(hour.temperature).toFixed(0)}°` : '-'}
+                            </p>
+                            {hour.precipitation > 0 && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                {Number(hour.precipitation).toFixed(1)}ملم
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {weatherData.impactLevel && (
                     <div className={`mt-3 p-3 rounded-lg ${
                       weatherData.impactLevel === 'high' ? 'bg-red-100 border border-red-300' :
