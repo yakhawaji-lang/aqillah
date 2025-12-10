@@ -545,82 +545,316 @@ export default function PlannedRoutePage() {
           </div>
         </div>
 
-        {/* معلومات الطقس */}
+        {/* معلومات الطقس التفصيلية */}
         {destination && departureDateTime && isFutureDate && (
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <CloudRain className="h-5 w-5 text-blue-600" />
-              تنبؤات الطقس للتاريخ المحدد
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                <CloudRain className="h-5 w-5 text-blue-600" />
+                تنبؤات الطقس التفصيلية للتاريخ المحدد
+              </h2>
+              {weatherData?.source && (
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  مصدر: {weatherData.source === 'google' ? 'Google Weather' : 
+                          weatherData.source === 'openweather' ? 'OpenWeatherMap' : 
+                          weatherData.source === 'accuweather' ? 'AccuWeather' :
+                          weatherData.source}
+                </span>
+              )}
+            </div>
 
             {weatherLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">جاري جلب بيانات الطقس...</p>
+                <p className="text-gray-600">جاري جلب بيانات الطقس من APIs...</p>
               </div>
             ) : weatherData ? (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Cloud className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-gray-700">الحالة</span>
+              <div className="space-y-4">
+                {/* بيانات الطقس الأساسية للتاريخ المحدد */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    الطقس المتوقع في {departureDate} الساعة {departureTime}
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Cloud className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-gray-700">الحالة</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {weatherData.condition ? (
+                          weatherData.condition === 'clear' || weatherData.condition === 'sunny' ? '☀️ مشمس' :
+                          weatherData.condition === 'cloudy' ? '☁️ غائم' :
+                          weatherData.condition === 'rainy' || weatherData.condition === 'rain' ? '🌧️ ممطر' :
+                          weatherData.condition === 'snowy' || weatherData.condition === 'snow' ? '❄️ ثلجي' :
+                          weatherData.condition === 'foggy' || weatherData.condition === 'fog' ? '🌫️ ضبابي' :
+                          weatherData.condition === 'windy' ? '💨 عاصف' :
+                          weatherData.condition === 'stormy' ? '⛈️ عاصفة' :
+                          String(weatherData.condition)
+                        ) : 'غير محدد'}
+                      </p>
                     </div>
-                    <p className="text-lg font-bold text-gray-900">
-                      {weatherData.condition || 'غير محدد'}
-                    </p>
+
+                    <div className="bg-white rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Droplets className="h-4 w-4 text-orange-600" />
+                        <span className="text-sm font-medium text-gray-700">الأمطار المتوقعة</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {weatherData.source === 'openweather' && weatherData.precipitationProbability !== undefined && weatherData.precipitationProbability !== null
+                          ? `${weatherData.precipitationProbability}% احتمال`
+                          : weatherData.precipitation ? `${weatherData.precipitation.toFixed(1)} ملم` : '0 ملم'}
+                      </p>
+                      {weatherData.precipitationProbability !== undefined && weatherData.precipitationProbability !== null && weatherData.source !== 'openweather' && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          احتمال: {weatherData.precipitationProbability}%
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="bg-white rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Eye className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium text-gray-700">الرؤية</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {weatherData.visibility && !isNaN(Number(weatherData.visibility)) && Number(weatherData.visibility) > 0 
+                          ? `${(Number(weatherData.visibility) >= 1000 ? Number(weatherData.visibility) / 1000 : Number(weatherData.visibility)).toFixed(1)} ${Number(weatherData.visibility) >= 1000 ? 'كم' : 'متر'}` 
+                          : 'غير محدد'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Wind className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm font-medium text-gray-700">سرعة الرياح</span>
+                      </div>
+                      <p className="text-lg font-bold text-gray-900">
+                        {weatherData.windSpeed ? `${Number(weatherData.windSpeed).toFixed(1)} كم/س` : 'غير محدد'}
+                      </p>
+                      {weatherData.windDirection !== undefined && weatherData.windDirection !== null && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          اتجاه: {Math.round(Number(weatherData.windDirection))}°
+                        </p>
+                      )}
+                    </div>
+
+                    {weatherData.temperature && (
+                      <div className="bg-white rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Sun className="h-4 w-4 text-orange-600" />
+                          <span className="text-sm font-medium text-gray-700">درجة الحرارة</span>
+                        </div>
+                        <p className="text-lg font-bold text-gray-900">
+                          {Number(weatherData.temperature).toFixed(1)}°C
+                        </p>
+                      </div>
+                    )}
+
+                    {weatherData.humidity && (
+                      <div className="bg-white rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Droplets className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-gray-700">الرطوبة</span>
+                        </div>
+                        <p className="text-lg font-bold text-gray-900">
+                          {Number(weatherData.humidity).toFixed(0)}%
+                        </p>
+                      </div>
+                    )}
+
+                    {weatherData.pressure && (
+                      <div className="bg-white rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <BarChart3 className="h-4 w-4 text-gray-600" />
+                          <span className="text-sm font-medium text-gray-700">الضغط الجوي</span>
+                        </div>
+                        <p className="text-lg font-bold text-gray-900">
+                          {Number(weatherData.pressure).toFixed(0)} hPa
+                        </p>
+                      </div>
+                    )}
+
+                    {weatherData.cloudCover !== undefined && weatherData.cloudCover !== null && (
+                      <div className="bg-white rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Cloud className="h-4 w-4 text-gray-600" />
+                          <span className="text-sm font-medium text-gray-700">الغيوم</span>
+                        </div>
+                        <p className="text-lg font-bold text-gray-900">
+                          {Number(weatherData.cloudCover).toFixed(0)}%
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="bg-orange-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Droplets className="h-4 w-4 text-orange-600" />
-                      <span className="text-sm font-medium text-gray-700">الأمطار المتوقعة</span>
+                  {weatherData.impactLevel && (
+                    <div className={`mt-3 p-3 rounded-lg ${
+                      weatherData.impactLevel === 'high' ? 'bg-red-50 border border-red-200' :
+                      weatherData.impactLevel === 'medium' ? 'bg-yellow-50 border border-yellow-200' :
+                      'bg-green-50 border border-green-200'
+                    }`}>
+                      <p className={`text-sm font-medium ${
+                        weatherData.impactLevel === 'high' ? 'text-red-800' :
+                        weatherData.impactLevel === 'medium' ? 'text-yellow-800' :
+                        'text-green-800'
+                      }`}>
+                        مستوى التأثير على القيادة: {
+                          weatherData.impactLevel === 'high' ? 'عالي - يُنصح بتأجيل الرحلة' :
+                          weatherData.impactLevel === 'medium' ? 'متوسط - توخي الحذر' :
+                          'منخفض - ظروف جيدة'
+                        }
+                      </p>
                     </div>
-                    <p className="text-lg font-bold text-gray-900">
-                      {weatherData.source === 'openweather' && weatherData.precipitationProbability !== undefined && weatherData.precipitationProbability !== null
-                        ? `${weatherData.precipitationProbability}%`
-                        : weatherData.precipitation ? `${weatherData.precipitation.toFixed(1)} ملم` : '0 ملم'}
-                    </p>
-                  </div>
-
-                  <div className="bg-green-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Eye className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium text-gray-700">الرؤية</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-900">
-                      {weatherData.visibility ? `${(weatherData.visibility / 1000).toFixed(1)} كم` : 'غير محدد'}
-                    </p>
-                  </div>
-
-                  <div className="bg-purple-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Wind className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-medium text-gray-700">الرياح</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-900">
-                      {weatherData.windSpeed ? `${weatherData.windSpeed.toFixed(1)} كم/س` : 'غير محدد'}
-                    </p>
-                  </div>
+                  )}
                 </div>
 
-                {weatherData.impactLevel && (
-                  <div className={`p-3 rounded-lg ${
-                    weatherData.impactLevel === 'high' ? 'bg-red-50 border border-red-200' :
-                    weatherData.impactLevel === 'medium' ? 'bg-yellow-50 border border-yellow-200' :
-                    'bg-green-50 border border-green-200'
-                  }`}>
-                    <p className={`text-sm font-medium ${
-                      weatherData.impactLevel === 'high' ? 'text-red-800' :
-                      weatherData.impactLevel === 'medium' ? 'text-yellow-800' :
-                      'text-green-800'
-                    }`}>
-                      مستوى التأثير: {
-                        weatherData.impactLevel === 'high' ? 'عالي - يُنصح بتأجيل الرحلة' :
-                        weatherData.impactLevel === 'medium' ? 'متوسط - توخي الحذر' :
-                        'منخفض - ظروف جيدة'
-                      }
-                    </p>
+                {/* التنبؤات الساعية التفصيلية */}
+                {weatherData.hourlyForecast && Array.isArray(weatherData.hourlyForecast) && weatherData.hourlyForecast.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-600" />
+                      التنبؤات الساعية التفصيلية (من API)
+                    </h3>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {weatherData.hourlyForecast.slice(0, 24).map((hour: any, idx: number) => {
+                        const hourDate = new Date(hour.timestamp)
+                        const isSelectedHour = hourDate.getHours() === parseInt(departureTime?.split(':')[0] || '0') &&
+                                               hourDate.toDateString() === departureDateTime?.toDateString()
+                        
+                        return (
+                          <div 
+                            key={idx} 
+                            className={`bg-white rounded-lg p-3 border ${
+                              isSelectedHour ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-gray-600" />
+                                <span className="font-medium text-gray-900">
+                                  {hourDate.toLocaleDateString('ar-SA', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                </span>
+                                <span className="text-sm text-gray-600">
+                                  {hourDate.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {isSelectedHour && (
+                                  <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">وقت المغادرة</span>
+                                )}
+                              </div>
+                              <div className="text-sm font-medium text-gray-700">
+                                {hour.condition === 'clear' || hour.condition === 'sunny' ? '☀️' :
+                                 hour.condition === 'cloudy' ? '☁️' :
+                                 hour.condition === 'rainy' || hour.condition === 'rain' ? '🌧️' :
+                                 hour.condition === 'snowy' || hour.condition === 'snow' ? '❄️' :
+                                 hour.condition === 'foggy' || hour.condition === 'fog' ? '🌫️' : '🌤️'}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                              <div>
+                                <span className="text-gray-600">الحرارة:</span>
+                                <span className="font-medium text-gray-900 mr-1"> {Number(hour.temperature || 0).toFixed(1)}°C</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">الأمطار:</span>
+                                <span className="font-medium text-gray-900 mr-1">
+                                  {hour.precipitationProbability !== undefined && hour.precipitationProbability !== null
+                                    ? `${hour.precipitationProbability}%`
+                                    : hour.precipitation ? `${Number(hour.precipitation).toFixed(1)} ملم` : '0 ملم'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">الرياح:</span>
+                                <span className="font-medium text-gray-900 mr-1"> {Number(hour.windSpeed || 0).toFixed(1)} كم/س</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">الرؤية:</span>
+                                <span className="font-medium text-gray-900 mr-1">
+                                  {hour.visibility ? `${(Number(hour.visibility) >= 1000 ? Number(hour.visibility) / 1000 : Number(hour.visibility)).toFixed(1)} ${Number(hour.visibility) >= 1000 ? 'كم' : 'م'}` : 'غير محدد'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* التنبؤات اليومية التفصيلية */}
+                {weatherData.dailyForecast && Array.isArray(weatherData.dailyForecast) && weatherData.dailyForecast.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-gray-600" />
+                      التنبؤات اليومية التفصيلية (من API)
+                    </h3>
+                    <div className="space-y-2">
+                      {weatherData.dailyForecast.slice(0, 7).map((day: any, idx: number) => {
+                        const dayDate = new Date(day.date)
+                        const isSelectedDay = dayDate.toDateString() === departureDateTime?.toDateString()
+                        
+                        return (
+                          <div 
+                            key={idx} 
+                            className={`bg-white rounded-lg p-3 border ${
+                              isSelectedDay ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-gray-600" />
+                                <span className="font-medium text-gray-900">
+                                  {dayDate.toLocaleDateString('ar-SA', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                </span>
+                                {isSelectedDay && (
+                                  <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded">يوم المغادرة</span>
+                                )}
+                              </div>
+                              <div className="text-sm font-medium text-gray-700">
+                                {day.condition === 'clear' || day.condition === 'sunny' ? '☀️' :
+                                 day.condition === 'cloudy' ? '☁️' :
+                                 day.condition === 'rainy' || day.condition === 'rain' ? '🌧️' :
+                                 day.condition === 'snowy' || day.condition === 'snow' ? '❄️' :
+                                 day.condition === 'foggy' || day.condition === 'fog' ? '🌫️' : '🌤️'}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                              <div>
+                                <span className="text-gray-600">الحرارة:</span>
+                                <span className="font-medium text-gray-900 mr-1">
+                                  {day.high ? `${Number(day.high).toFixed(0)}°` : ''}
+                                  {day.low && day.high ? ' / ' : ''}
+                                  {day.low ? `${Number(day.low).toFixed(0)}°` : ''}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">الأمطار:</span>
+                                <span className="font-medium text-gray-900 mr-1">
+                                  {day.precipitationProbability !== undefined && day.precipitationProbability !== null
+                                    ? `${day.precipitationProbability}%`
+                                    : day.precipitation ? `${Number(day.precipitation).toFixed(1)} ملم` : '0 ملم'}
+                                </span>
+                              </div>
+                              {day.windSpeed && (
+                                <div>
+                                  <span className="text-gray-600">الرياح:</span>
+                                  <span className="font-medium text-gray-900 mr-1"> {Number(day.windSpeed).toFixed(1)} كم/س</span>
+                                </div>
+                              )}
+                              {day.visibility && (
+                                <div>
+                                  <span className="text-gray-600">الرؤية:</span>
+                                  <span className="font-medium text-gray-900 mr-1">
+                                    {(Number(day.visibility) >= 1000 ? Number(day.visibility) / 1000 : Number(day.visibility)).toFixed(1)} {Number(day.visibility) >= 1000 ? 'كم' : 'م'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -628,29 +862,60 @@ export default function PlannedRoutePage() {
               <div className="text-center py-8">
                 <Cloud className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">لا توجد بيانات طقس متاحة للتاريخ المحدد</p>
+                <p className="text-sm text-gray-500 mt-2">تأكد من تحديد تاريخ ووقت صحيحين</p>
               </div>
             )}
           </div>
         )}
 
-        {/* تنبؤات حركة المرور */}
+        {/* تنبؤات حركة المرور التفصيلية */}
         {selectedRoute && departureDateTime && isFutureDate && (
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-600" />
-              تنبؤات حركة المرور للتاريخ المحدد
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+                تنبؤات حركة المرور التفصيلية للتاريخ المحدد
+              </h2>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                مصدر: Google Routes API + Prediction Engine
+              </span>
+            </div>
 
             {routePredictionsLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">جاري تحليل حركة المرور المتوقعة...</p>
+                <p className="text-gray-600">جاري تحليل حركة المرور المتوقعة من APIs...</p>
+                <p className="text-sm text-gray-500 mt-2">بناءً على البيانات الحالية والأنماط التاريخية</p>
               </div>
             ) : routePredictions ? (
               <div className="space-y-4">
-                {/* تنبؤات الازدحام */}
+                {/* معلومات الازدحام الحالي */}
+                {routePredictions.currentIndex !== undefined && routePredictions.currentIndex !== null && (
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">الازدحام الحالي على المسار</p>
+                        <p className="text-xs text-gray-600">من Google Routes API</p>
+                      </div>
+                      <div className={`text-2xl font-bold ${
+                        Number(routePredictions.currentIndex) >= 70 ? 'text-red-600' :
+                        Number(routePredictions.currentIndex) >= 50 ? 'text-orange-600' :
+                        Number(routePredictions.currentIndex) >= 30 ? 'text-yellow-600' :
+                        'text-green-600'
+                      }`}>
+                        {Math.round(Number(routePredictions.currentIndex))}%
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* تنبؤات الازدحام التفصيلية */}
                 {routePredictions && routePredictions.predictions && Array.isArray(routePredictions.predictions) && routePredictions.predictions.length > 0 ? (
                   <div className="space-y-3">
+                    <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-600" />
+                      التنبؤات التفصيلية بناءً على التاريخ والوقت المحدد
+                    </h3>
                     {routePredictions.predictions.map((prediction: any, index: number) => {
                       // التحقق من صحة البيانات قبل الاستخدام
                       if (!prediction || typeof prediction !== 'object') {
@@ -660,6 +925,7 @@ export default function PlannedRoutePage() {
                       const congestionIndex = Number(prediction.predictedIndex || prediction.congestionIndex || 0)
                       const delayMinutes = Number(prediction.predictedDelayMinutes || prediction.delayMinutes || 0)
                       const confidence = Number(prediction.confidence || 0)
+                      const predictedFor = prediction.predictedFor ? new Date(prediction.predictedFor) : null
                       
                       // التحقق من أن القيم صحيحة
                       if (isNaN(congestionIndex) || isNaN(delayMinutes) || isNaN(confidence)) {
@@ -668,46 +934,99 @@ export default function PlannedRoutePage() {
                       }
                       
                       const congestionColor = 
-                        congestionIndex >= 70 ? 'text-red-600' :
-                        congestionIndex >= 50 ? 'text-orange-600' :
-                        congestionIndex >= 30 ? 'text-yellow-600' :
-                        'text-green-600'
+                        congestionIndex >= 70 ? 'bg-red-50 border-red-300 text-red-800' :
+                        congestionIndex >= 50 ? 'bg-orange-50 border-orange-300 text-orange-800' :
+                        congestionIndex >= 30 ? 'bg-yellow-50 border-yellow-300 text-yellow-800' :
+                        'bg-green-50 border-green-300 text-green-800'
                       
                       return (
-                        <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                          <div className="flex items-center justify-between mb-2">
+                        <div key={index} className={`rounded-lg p-4 border-2 ${congestionColor}`}>
+                          <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-gray-600" />
-                              <span className="text-sm font-medium text-gray-700">
-                                بعد {prediction.minutesAhead || (index + 1) * 15} دقيقة
-                              </span>
+                              <Clock className="h-5 w-5" />
+                              <div>
+                                <span className="font-semibold text-base">
+                                  بعد {prediction.minutesAhead || (index + 1) * 15} دقيقة
+                                </span>
+                                {predictedFor && (
+                                  <p className="text-xs opacity-80 mt-0.5">
+                                    {predictedFor.toLocaleDateString('ar-SA', { weekday: 'short', month: 'short', day: 'numeric' })} - {predictedFor.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <div className={`text-lg font-bold ${congestionColor}`}>
-                              {congestionIndex}%
+                            <div className="text-2xl font-bold">
+                              {congestionIndex}% ازدحام
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-2 mt-3">
-                            <div className="text-sm">
-                              <span className="text-gray-600">التأخير المتوقع:</span>
-                              <span className="font-medium text-gray-900 mr-1">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                            <div className="bg-white bg-opacity-50 rounded-lg p-3">
+                              <p className="text-xs opacity-80 mb-1">التأخير المتوقع</p>
+                              <p className="font-bold text-lg">
                                 {delayMinutes > 0 ? `${delayMinutes.toFixed(1)} دقيقة` : 'غير محدد'}
-                              </span>
+                              </p>
+                              {selectedRoute?.estimatedTime && (
+                                <p className="text-xs opacity-70 mt-1">
+                                  الوقت الإجمالي: {Math.round(Number(selectedRoute.estimatedTime) + delayMinutes)} دقيقة
+                                </p>
+                              )}
                             </div>
-                            <div className="text-sm">
-                              <span className="text-gray-600">مستوى الثقة:</span>
-                              <span className="font-medium text-gray-900 mr-1">
+                            <div className="bg-white bg-opacity-50 rounded-lg p-3">
+                              <p className="text-xs opacity-80 mb-1">مستوى الثقة</p>
+                              <p className="font-bold text-lg">
                                 {confidence > 0 ? `${Math.round(confidence * 100)}%` : 'غير محدد'}
-                              </span>
+                              </p>
+                              <p className="text-xs opacity-70 mt-1">
+                                {confidence >= 0.8 ? 'عالية جداً' :
+                                 confidence >= 0.6 ? 'عالية' :
+                                 confidence >= 0.4 ? 'متوسطة' : 'منخفضة'}
+                              </p>
                             </div>
+                            {prediction.currentCongestionIndex !== undefined && prediction.currentCongestionIndex !== null && (
+                              <div className="bg-white bg-opacity-50 rounded-lg p-3">
+                                <p className="text-xs opacity-80 mb-1">الازدحام الحالي</p>
+                                <p className="font-bold text-lg">
+                                  {Math.round(Number(prediction.currentCongestionIndex))}%
+                                </p>
+                                <p className="text-xs opacity-70 mt-1">
+                                  {congestionIndex > Number(prediction.currentCongestionIndex) ? '📈 متزايد' :
+                                   congestionIndex < Number(prediction.currentCongestionIndex) ? '📉 متناقص' : '➡️ مستقر'}
+                                </p>
+                              </div>
+                            )}
                           </div>
+                          
+                          {prediction.trend && (
+                            <div className="mt-3 pt-3 border-t border-current border-opacity-20">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium opacity-80">الاتجاه المتوقع:</span>
+                                {prediction.trend === 'increasing' ? (
+                                  <span className="text-xs font-semibold flex items-center gap-1 bg-red-100 px-2 py-1 rounded">
+                                    <TrendingUp className="h-3 w-3" />
+                                    تزايد متوقع في الازدحام
+                                  </span>
+                                ) : prediction.trend === 'decreasing' ? (
+                                  <span className="text-xs font-semibold flex items-center gap-1 bg-green-100 px-2 py-1 rounded">
+                                    <TrendingDown className="h-3 w-3" />
+                                    تناقص متوقع في الازدحام
+                                  </span>
+                                ) : (
+                                  <span className="text-xs font-semibold flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                                    <Minus className="h-3 w-3" />
+                                    استقرار متوقع
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                           
                           {prediction.factors && Array.isArray(prediction.factors) && prediction.factors.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <p className="text-xs text-gray-600 mb-1">العوامل المؤثرة:</p>
+                            <div className="mt-3 pt-3 border-t border-current border-opacity-20">
+                              <p className="text-xs font-medium mb-2 opacity-80">العوامل المؤثرة (من APIs):</p>
                               <div className="flex flex-wrap gap-2">
                                 {prediction.factors.filter((f: any) => f != null && f !== '').map((factor: any, idx: number) => (
-                                  <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                  <span key={idx} className="text-xs bg-white bg-opacity-70 px-2 py-1 rounded border border-current border-opacity-30">
                                     {String(factor || '')}
                                   </span>
                                 ))}
@@ -722,20 +1041,31 @@ export default function PlannedRoutePage() {
                   <div className="text-center py-8">
                     <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">لا توجد تنبؤات متاحة للتاريخ المحدد</p>
+                    <p className="text-sm text-gray-500 mt-2">جاري جلب البيانات من APIs...</p>
                   </div>
                 )}
 
                 {/* ملخص التنبؤات */}
                 {routePredictions && routePredictions.avgCongestion !== undefined && routePredictions.avgCongestion !== null && !isNaN(Number(routePredictions.avgCongestion)) && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-blue-900">متوسط الازدحام المتوقع</p>
                         <p className="text-xs text-blue-700 mt-1">
-                          بناءً على أنماط حركة المرور التاريخية
+                          بناءً على بيانات Google Routes API والأنماط التاريخية
                         </p>
+                        {routePredictions.predictions && routePredictions.predictions.length > 0 && (
+                          <p className="text-xs text-blue-600 mt-1">
+                            {routePredictions.predictions.length} تنبؤ تم تحليله
+                          </p>
+                        )}
                       </div>
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className={`text-3xl font-bold ${
+                        Number(routePredictions.avgCongestion) >= 70 ? 'text-red-600' :
+                        Number(routePredictions.avgCongestion) >= 50 ? 'text-orange-600' :
+                        Number(routePredictions.avgCongestion) >= 30 ? 'text-yellow-600' :
+                        'text-green-600'
+                      }`}>
                         {Number(routePredictions.avgCongestion).toFixed(0)}%
                       </div>
                     </div>
@@ -744,7 +1074,8 @@ export default function PlannedRoutePage() {
               </div>
             ) : trafficPredictions && Array.isArray(trafficPredictions) && trafficPredictions.length > 0 ? (
               <div className="space-y-3">
-                {trafficPredictions.slice(0, 3).map((prediction: any, index: number) => {
+                <h3 className="font-semibold text-gray-900 mb-2">تنبؤات عامة للمدينة</h3>
+                {trafficPredictions.slice(0, 5).map((prediction: any, index: number) => {
                   if (!prediction || typeof prediction !== 'object') {
                     return null
                   }
@@ -756,21 +1087,21 @@ export default function PlannedRoutePage() {
                   }
                   
                   const congestionColor = 
-                    congestionIndex >= 70 ? 'text-red-600' :
-                    congestionIndex >= 50 ? 'text-orange-600' :
-                    congestionIndex >= 30 ? 'text-yellow-600' :
-                    'text-green-600'
+                    congestionIndex >= 70 ? 'bg-red-50 border-red-300 text-red-800' :
+                    congestionIndex >= 50 ? 'bg-orange-50 border-orange-300 text-orange-800' :
+                    congestionIndex >= 30 ? 'bg-yellow-50 border-yellow-300 text-yellow-800' :
+                    'bg-green-50 border-green-300 text-green-800'
                   
                   return (
-                    <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div key={index} className={`rounded-lg p-3 border ${congestionColor}`}>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-gray-700">{prediction.roadName || 'طريق غير محدد'}</p>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-sm font-medium">{prediction.roadName || 'طريق غير محدد'}</p>
+                          <p className="text-xs opacity-80 mt-1">
                             بعد {prediction.minutesAhead || (index + 1) * 15} دقيقة
                           </p>
                         </div>
-                        <div className={`text-xl font-bold ${congestionColor}`}>
+                        <div className="text-xl font-bold">
                           {congestionIndex}%
                         </div>
                       </div>
@@ -783,7 +1114,7 @@ export default function PlannedRoutePage() {
                 <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">لا توجد تنبؤات متاحة للتاريخ المحدد</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  سيتم عرض التنبؤات بعد تحديد المسار
+                  سيتم عرض التنبؤات بعد تحديد المسار وحسابه
                 </p>
               </div>
             )}
