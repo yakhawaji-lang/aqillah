@@ -979,6 +979,36 @@ export default function PlannedRoutePage() {
                               </div>
                             </div>
                           )}
+
+                          {/* اتجاه الازدحام */}
+                          {prediction.trend && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-xs text-gray-600">الاتجاه:</span>
+                              {prediction.trend === 'increasing' ? (
+                                <span className="text-xs text-red-600 flex items-center gap-1">
+                                  <TrendingUp className="h-3 w-3" />
+                                  تزايد متوقع
+                                </span>
+                              ) : prediction.trend === 'decreasing' ? (
+                                <span className="text-xs text-green-600 flex items-center gap-1">
+                                  <TrendingDown className="h-3 w-3" />
+                                  تناقص متوقع
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-600 flex items-center gap-1">
+                                  <BarChart3 className="h-3 w-3" />
+                                  مستقر
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* مؤشر الازدحام الحالي للمقارنة */}
+                          {prediction.currentCongestionIndex !== null && prediction.currentCongestionIndex !== undefined && (
+                            <div className="mt-2 text-xs text-gray-600">
+                              الازدحام الحالي: {prediction.currentCongestionIndex}%
+                            </div>
+                          )}
                         </div>
                       )
                     })}
