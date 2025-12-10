@@ -61,17 +61,15 @@ export default function PlannedRoutePage() {
     if (!departureTime) setDepartureTime(timeStr)
   }, [])
 
-  // إعادة تعيين المسار عند تغيير التاريخ أو الوقت
+  // إعادة تعيين المسار والتنبؤات عند تغيير التاريخ أو الوقت
   useEffect(() => {
-    if (departureDate && departureTime) {
-      // إعادة تعيين المسار والتنبؤات عند تغيير التاريخ/الوقت
-      // استخدام setTimeout للتأكد من أن التغيير يحدث بعد تحديث state
-      const timer = setTimeout(() => {
-        setSelectedRoute(null)
-      }, 0)
-      return () => clearTimeout(timer)
+    if (departureDate && departureTime && selectedRoute) {
+      // إعادة تعيين المسار عند تغيير التاريخ/الوقت لتجنب الأخطاء
+      console.log('🔄 Date/time changed, resetting route...')
+      setSelectedRoute(null)
+      // لا نعيد تعيين الوجهة لأن المستخدم قد يريد الاحتفاظ بها
     }
-  }, [departureDate, departureTime])
+  }, [departureDate, departureTime, selectedRoute])
 
   // حساب تاريخ ووقت المغادرة الكامل
   const departureDateTime = useMemo(() => {
@@ -153,28 +151,34 @@ export default function PlannedRoutePage() {
     queryFn: async () => {
       if (!userLocation || !destination || !departureDateTime || !isFutureDate) return null
       
+      // التحقق من صحة البيانات
+      if (!departureDate || !departureTime || isNaN(departureDateTime.getTime())) {
+        return null
+      }
+      
       try {
         // حساب عدد الدقائق من الآن حتى وقت المغادرة
         const now = new Date()
         const minutesAhead = Math.ceil((departureDateTime.getTime() - now.getTime()) / (1000 * 60))
         
-        if (minutesAhead <= 0 || minutesAhead > 1440) return null // لا تزيد عن 24 ساعة
+        if (minutesAhead <= 0 || minutesAhead > 1440 || isNaN(minutesAhead)) return null // لا تزيد عن 24 ساعة
         
         // جلب تنبؤات المرور
         const res = await axios.get(`/api/predictions/real`, {
           params: {
             city: 'الرياض', // يمكن تحسينه ليكتشف المدينة تلقائياً
             minutesAhead: Math.min(minutesAhead, 60), // الحد الأقصى 60 دقيقة للتنبؤات
-          }
+          },
+          timeout: 30000,
         })
         
-        return res.data.data || null
+        return res.data?.data || null
       } catch (error) {
         console.error('Error fetching traffic predictions:', error)
         return null
       }
     },
-    enabled: !!userLocation && !!destination && !!departureDateTime && isFutureDate,
+    enabled: !!userLocation && !!destination && !!departureDate && !!departureTime && !!departureDateTime && isFutureDate && !isNaN(departureDateTime?.getTime()),
   })
 
   // جلب تنبؤات المرور للمسار المحدد
@@ -230,7 +234,7 @@ export default function PlannedRoutePage() {
         return null
       }
     },
-    enabled: !!selectedRoute && !!userLocation && !!destination && !!departureDateTime && isFutureDate && !isNaN(departureDateTime?.getTime()),
+    enabled: !!selectedRoute && !!userLocation && !!destination && !!departureDate && !!departureTime && !!departureDateTime && isFutureDate && !isNaN(departureDateTime?.getTime()),
     retry: 1, // إعادة المحاولة مرة واحدة فقط
     retryDelay: 1000, // انتظار ثانية واحدة قبل إعادة المحاولة
   })

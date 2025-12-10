@@ -129,27 +129,29 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
     }
   }, [])
 
-  // معالج فشل تحديد الموقع
+  // معالج فشل تحديد الموقع مع إعادة محاولة محسّنة
+  const retryCountRef = useRef(0)
+  const MAX_RETRIES = 3
+  
   const handleError = useCallback((err: GeolocationPositionError) => {
     console.error('❌ Geolocation error:', err)
     
-    setError(err)
-    setLoading(false)
-    
-    // محاولة استخدام آخر موقع معروف
+    // محاولة استخدام آخر موقع معروف أولاً
     const lastKnown = getLastKnownLocation()
-    if (lastKnown) {
+    if (lastKnown && retryCountRef.current === 0) {
       console.log('📍 Using last known location:', lastKnown)
       setLocation(lastKnown)
+      setLoading(false)
+      setError(null)
       toast('استخدام آخر موقع معروف', { 
         icon: '📍',
         duration: 3000,
       })
-      return
     }
     
     // عرض رسالة خطأ مناسبة
     let errorMessage = 'فشل في تحديد موقعك'
+    let shouldRetry = false
     
     switch (err.code) {
       case err.PERMISSION_DENIED:
@@ -157,28 +159,57 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
         break
       case err.POSITION_UNAVAILABLE:
         errorMessage = 'معلومات الموقع غير متاحة. تأكد من تفعيل GPS.'
+        shouldRetry = retryCountRef.current < MAX_RETRIES
         break
       case err.TIMEOUT:
-        errorMessage = 'انتهت مهلة طلب الموقع. جاري المحاولة مرة أخرى...'
-        // إعادة المحاولة بعد ثانيتين
-        setTimeout(() => {
-          if (navigator.geolocation) {
-            const opts = optionsRef.current
-            navigator.geolocation.getCurrentPosition(
-              handleSuccess,
-              handleError,
-              {
-                enableHighAccuracy: opts.enableHighAccuracy,
-                timeout: opts.timeout,
-                maximumAge: opts.maximumAge,
-              }
-            )
-          }
-        }, 2000)
-        return
+        errorMessage = 'انتهت مهلة طلب الموقع'
+        shouldRetry = retryCountRef.current < MAX_RETRIES
+        break
     }
     
-    if (!hasRequestedRef.current) {
+    // إعادة المحاولة إذا كان ذلك مناسباً
+    if (shouldRetry && retryCountRef.current < MAX_RETRIES) {
+      retryCountRef.current++
+      const retryDelay = retryCountRef.current * 2000 // 2s, 4s, 6s
+      
+      console.log(`🔄 Retrying location (attempt ${retryCountRef.current}/${MAX_RETRIES}) in ${retryDelay}ms...`)
+      
+      setTimeout(() => {
+        if (navigator.geolocation) {
+          const opts = optionsRef.current
+          // زيادة timeout في كل محاولة
+          const retryOptions = {
+            ...opts,
+            timeout: opts.timeout + (retryCountRef.current * 5000),
+            enableHighAccuracy: retryCountRef.current < 2 ? opts.enableHighAccuracy : false, // تعطيل high accuracy في المحاولات الأخيرة
+          }
+          
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              retryCountRef.current = 0 // إعادة تعيين عند النجاح
+              handleSuccess(pos)
+            },
+            handleError,
+            retryOptions
+          )
+        }
+      }, retryDelay)
+      
+      if (retryCountRef.current === 1) {
+        toast('جاري إعادة المحاولة...', { 
+          icon: '🔄',
+          duration: 2000,
+        })
+      }
+      return
+    }
+    
+    // إذا فشلت جميع المحاولات
+    setError(err)
+    setLoading(false)
+    retryCountRef.current = 0 // إعادة تعيين للجلسة التالية
+    
+    if (!hasRequestedRef.current || retryCountRef.current === 0) {
       toast.error(errorMessage, { duration: 4000 })
       hasRequestedRef.current = true
     }
@@ -242,6 +273,7 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
   // تحديث الموقع يدوياً
   const refresh = useCallback(() => {
     hasRequestedRef.current = false
+    retryCountRef.current = 0 // إعادة تعيين عداد المحاولات
     stopWatching() // إيقاف أي مراقبة سابقة
     getLocation()
   }, [getLocation, stopWatching])

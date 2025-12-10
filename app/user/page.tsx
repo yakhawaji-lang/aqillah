@@ -499,49 +499,49 @@ export default function UserAppPage() {
               </div>
             </div>
 
-            {/* إحصائيات سريعة - تصميم محسّن */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5 shadow-lg border border-blue-200">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-blue-500 rounded-lg">
-                    <TrendingUp className="h-5 w-5 text-white" />
+            {/* إحصائيات سريعة - تصميم محسّن ومتناسق */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 shadow-md border border-blue-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-1.5 bg-blue-500 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-sm font-medium text-blue-900">متوسط الازدحام</span>
+                  <span className="text-xs font-semibold text-blue-900">متوسط الازدحام</span>
                 </div>
-                <p className="text-3xl font-bold text-blue-900">
+                <p className="text-2xl font-bold text-blue-900">
                   <AnimatedCounter value={avgCongestion} suffix="%" />
                 </p>
               </div>
-              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl p-5 shadow-lg border border-red-200">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-red-500 rounded-lg">
-                    <AlertTriangle className="h-5 w-5 text-white" />
+              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 shadow-md border border-red-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-1.5 bg-red-500 rounded-lg">
+                    <AlertTriangle className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-sm font-medium text-red-900">تنبيهات نشطة</span>
+                  <span className="text-xs font-semibold text-red-900">تنبيهات نشطة</span>
                 </div>
-                <p className="text-3xl font-bold text-red-900">
+                <p className="text-2xl font-bold text-red-900">
                   <AnimatedCounter value={filteredAlerts.length} />
                 </p>
               </div>
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-5 shadow-lg border border-purple-200">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-purple-500 rounded-lg">
-                    <Clock className="h-5 w-5 text-white" />
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 shadow-md border border-purple-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-1.5 bg-purple-500 rounded-lg">
+                    <Clock className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-sm font-medium text-purple-900">متوسط التأخير</span>
+                  <span className="text-xs font-semibold text-purple-900">متوسط التأخير</span>
                 </div>
-                <p className="text-3xl font-bold text-purple-900">
+                <p className="text-2xl font-bold text-purple-900">
                   <AnimatedCounter value={avgDelay} decimals={1} suffix=" د" />
                 </p>
               </div>
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-5 shadow-lg border border-green-200">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-green-500 rounded-lg">
-                    <MapPin className="h-5 w-5 text-white" />
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 shadow-md border border-green-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-1.5 bg-green-500 rounded-lg">
+                    <MapPin className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-sm font-medium text-green-900">مقاطع مراقبة</span>
+                  <span className="text-xs font-semibold text-green-900">مقاطع مراقبة</span>
                 </div>
-                <p className="text-3xl font-bold text-green-900">
+                <p className="text-2xl font-bold text-green-900">
                   <AnimatedCounter value={filteredTrafficData.length} />
                 </p>
               </div>
