@@ -896,37 +896,6 @@ export default function NavigationPage() {
           />
         </div>
 
-        {/* بطاقة المسافة والوقت - مباشرة تحت الخريطة */}
-        <div className="bg-white border-t border-gray-200 px-4 py-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
-              <div className="flex items-center gap-2 mb-1">
-                <Route className="w-4 h-4 text-blue-600" />
-                <span className="text-xs font-medium text-gray-700">المسافة</span>
-              </div>
-              <p className="text-2xl font-bold text-blue-600">{route.distance.toFixed(1)}</p>
-              <p className="text-xs text-gray-600">كيلومتر</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 border border-green-200">
-              <div className="flex items-center gap-2 mb-1">
-                <Clock className="w-4 h-4 text-green-600" />
-                <span className="text-xs font-medium text-gray-700">الوقت المتوقع</span>
-              </div>
-              <p className="text-2xl font-bold text-green-600">
-                {Math.round(route.estimatedTimeWithWeather || route.estimatedTimeInTraffic || route.estimatedTime)}
-              </p>
-              <p className="text-xs text-gray-600">
-                {route.estimatedTimeWithWeather 
-                  ? `دقيقة (مع الازدحام والطقس${route.weatherDelay ? ` +${route.weatherDelay.toFixed(0)}%` : ''})`
-                  : route.estimatedTimeInTraffic 
-                    ? 'دقيقة (مع الازدحام)' 
-                    : 'دقيقة'}
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* معلومات المسار - في الأسفل */}
         <div className="bg-white border-t border-gray-200 shadow-lg">
           <div className="container mx-auto px-4 py-4 space-y-4">
@@ -1020,6 +989,35 @@ export default function NavigationPage() {
                   </div>
                 </div>
               )}
+
+              {/* بطاقة المسافة والوقت - تحت التقدم */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Route className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-medium text-gray-700">المسافة</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600">{route.distance.toFixed(1)}</p>
+                  <p className="text-xs text-gray-600">كيلومتر</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 border border-green-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-green-600" />
+                    <span className="text-xs font-medium text-gray-700">الوقت المتوقع</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600">
+                    {Math.round(route.estimatedTimeWithWeather || route.estimatedTimeInTraffic || route.estimatedTime)}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {route.estimatedTimeWithWeather 
+                      ? `دقيقة (مع الازدحام والطقس${route.weatherDelay ? ` +${route.weatherDelay.toFixed(0)}%` : ''})`
+                      : route.estimatedTimeInTraffic 
+                        ? 'دقيقة (مع الازدحام)' 
+                        : 'دقيقة'}
+                  </p>
+                </div>
+              </div>
 
               {/* المسافة إلى المنعطف التالي */}
               {isNavigating && distanceToNextTurn !== null && (
