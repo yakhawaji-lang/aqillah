@@ -21,6 +21,7 @@ export interface WeatherResponse {
     visibility: number
     pressure: number
     precipitation: number
+    precipitationProbability?: number // نسبة هطول الأمطار (0-100)
     rainRate: number
     condition: string
     cloudCover: number
@@ -30,6 +31,7 @@ export interface WeatherResponse {
     timestamp: Date
     temperature: number
     precipitation: number
+    precipitationProbability?: number // نسبة هطول الأمطار (0-100)
     condition: string
     windSpeed: number
     visibility: number
@@ -40,6 +42,7 @@ export interface WeatherResponse {
     low: number
     condition: string
     precipitation: number
+    precipitationProbability?: number // نسبة هطول الأمطار (0-100)
     visibility?: number
     windSpeed?: number
   }>
@@ -312,6 +315,7 @@ class WeatherService {
       visibility: currentVisibility !== undefined ? currentVisibility : 10000, // meters, default 10km = 10000m
       pressure: currentData.pressure || 1013,
       precipitation: currentData.rain || currentData.snow || 0,
+      precipitationProbability: currentData.pop !== undefined ? Math.round(currentData.pop * 100) : undefined, // نسبة هطول الأمطار من OpenWeatherMap (0-1 -> 0-100%)
       rainRate: currentData.rain || 0,
       condition: currentData.weather?.[0]?.main?.toLowerCase() || 'clear',
       cloudCover: currentData.clouds || 0,
@@ -330,6 +334,7 @@ class WeatherService {
         low: item.temp?.min || item.temp?.night || current.temperature - 5,
         condition: condition,
         precipitation: item.rain || item.snow || 0,
+        precipitationProbability: item.pop !== undefined ? Math.round(item.pop * 100) : undefined, // نسبة هطول الأمطار من OpenWeatherMap (0-1 -> 0-100%)
         // visibility not provided by OpenWeatherMap Forecast API - omitted from response
         windSpeed: (item.speed || 0) * 3.6, // Convert m/s to km/h - real data from API
       }

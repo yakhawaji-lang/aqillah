@@ -564,10 +564,12 @@ export default function PlannedRoutePage() {
                   <div className="bg-orange-50 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <Droplets className="h-4 w-4 text-orange-600" />
-                      <span className="text-sm font-medium text-gray-700">الأمطار</span>
+                      <span className="text-sm font-medium text-gray-700">الأمطار المتوقعة</span>
                     </div>
                     <p className="text-lg font-bold text-gray-900">
-                      {weatherData.precipitation ? `${weatherData.precipitation.toFixed(1)} ملم` : '0 ملم'}
+                      {weatherData.source === 'openweather' && weatherData.precipitationProbability !== undefined && weatherData.precipitationProbability !== null
+                        ? `${weatherData.precipitationProbability}%`
+                        : weatherData.precipitation ? `${weatherData.precipitation.toFixed(1)} ملم` : '0 ملم'}
                     </p>
                   </div>
 
@@ -1111,10 +1113,12 @@ export default function PlannedRoutePage() {
                     <div className="bg-white rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
                         <Droplets className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm text-gray-600">الأمطار</span>
+                        <span className="text-sm text-gray-600">الأمطار المتوقعة</span>
                       </div>
                       <p className="text-lg font-bold text-gray-900">
-                        {weatherData.precipitation ? `${Number(weatherData.precipitation).toFixed(1)} ملم` : '0 ملم'}
+                        {weatherData.source === 'openweather' && weatherData.precipitationProbability !== undefined && weatherData.precipitationProbability !== null
+                          ? `${weatherData.precipitationProbability}%`
+                          : weatherData.precipitation ? `${Number(weatherData.precipitation).toFixed(1)} ملم` : '0 ملم'}
                       </p>
                     </div>
 

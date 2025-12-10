@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
                   visibility: closestHour.visibility || 10000,
                   pressure: 1013,
                   precipitation: closestHour.precipitation || 0,
+                  precipitationProbability: closestHour.precipitationProbability, // نسبة هطول الأمطار
                   rainRate: closestHour.precipitation || 0,
                   condition: closestHour.condition || 'clear',
                   cloudCover: 50,
@@ -101,6 +102,7 @@ export async function GET(request: NextRequest) {
                   visibility: targetDay.visibility || 10000,
                   pressure: 1013,
                   precipitation: targetDay.precipitation || 0,
+                  precipitationProbability: targetDay.precipitationProbability, // نسبة هطول الأمطار
                   rainRate: targetDay.precipitation || 0,
                   condition: targetDay.condition || 'clear',
                   cloudCover: 50,
@@ -146,6 +148,7 @@ export async function GET(request: NextRequest) {
         condition: currentWeather.condition || currentWeather.weather || 'غير محدد',
         temperature: currentWeather.temperature || currentWeather.temp || null,
         precipitation: currentWeather.precipitation || currentWeather.rain || currentWeather.rainfall || 0,
+        precipitationProbability: currentWeather.precipitationProbability, // نسبة هطول الأمطار من OpenWeatherMap
         visibility: currentWeather.visibility || currentWeather.vis || null,
         windSpeed: currentWeather.windSpeed || currentWeather.wind?.speed || currentWeather.ws || null,
         windDirection: currentWeather.windDirection || currentWeather.wind?.direction || null,
