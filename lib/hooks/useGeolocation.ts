@@ -74,6 +74,7 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
   const watchIdRef = useRef<number | null>(null)
   const hasRequestedRef = useRef(false)
   const optionsRef = useRef({ enableHighAccuracy, timeout, maximumAge, watch })
+  const lastUpdateTimeRef = useRef<number>(0) // لتتبع آخر تحديث لتقليل التحديثات المتكررة
 
   // تحديث optionsRef عند تغيير الخيارات
   useEffect(() => {
