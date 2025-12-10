@@ -637,10 +637,24 @@ export default function PlannedRoutePage() {
             ) : routePredictions ? (
               <div className="space-y-4">
                 {/* تنبؤات الازدحام */}
-                {routePredictions.predictions && routePredictions.predictions.length > 0 ? (
+                {routePredictions && routePredictions.predictions && Array.isArray(routePredictions.predictions) && routePredictions.predictions.length > 0 ? (
                   <div className="space-y-3">
-                    {Array.isArray(routePredictions.predictions) && routePredictions.predictions.map((prediction: any, index: number) => {
+                    {routePredictions.predictions.map((prediction: any, index: number) => {
+                      // التحقق من صحة البيانات قبل الاستخدام
+                      if (!prediction || typeof prediction !== 'object') {
+                        return null
+                      }
+                      
                       const congestionIndex = Number(prediction.predictedIndex || prediction.congestionIndex || 0)
+                      const delayMinutes = Number(prediction.predictedDelayMinutes || prediction.delayMinutes || 0)
+                      const confidence = Number(prediction.confidence || 0)
+                      
+                      // التحقق من أن القيم صحيحة
+                      if (isNaN(congestionIndex) || isNaN(delayMinutes) || isNaN(confidence)) {
+                        console.warn('Invalid prediction data:', prediction)
+                        return null
+                      }
+                      
                       const congestionColor = 
                         congestionIndex >= 70 ? 'text-red-600' :
                         congestionIndex >= 50 ? 'text-orange-600' :
@@ -665,13 +679,13 @@ export default function PlannedRoutePage() {
                             <div className="text-sm">
                               <span className="text-gray-600">التأخير المتوقع:</span>
                               <span className="font-medium text-gray-900 mr-1">
-                                {prediction.predictedDelayMinutes || prediction.delayMinutes ? `${Number(prediction.predictedDelayMinutes || prediction.delayMinutes).toFixed(1)} دقيقة` : 'غير محدد'}
+                                {delayMinutes > 0 ? `${delayMinutes.toFixed(1)} دقيقة` : 'غير محدد'}
                               </span>
                             </div>
                             <div className="text-sm">
                               <span className="text-gray-600">مستوى الثقة:</span>
                               <span className="font-medium text-gray-900 mr-1">
-                                {prediction.confidence ? `${Math.round(Number(prediction.confidence) * 100)}%` : 'غير محدد'}
+                                {confidence > 0 ? `${Math.round(confidence * 100)}%` : 'غير محدد'}
                               </span>
                             </div>
                           </div>
@@ -680,7 +694,7 @@ export default function PlannedRoutePage() {
                             <div className="mt-3 pt-3 border-t border-gray-200">
                               <p className="text-xs text-gray-600 mb-1">العوامل المؤثرة:</p>
                               <div className="flex flex-wrap gap-2">
-                                {prediction.factors.filter((f: any) => f != null).map((factor: any, idx: number) => (
+                                {prediction.factors.filter((f: any) => f != null && f !== '').map((factor: any, idx: number) => (
                                   <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                                     {String(factor || '')}
                                   </span>
@@ -690,7 +704,7 @@ export default function PlannedRoutePage() {
                           )}
                         </div>
                       )
-                    })}
+                    }).filter(Boolean)}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -700,7 +714,7 @@ export default function PlannedRoutePage() {
                 )}
 
                 {/* ملخص التنبؤات */}
-                {routePredictions.avgCongestion !== undefined && (
+                {routePredictions && routePredictions.avgCongestion !== undefined && routePredictions.avgCongestion !== null && !isNaN(Number(routePredictions.avgCongestion)) && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -710,16 +724,25 @@ export default function PlannedRoutePage() {
                         </p>
                       </div>
                       <div className="text-2xl font-bold text-blue-600">
-                        {Number(routePredictions.avgCongestion || 0).toFixed(0)}%
+                        {Number(routePredictions.avgCongestion).toFixed(0)}%
                       </div>
                     </div>
                   </div>
                 )}
               </div>
-            ) : trafficPredictions ? (
+            ) : trafficPredictions && Array.isArray(trafficPredictions) && trafficPredictions.length > 0 ? (
               <div className="space-y-3">
-                {Array.isArray(trafficPredictions) && trafficPredictions.slice(0, 3).map((prediction: any, index: number) => {
-                  const congestionIndex = prediction.predictedIndex || prediction.congestionIndex || 0
+                {trafficPredictions.slice(0, 3).map((prediction: any, index: number) => {
+                  if (!prediction || typeof prediction !== 'object') {
+                    return null
+                  }
+                  
+                  const congestionIndex = Number(prediction.predictedIndex || prediction.congestionIndex || 0)
+                  
+                  if (isNaN(congestionIndex)) {
+                    return null
+                  }
+                  
                   const congestionColor = 
                     congestionIndex >= 70 ? 'text-red-600' :
                     congestionIndex >= 50 ? 'text-orange-600' :
@@ -741,7 +764,7 @@ export default function PlannedRoutePage() {
                       </div>
                     </div>
                   )
-                })}
+                }).filter(Boolean)}
               </div>
             ) : (
               <div className="text-center py-8">
@@ -914,7 +937,7 @@ export default function PlannedRoutePage() {
                     <p className="text-xs text-yellow-700 mt-1">سيتم عرض البيانات الأساسية فقط</p>
                   </div>
                 </div>
-              ) : routePredictions && routePredictions.predictions && Array.isArray(routePredictions.predictions) && routePredictions.predictions.length > 0 && (
+              ) : routePredictions && routePredictions.predictions && Array.isArray(routePredictions.predictions) && routePredictions.predictions.length > 0 ? (
                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-orange-600" />
@@ -923,8 +946,21 @@ export default function PlannedRoutePage() {
                   
                   <div className="space-y-3">
                     {routePredictions.predictions.map((prediction: any, index: number) => {
+                      // التحقق من صحة البيانات قبل الاستخدام
+                      if (!prediction || typeof prediction !== 'object') {
+                        return null
+                      }
+                      
                       const congestionIndex = Number(prediction.predictedIndex || prediction.congestionIndex || 0)
                       const delayMinutes = Number(prediction.predictedDelayMinutes || prediction.delayMinutes || 0)
+                      const confidence = Number(prediction.confidence || 0)
+                      
+                      // التحقق من أن القيم صحيحة
+                      if (isNaN(congestionIndex) || isNaN(delayMinutes) || isNaN(confidence)) {
+                        console.warn('Invalid prediction data:', prediction)
+                        return null
+                      }
+                      
                       const congestionColor = 
                         congestionIndex >= 70 ? 'bg-red-100 border-red-300 text-red-800' :
                         congestionIndex >= 50 ? 'bg-orange-100 border-orange-300 text-orange-800' :
@@ -949,13 +985,13 @@ export default function PlannedRoutePage() {
                             <div>
                               <p className="text-xs opacity-80 mb-1">التأخير المتوقع</p>
                               <p className="font-bold text-lg">
-                                {delayMinutes > 0 ? `${Number(delayMinutes).toFixed(1)} دقيقة` : 'غير محدد'}
+                                {delayMinutes > 0 ? `${delayMinutes.toFixed(1)} دقيقة` : 'غير محدد'}
                               </p>
                             </div>
                             <div>
                               <p className="text-xs opacity-80 mb-1">مستوى الثقة</p>
                               <p className="font-bold text-lg">
-                                {prediction.confidence ? `${Math.round(Number(prediction.confidence) * 100)}%` : 'غير محدد'}
+                                {confidence > 0 ? `${Math.round(confidence * 100)}%` : 'غير محدد'}
                               </p>
                             </div>
                           </div>
@@ -964,9 +1000,9 @@ export default function PlannedRoutePage() {
                             <div className="mt-3 pt-3 border-t border-current border-opacity-20">
                               <p className="text-xs font-medium mb-2">العوامل المؤثرة:</p>
                               <div className="flex flex-wrap gap-2">
-                                {prediction.factors.map((factor: string, idx: number) => (
+                                {prediction.factors.filter((f: any) => f != null && f !== '').map((factor: any, idx: number) => (
                                   <span key={idx} className="text-xs bg-white bg-opacity-50 px-2 py-1 rounded">
-                                    {String(factor)}
+                                    {String(factor || '')}
                                   </span>
                                 ))}
                               </div>
@@ -997,14 +1033,14 @@ export default function PlannedRoutePage() {
                           )}
 
                           {/* مؤشر الازدحام الحالي للمقارنة */}
-                          {prediction.currentCongestionIndex !== null && prediction.currentCongestionIndex !== undefined && (
+                          {prediction.currentCongestionIndex !== null && prediction.currentCongestionIndex !== undefined && !isNaN(Number(prediction.currentCongestionIndex)) && (
                             <div className="mt-2 text-xs text-gray-600">
-                              الازدحام الحالي: {prediction.currentCongestionIndex}%
+                              الازدحام الحالي: {Number(prediction.currentCongestionIndex)}%
                             </div>
                           )}
                         </div>
                       )
-                    })}
+                    }).filter(Boolean)}
                   </div>
 
                   {routePredictions.avgCongestion !== undefined && routePredictions.avgCongestion !== null && !isNaN(Number(routePredictions.avgCongestion)) && (
@@ -1018,7 +1054,7 @@ export default function PlannedRoutePage() {
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
 
               {/* حالة الطقس التفصيلية - بيانات شاملة من مصادر متعددة */}
               {weatherLoading ? (

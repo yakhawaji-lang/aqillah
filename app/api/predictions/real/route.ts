@@ -5,6 +5,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 // إحداثيات المدن الرئيسية وطرقها الرئيسية
 const CITY_ROUTES: Record<string, Array<{
   name: string
