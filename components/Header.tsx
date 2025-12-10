@@ -11,8 +11,8 @@ export function Header() {
   const pathname = usePathname()
 
   const navItems = [
-    { href: '/dashboard', label: 'لوحة التحكم' },
-    { href: '/map', label: 'الخريطة' },
+    { href: '/dashboard', label: 'لوحة التحكم', hidden: true },
+    { href: '/map', label: 'الخريطة', hidden: true },
     { href: '/alerts', label: 'التنبيهات' },
     { href: '/government', label: 'لوحة الحكومة' },
     { href: '/government/data-center', label: 'مركز البيانات' },
@@ -63,7 +63,7 @@ export function Header() {
 
           {/* Navigation - Desktop */}
           <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
+            {navItems.filter(item => !item.hidden).map((item) => {
               const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
               return (
                 <Link
@@ -121,7 +121,7 @@ export function Header() {
           {/* Menu */}
           <nav className="fixed top-16 right-0 left-0 bg-white shadow-lg z-50 max-h-[calc(100vh-4rem)] overflow-y-auto">
             <div className="px-4 py-2">
-              {navItems.map((item) => {
+              {navItems.filter(item => !item.hidden).map((item) => {
                 const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
                 return (
                   <Link
