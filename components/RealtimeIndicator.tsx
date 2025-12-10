@@ -96,19 +96,16 @@ export function RealtimeIndicator({ isConnected, lastUpdate, onRefresh }: Realti
       
       <div className="flex items-center gap-2">
         {isConnected && lastUpdate ? (
-          <>
-            <Clock className="h-3.5 w-3.5" />
-            <span className="text-xs font-medium">
-              {timeAgo === 'الآن' ? (
-                <span className="flex items-center gap-1">
-                  <span className="animate-pulse">●</span>
-                  {timeAgo}
-                </span>
-              ) : (
-                `محدث منذ ${timeAgo}`
-              )}
-            </span>
-          </>
+          <span className="text-xs font-medium">
+            {timeAgo === 'الآن' ? (
+              <span className="flex items-center gap-1">
+                <span className="animate-pulse">●</span>
+                {timeAgo}
+              </span>
+            ) : (
+              timeAgo
+            )}
+          </span>
         ) : (
           <span className="text-xs font-medium">غير متصل</span>
         )}

@@ -16,8 +16,7 @@ import {
   BarChart3,
   Calendar,
   X,
-  Search,
-  Sparkles
+  Search
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import GoogleTrafficMap from '@/components/GoogleTrafficMap'
@@ -278,19 +277,18 @@ export default function UserAppPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 pb-20">
       {/* Header - تصميم محسّن */}
-      <div className="bg-gradient-to-r from-primary-600 via-primary-700 to-primary-600 text-white shadow-xl sticky top-0 z-50">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                <Sparkles className="h-6 w-6" />
+      <div className="bg-gradient-to-r from-primary-600 via-primary-700 to-primary-600 text-white shadow-xl">
+        <div className="p-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+                <MapPin className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">عَقِلْها</h1>
-                <p className="text-sm opacity-90">نظام تحليل الازدحام المروري الذكي</p>
+                <h1 className="text-lg font-bold">عَقِلْها</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <RealtimeIndicator isConnected={isConnected} lastUpdate={lastUpdate} />
               <button
                 onClick={() => {
@@ -298,28 +296,28 @@ export default function UserAppPage() {
                   toast('جاري تحديد موقعك...', { icon: '📍' })
                 }}
                 disabled={locationLoading}
-                className="p-2.5 bg-white/20 rounded-xl hover:bg-white/30 transition disabled:opacity-50 backdrop-blur-sm"
+                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition disabled:opacity-50 backdrop-blur-sm"
                 title="تحديد موقعي"
               >
                 {locationLoading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 ) : (
-                  <Navigation className="h-5 w-5" />
+                  <Navigation className="h-4 w-4" />
                 )}
               </button>
               <button
                 onClick={() => router.push('/user/planned-route')}
-                className="p-2.5 bg-white/20 rounded-xl hover:bg-white/30 transition backdrop-blur-sm"
+                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition backdrop-blur-sm"
                 title="تخطيط المسار المستقبلي"
               >
-                <Calendar className="h-5 w-5" />
+                <Calendar className="h-4 w-4" />
               </button>
               <button
                 onClick={() => router.push('/user/predictions')}
-                className="p-2.5 bg-white/20 rounded-xl hover:bg-white/30 transition backdrop-blur-sm"
+                className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition backdrop-blur-sm"
                 title="التنبؤات"
               >
-                <BarChart3 className="h-5 w-5" />
+                <BarChart3 className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -327,32 +325,32 @@ export default function UserAppPage() {
           {/* البحث السريع عن الوجهة - تصميم محسّن */}
           <div 
             onClick={() => setActiveTab('route')}
-            className="bg-white/20 backdrop-blur-md rounded-xl p-4 border border-white/30 cursor-pointer hover:bg-white/30 transition-all duration-200 shadow-lg"
+            className="bg-white/20 backdrop-blur-md rounded-lg p-3 border border-white/30 cursor-pointer hover:bg-white/30 transition-all duration-200"
           >
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/30 rounded-lg">
-                <Search className="h-5 w-5" />
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-white/30 rounded-lg">
+                <Search className="h-4 w-4" />
               </div>
               <div className="flex-1 text-right">
-                <p className="text-sm opacity-90 mb-1">إلى أين تريد الذهاب؟</p>
-                <p className="font-semibold text-lg">
+                <p className="text-xs opacity-90 mb-0.5">إلى أين تريد الذهاب؟</p>
+                <p className="font-medium text-sm">
                   {destination 
                     ? `الوجهة محددة` 
                     : 'ابحث عن وجهة أو اختر من الخريطة'}
                 </p>
               </div>
-              <ChevronRight className="h-6 w-6 opacity-75" />
+              <ChevronRight className="h-4 w-4 opacity-75" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Tabs - تصميم محسّن */}
-      <div className="bg-white border-b border-gray-200 sticky top-[180px] z-40 shadow-sm">
+      <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="flex">
           <button
             onClick={() => setActiveTab('map')}
-            className={`flex-1 py-4 text-center font-medium transition-all duration-200 relative ${
+            className={`flex-1 py-3 text-center font-medium transition-all duration-200 relative ${
               activeTab === 'map'
                 ? 'text-primary-600'
                 : 'text-gray-600 hover:text-gray-900'
@@ -361,14 +359,14 @@ export default function UserAppPage() {
             {activeTab === 'map' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
             )}
-            <div className="flex items-center justify-center gap-2">
-              <MapPin className="h-5 w-5" />
-              <span>الخريطة</span>
+            <div className="flex items-center justify-center gap-1.5">
+              <MapPin className="h-4 w-4" />
+              <span className="text-sm">الخريطة</span>
             </div>
           </button>
           <button
             onClick={() => setActiveTab('alerts')}
-            className={`flex-1 py-4 text-center font-medium transition-all duration-200 relative ${
+            className={`flex-1 py-3 text-center font-medium transition-all duration-200 relative ${
               activeTab === 'alerts'
                 ? 'text-primary-600'
                 : 'text-gray-600 hover:text-gray-900'
@@ -377,11 +375,11 @@ export default function UserAppPage() {
             {activeTab === 'alerts' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
             )}
-            <div className="flex items-center justify-center gap-2">
-              <Bell className="h-5 w-5" />
-              <span>التنبيهات</span>
+            <div className="flex items-center justify-center gap-1.5">
+              <Bell className="h-4 w-4" />
+              <span className="text-sm">التنبيهات</span>
               {alerts && alerts.length > 0 && (
-                <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                <span className="bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
                   {alerts.length}
                 </span>
               )}
@@ -389,7 +387,7 @@ export default function UserAppPage() {
           </button>
           <button
             onClick={() => setActiveTab('route')}
-            className={`flex-1 py-4 text-center font-medium transition-all duration-200 relative ${
+            className={`flex-1 py-3 text-center font-medium transition-all duration-200 relative ${
               activeTab === 'route'
                 ? 'text-primary-600'
                 : 'text-gray-600 hover:text-gray-900'
@@ -398,9 +396,9 @@ export default function UserAppPage() {
             {activeTab === 'route' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
             )}
-            <div className="flex items-center justify-center gap-2">
-              <Route className="h-5 w-5" />
-              <span>المسار</span>
+            <div className="flex items-center justify-center gap-1.5">
+              <Route className="h-4 w-4" />
+              <span className="text-sm">المسار</span>
             </div>
           </button>
         </div>
@@ -950,38 +948,38 @@ export default function UserAppPage() {
       </div>
 
       {/* Bottom Navigation - تصميم محسّن */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-2xl">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg">
         <div className="flex max-w-7xl mx-auto">
           <button
             onClick={() => setActiveTab('map')}
-            className={`flex-1 py-4 text-center transition-all duration-200 ${
+            className={`flex-1 py-3 text-center transition-all duration-200 ${
               activeTab === 'map' ? 'text-primary-600' : 'text-gray-600'
             }`}
           >
-            <MapPin className="h-6 w-6 mx-auto mb-1" />
+            <MapPin className="h-5 w-5 mx-auto mb-1" />
             <span className="text-xs font-medium">الخريطة</span>
           </button>
           <button
             onClick={() => setActiveTab('alerts')}
-            className={`flex-1 py-4 text-center transition-all duration-200 relative ${
+            className={`flex-1 py-3 text-center transition-all duration-200 relative ${
               activeTab === 'alerts' ? 'text-primary-600' : 'text-gray-600'
             }`}
           >
-            <Bell className="h-6 w-6 mx-auto mb-1" />
+            <Bell className="h-5 w-5 mx-auto mb-1" />
             <span className="text-xs font-medium">التنبيهات</span>
             {alerts && alerts.length > 0 && (
-              <span className="absolute top-2 right-1/2 translate-x-4 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+              <span className="absolute top-1.5 right-1/2 translate-x-4 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
                 {alerts.length}
               </span>
             )}
           </button>
           <button
             onClick={() => setActiveTab('route')}
-            className={`flex-1 py-4 text-center transition-all duration-200 ${
+            className={`flex-1 py-3 text-center transition-all duration-200 ${
               activeTab === 'route' ? 'text-primary-600' : 'text-gray-600'
             }`}
           >
-            <Route className="h-6 w-6 mx-auto mb-1" />
+            <Route className="h-5 w-5 mx-auto mb-1" />
             <span className="text-xs font-medium">المسار</span>
           </button>
         </div>
