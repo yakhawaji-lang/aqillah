@@ -32,6 +32,96 @@ import { AnimatedCounter } from '@/components/AnimatedCounter'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
+// مكون لحساب المسافة والوقت
+function RouteDistanceTime({ 
+  userLocation, 
+  destination, 
+  departureDateTime 
+}: { 
+  userLocation: [number, number]
+  destination: [number, number]
+  departureDateTime: Date | null
+}) {
+  const { data: routeInfo, isLoading } = useQuery({
+    queryKey: ['route-distance-time', userLocation, destination],
+    queryFn: async () => {
+      try {
+        const res = await axios.post('/api/emergency-route', {
+          originLat: userLocation[0],
+          originLng: userLocation[1],
+          destinationLat: destination[0],
+          destinationLng: destination[1],
+        })
+        
+        if (res.data.success && res.data.data) {
+          return {
+            distance: res.data.data.distance,
+            estimatedTime: res.data.data.estimatedTime,
+            estimatedTimeInTraffic: res.data.data.estimatedTimeInTraffic,
+          }
+        }
+        return null
+      } catch (error) {
+        console.error('Error calculating route:', error)
+        return null
+      }
+    },
+    enabled: !!userLocation && !!destination,
+    staleTime: 60000, // تحديث كل دقيقة
+  })
+
+  if (isLoading) {
+    return (
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-300 rounded w-20 mb-2"></div>
+            <div className="h-8 bg-gray-300 rounded w-24"></div>
+          </div>
+        </div>
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-300 rounded w-20 mb-2"></div>
+            <div className="h-8 bg-gray-300 rounded w-24"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!routeInfo) {
+    return null
+  }
+
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+        <div className="flex items-center gap-2 mb-2">
+          <Route className="h-5 w-5 text-blue-600" />
+          <span className="text-sm font-medium text-gray-700">المسافة</span>
+        </div>
+        <p className="text-2xl font-bold text-blue-600">
+          {routeInfo.distance ? Number(routeInfo.distance).toFixed(1) : '0.0'} كم
+        </p>
+      </div>
+      <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+        <div className="flex items-center gap-2 mb-2">
+          <Clock className="h-5 w-5 text-green-600" />
+          <span className="text-sm font-medium text-gray-700">الوقت المتوقع</span>
+        </div>
+        <p className="text-2xl font-bold text-green-600">
+          {routeInfo.estimatedTime ? Math.round(Number(routeInfo.estimatedTime)) : 0} دقيقة
+        </p>
+        {routeInfo.estimatedTimeInTraffic && (
+          <p className="text-xs text-gray-600 mt-1">
+            مع الازدحام: {Math.round(Number(routeInfo.estimatedTimeInTraffic))} دقيقة
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function PlannedRoutePage() {
   const router = useRouter()
   const [destination, setDestination] = useState<[number, number] | null>(null)
@@ -1381,6 +1471,50 @@ export default function PlannedRoutePage() {
                 </div>
               </div>
             )}
+
+            {/* حساب المسافة والوقت المتوقع */}
+            {(() => {
+              // استخدام routePredictions للحصول على المسافة والوقت إذا كانت متاحة
+              // أو استخدام selectedRoute إذا كان موجوداً
+              const routeInfo = selectedRoute || (routePredictions && routePredictions.routeInfo ? routePredictions.routeInfo : null)
+              
+              if (!routeInfo && userLocation && destination) {
+                // جلب معلومات المسار من API
+                return <RouteDistanceTime userLocation={userLocation} destination={destination} departureDateTime={departureDateTime} />
+              }
+              
+              if (routeInfo) {
+                return (
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Route className="h-5 w-5 text-blue-600" />
+                        <span className="text-sm font-medium text-gray-700">المسافة</span>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {routeInfo.distance ? Number(routeInfo.distance).toFixed(1) : '0.0'} كم
+                      </p>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="h-5 w-5 text-green-600" />
+                        <span className="text-sm font-medium text-gray-700">الوقت المتوقع</span>
+                      </div>
+                      <p className="text-2xl font-bold text-green-600">
+                        {routeInfo.estimatedTime ? Math.round(Number(routeInfo.estimatedTime)) : 0} دقيقة
+                      </p>
+                      {routeInfo.estimatedTimeInTraffic && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          مع الازدحام: {Math.round(Number(routeInfo.estimatedTimeInTraffic))} دقيقة
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+              
+              return null
+            })()}
           </div>
         )}
 
