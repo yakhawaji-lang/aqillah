@@ -241,9 +241,14 @@ export default function PlannedRoutePage() {
 
   // جلب تنبيهات الطقس
   const { data: weatherAlerts, isLoading: alertsLoading } = useQuery({
-    queryKey: ['weather-alerts', destination, departureDate],
+    queryKey: ['weather-alerts', destination, departureDate, departureTime],
     queryFn: async () => {
-      if (!destination || !departureDateTime || !isFutureDate) return []
+      if (!destination || !departureDateTime || !isFutureDate || !departureDate || !departureTime) return []
+      
+      // التحقق من صحة البيانات
+      if (isNaN(departureDateTime.getTime())) {
+        return []
+      }
       
       try {
         const alerts: any[] = []
@@ -314,7 +319,7 @@ export default function PlannedRoutePage() {
         return []
       }
     },
-    enabled: !!destination && !!departureDateTime && isFutureDate && !!weatherData,
+    enabled: !!destination && !!departureDate && !!departureTime && !!departureDateTime && isFutureDate && !isNaN(departureDateTime?.getTime()) && !!weatherData,
   })
 
   // حساب المسار
