@@ -499,18 +499,21 @@ export default function GovernmentDashboardPage() {
               </h2>
               <p className="text-gray-600 mt-2 text-lg">نظرة شاملة على حالة المرور الوطنية</p>
             </div>
-            <div className="flex items-center gap-4">
-              <RealtimeIndicator 
-                isConnected={isConnected} 
-                lastUpdate={lastUpdate}
-                onRefresh={() => {
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
                   refetchTraffic()
                   refetchStats()
                 }}
-              />
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition shadow-sm"
+                title="تحديث البيانات"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span className="hidden sm:inline">تحديث</span>
+              </button>
               <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
                 <Download className="h-4 w-4" />
-                تصدير
+                <span className="hidden sm:inline">تصدير</span>
               </button>
             </div>
           </div>
