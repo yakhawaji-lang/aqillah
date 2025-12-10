@@ -14,7 +14,8 @@ import {
   RefreshCw,
   Settings,
   BarChart3,
-  Calendar
+  Calendar,
+  X
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import RoutePlanner from '@/components/user/RoutePlanner'
@@ -773,82 +774,163 @@ export default function UserAppPage() {
               </div>
             </div>
 
-            {/* معلومات المسار */}
-            {selectedRoute && (
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <h3 className="font-bold text-gray-900 mb-4">معلومات المسار</h3>
-                
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Route className="h-5 w-5 text-primary-600" />
-                      <span className="text-sm text-gray-600">المسافة</span>
-                    </div>
-                    <span className="font-bold text-gray-900">
-                      {selectedRoute.distance ? selectedRoute.distance.toFixed(1) : '0.0'} كم
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-primary-600" />
-                      <span className="text-sm text-gray-600">الوقت المتوقع</span>
-                    </div>
-                    <span className="font-bold text-gray-900">
-                      {selectedRoute.estimatedTime ? Math.round(selectedRoute.estimatedTime) : 0} دقيقة
-                    </span>
-                  </div>
-
-                  {routeCongestion && (
-                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5 text-primary-600" />
-                        <span className="text-sm text-gray-600">حالة الازدحام</span>
+            {/* خريطة المسار مع معلومات المسار - تصميم محسّن للجوال */}
+            {selectedRoute && userLocation && destination && (
+              <div className="space-y-4">
+                {/* معلومات المسار المهمة - بطاقة علوية */}
+                <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl p-4 shadow-lg text-white">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    {/* الوقت */}
+                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="h-4 w-4" />
+                        <span className="text-xs opacity-90">الوقت</span>
                       </div>
-                      <CongestionIndicator index={Math.round(routeCongestion)} />
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold">
+                          {selectedRoute.estimatedTimeInTraffic 
+                            ? Math.round(selectedRoute.estimatedTimeInTraffic)
+                            : selectedRoute.estimatedTime 
+                            ? Math.round(selectedRoute.estimatedTime)
+                            : 0}
+                        </span>
+                        <span className="text-sm opacity-90">دقيقة</span>
+                      </div>
+                      {selectedRoute.estimatedTimeInTraffic && selectedRoute.estimatedTime && (
+                        <div className="text-xs opacity-75 mt-1">
+                          مع الازدحام والطقس +{Math.round(selectedRoute.estimatedTimeInTraffic - selectedRoute.estimatedTime)} د
+                        </div>
+                      )}
+                    </div>
+
+                    {/* المسافة */}
+                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Route className="h-4 w-4" />
+                        <span className="text-xs opacity-90">المسافة</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold">
+                          {selectedRoute.distance ? selectedRoute.distance.toFixed(1) : '0.0'}
+                        </span>
+                        <span className="text-sm opacity-90">كم</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* حالة الازدحام */}
+                  {routeCongestion && (
+                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4" />
+                          <span className="text-sm opacity-90">حالة الازدحام</span>
+                        </div>
+                        <CongestionIndicator index={Math.round(routeCongestion)} />
+                      </div>
                     </div>
                   )}
 
+                  {/* زر البدء */}
                   <button
                     onClick={() => {
-                      const url = `https://www.google.com/maps/dir/${userLocation?.[0]},${userLocation?.[1]}/${destination?.[0]},${destination?.[1]}`
-                      window.open(url, '_blank')
+                      const routeId = selectedRoute.id || `emergency-${Date.now()}`
+                      router.push(`/user/navigation?routeId=${routeId}`)
                     }}
-                    className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition flex items-center justify-center gap-2"
+                    className="w-full mt-3 py-3 bg-white text-primary-600 rounded-lg font-bold hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-lg"
                   >
                     <Navigation className="h-5 w-5" />
-                    فتح في الملاح
+                    بدء التوجيه
                   </button>
                 </div>
-              </div>
-            )}
 
-            {/* خريطة المسار مع Google Maps Traffic Layer */}
-            {selectedRoute && userLocation && destination && (
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <h3 className="font-bold text-gray-900 mb-4">خريطة المسار مع بيانات المرور الحية</h3>
-                <div className="h-[400px] rounded-lg overflow-hidden">
-                  <GoogleTrafficMap
-                    key={`google-route-map-${selectedRoute.id}`}
-                    center={{
-                      lat: (userLocation[0] + destination[0]) / 2,
-                      lng: (userLocation[1] + destination[1]) / 2,
-                    }}
-                    zoom={12}
-                    markers={mapMarkers.map(m => ({
-                      lat: m.position[0],
-                      lng: m.position[1],
-                      title: m.roadName,
-                      congestionIndex: m.congestionIndex,
-                    }))}
-                    route={{
-                      origin: { lat: userLocation[0], lng: userLocation[1] },
-                      destination: { lat: destination[0], lng: destination[1] },
-                      polyline: selectedRoute.polyline,
-                    }}
-                    showTrafficLayer={true}
-                    className="w-full h-full"
-                  />
+                {/* خريطة المسار - تصميم محسّن للجوال */}
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                  <div className="relative">
+                    <div className="h-[60vh] min-h-[400px] max-h-[600px]">
+                      <GoogleTrafficMap
+                        key={`google-route-map-${selectedRoute.id}`}
+                        center={{
+                          lat: (userLocation[0] + destination[0]) / 2,
+                          lng: (userLocation[1] + destination[1]) / 2,
+                        }}
+                        zoom={12}
+                        markers={mapMarkers.map(m => ({
+                          lat: m.position[0],
+                          lng: m.position[1],
+                          title: m.roadName,
+                          congestionIndex: m.congestionIndex,
+                        }))}
+                        route={{
+                          origin: { lat: userLocation[0], lng: userLocation[1] },
+                          destination: { lat: destination[0], lng: destination[1] },
+                          polyline: selectedRoute.polyline,
+                        }}
+                        showTrafficLayer={true}
+                        currentLocation={userLocation}
+                        className="w-full h-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* معلومات إضافية */}
+                <div className="bg-white rounded-xl p-4 shadow-sm">
+                  <h3 className="font-bold text-gray-900 mb-3 text-sm">تفاصيل المسار</h3>
+                  
+                  <div className="space-y-2">
+                    {selectedRoute.estimatedTime && selectedRoute.estimatedTimeInTraffic && (
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">الوقت بدون ازدحام</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {Math.round(selectedRoute.estimatedTime)} دقيقة
+                        </span>
+                      </div>
+                    )}
+                    
+                    {selectedRoute.weatherDelay && (
+                      <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-sm text-gray-600">تأخير الطقس</span>
+                        <span className="text-sm font-medium text-orange-600">
+                          +{Math.round(selectedRoute.weatherDelay)} دقيقة
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedRoute.steps && selectedRoute.steps.length > 0 && (
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-sm text-gray-600">عدد الخطوات</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {selectedRoute.steps.length} خطوة
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* أزرار إضافية */}
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <button
+                      onClick={() => {
+                        const url = `https://www.google.com/maps/dir/${userLocation?.[0]},${userLocation?.[1]}/${destination?.[0]},${destination?.[1]}`
+                        window.open(url, '_blank')
+                      }}
+                      className="py-2.5 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition flex items-center justify-center gap-2 text-sm"
+                    >
+                      <MapPin className="h-4 w-4" />
+                      فتح في الخرائط
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedRoute(null)
+                        setDestination(null)
+                        toast.success('تم إلغاء المسار')
+                      }}
+                      className="py-2.5 px-4 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition flex items-center justify-center gap-2 text-sm"
+                    >
+                      <X className="h-4 w-4" />
+                      إلغاء المسار
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
