@@ -495,7 +495,7 @@ export default function GovernmentDashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                لوحة التحكم الحكومية
+                إحصائيات مباشرة
               </h2>
               <p className="text-gray-600 mt-2 text-lg">نظرة شاملة على حالة المرور الوطنية</p>
             </div>

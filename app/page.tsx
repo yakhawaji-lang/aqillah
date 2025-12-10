@@ -72,7 +72,7 @@ export default function Home() {
             </ul>
           </Link>
 
-          {/* لوحة الحكومة */}
+          {/* إحصائيات مباشرة */}
           <Link
             href="/government"
             className="group bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all hover:scale-105 text-right block"

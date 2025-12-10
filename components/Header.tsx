@@ -14,7 +14,7 @@ export function Header() {
     { href: '/dashboard', label: 'لوحة التحكم', hidden: true },
     { href: '/map', label: 'الخريطة', hidden: true },
     { href: '/alerts', label: 'التنبيهات' },
-    { href: '/government', label: 'لوحة الحكومة' },
+    { href: '/government', label: 'إحصائيات مباشرة' },
     { href: '/government/data-center', label: 'مركز البيانات' },
   ]
 
