@@ -1076,15 +1076,29 @@ export default function PlannedRoutePage() {
                   </div>
                 )}
               </div>
+            ) : trafficPredictionsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">جاري جلب تنبؤات حركة المرور العامة...</p>
+              </div>
             ) : trafficPredictions && Array.isArray(trafficPredictions) && trafficPredictions.length > 0 ? (
               <div className="space-y-3">
-                <h3 className="font-semibold text-gray-900 mb-2">تنبؤات عامة للمدينة</h3>
-                {trafficPredictions.slice(0, 5).map((prediction: any, index: number) => {
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-gray-600" />
+                    تنبؤات عامة للمدينة (من API)
+                  </h3>
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                    {trafficPredictions.length} طريق
+                  </span>
+                </div>
+                {trafficPredictions.slice(0, 8).map((prediction: any, index: number) => {
                   if (!prediction || typeof prediction !== 'object') {
                     return null
                   }
                   
                   const congestionIndex = Number(prediction.predictedIndex || prediction.congestionIndex || 0)
+                  const predictedFor = prediction.predictedFor ? new Date(prediction.predictedFor) : null
                   
                   if (isNaN(congestionIndex)) {
                     return null
@@ -1097,21 +1111,47 @@ export default function PlannedRoutePage() {
                     'bg-green-50 border-green-300 text-green-800'
                   
                   return (
-                    <div key={index} className={`rounded-lg p-3 border ${congestionColor}`}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium">{prediction.roadName || 'طريق غير محدد'}</p>
-                          <p className="text-xs opacity-80 mt-1">
-                            بعد {prediction.minutesAhead || (index + 1) * 15} دقيقة
-                          </p>
+                    <div key={index} className={`rounded-lg p-3 border-2 ${congestionColor}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold">{prediction.roadName || 'طريق غير محدد'}</p>
+                          {prediction.direction && (
+                            <p className="text-xs opacity-70 mt-0.5">{prediction.direction}</p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            <Clock className="h-3 w-3 opacity-70" />
+                            <span className="text-xs opacity-80">
+                              بعد {prediction.minutesAhead || (index + 1) * 15} دقيقة
+                            </span>
+                            {predictedFor && (
+                              <span className="text-xs opacity-70">
+                                ({predictedFor.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })})
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-xl font-bold">
+                        <div className="text-2xl font-bold">
                           {congestionIndex}%
                         </div>
                       </div>
+                      {prediction.confidence !== undefined && (
+                        <div className="mt-2 pt-2 border-t border-current border-opacity-20">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="opacity-70">مستوى الثقة:</span>
+                            <span className="font-medium">{Math.round(Number(prediction.confidence) * 100)}%</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 }).filter(Boolean)}
+                {trafficPredictions.length > 8 && (
+                  <div className="text-center pt-2">
+                    <p className="text-xs text-gray-500">
+                      و {trafficPredictions.length - 8} طريق آخر...
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-8">
