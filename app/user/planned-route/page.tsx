@@ -20,7 +20,8 @@ import {
   Droplets,
   TrendingUp,
   TrendingDown,
-  BarChart3
+  BarChart3,
+  Minus
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import GoogleTrafficMap from '@/components/GoogleTrafficMap'
@@ -812,27 +813,118 @@ export default function PlannedRoutePage() {
         {/* معلومات المسار */}
         {selectedRoute && (
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <h3 className="font-bold text-gray-900 mb-4">معلومات المسار</h3>
+            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Route className="h-5 w-5 text-primary-600" />
+              معلومات المسار
+            </h3>
             
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Route className="h-5 w-5 text-primary-600" />
-                  <span className="text-sm text-gray-600">المسافة</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Route className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-medium text-gray-700">المسافة</span>
+                  </div>
+                  <p className="text-xl font-bold text-blue-600">
+                    {selectedRoute.distance ? Number(selectedRoute.distance).toFixed(1) : '0.0'} كم
+                  </p>
                 </div>
-                <span className="font-bold text-gray-900">
-                  {selectedRoute.distance ? selectedRoute.distance.toFixed(1) : '0.0'} كم
-                </span>
+
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-4 w-4 text-green-600" />
+                    <span className="text-xs font-medium text-gray-700">الوقت المتوقع</span>
+                  </div>
+                  <p className="text-xl font-bold text-green-600">
+                    {selectedRoute.estimatedTime ? Math.round(Number(selectedRoute.estimatedTime)) : 0} دقيقة
+                  </p>
+                  {selectedRoute.estimatedTimeInTraffic && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      مع الازدحام: {Math.round(Number(selectedRoute.estimatedTimeInTraffic))} دقيقة
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary-600" />
-                  <span className="text-sm text-gray-600">الوقت المتوقع</span>
-                </div>
-                <span className="font-bold text-gray-900">
-                  {selectedRoute.estimatedTime ? Math.round(selectedRoute.estimatedTime) : 0} دقيقة
-                </span>
+              {/* معلومات إضافية */}
+              <div className="space-y-2 pt-2 border-t border-gray-200">
+                {selectedRoute.estimatedTime && selectedRoute.estimatedTimeInTraffic && (
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600">الوقت بدون ازدحام</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {Math.round(Number(selectedRoute.estimatedTime))} دقيقة
+                    </span>
+                  </div>
+                )}
+                
+                {selectedRoute.estimatedTimeInTraffic && selectedRoute.estimatedTime && (
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600">تأخير الازدحام</span>
+                    <span className="text-sm font-semibold text-orange-600">
+                      +{Math.round(Number(selectedRoute.estimatedTimeInTraffic) - Number(selectedRoute.estimatedTime))} دقيقة
+                    </span>
+                  </div>
+                )}
+
+                {selectedRoute.weatherDelay && (
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600">تأخير الطقس المتوقع</span>
+                    <span className="text-sm font-semibold text-orange-600">
+                      +{Math.round(Number(selectedRoute.weatherDelay))} دقيقة
+                    </span>
+                  </div>
+                )}
+
+                {selectedRoute.steps && selectedRoute.steps.length > 0 && (
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600">عدد الخطوات</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {selectedRoute.steps.length} خطوة
+                    </span>
+                  </div>
+                )}
+
+                {routePredictions && routePredictions.currentIndex !== undefined && routePredictions.currentIndex !== null && (
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600">الازدحام الحالي</span>
+                    <span className={`text-sm font-semibold ${
+                      Number(routePredictions.currentIndex) >= 70 ? 'text-red-600' :
+                      Number(routePredictions.currentIndex) >= 50 ? 'text-orange-600' :
+                      Number(routePredictions.currentIndex) >= 30 ? 'text-yellow-600' :
+                      'text-green-600'
+                    }`}>
+                      {Math.round(Number(routePredictions.currentIndex))}%
+                    </span>
+                  </div>
+                )}
+
+                {routePredictions && routePredictions.trend && (
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-600">الاتجاه المتوقع</span>
+                    <span className={`text-sm font-semibold flex items-center gap-1 ${
+                      routePredictions.trend === 'increasing' ? 'text-red-600' :
+                      routePredictions.trend === 'decreasing' ? 'text-green-600' :
+                      'text-gray-600'
+                    }`}>
+                      {routePredictions.trend === 'increasing' ? (
+                        <>
+                          <TrendingUp className="h-4 w-4" />
+                          متزايد
+                        </>
+                      ) : routePredictions.trend === 'decreasing' ? (
+                        <>
+                          <TrendingDown className="h-4 w-4" />
+                          متناقص
+                        </>
+                      ) : (
+                        <>
+                          <Minus className="h-4 w-4" />
+                          مستقر
+                        </>
+                      )}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -922,15 +1014,101 @@ export default function PlannedRoutePage() {
                     <span className="text-sm font-medium text-gray-700">الوقت المتوقع للوصول</span>
                   </div>
                   <p className="text-2xl font-bold text-green-600">
-                    {selectedRoute?.estimatedTime ? Math.round(Number(selectedRoute.estimatedTime)) : 0} دقيقة
+                    {selectedRoute?.estimatedTimeInTraffic 
+                      ? Math.round(Number(selectedRoute.estimatedTimeInTraffic))
+                      : selectedRoute?.estimatedTime 
+                      ? Math.round(Number(selectedRoute.estimatedTime))
+                      : 0} دقيقة
                   </p>
-                  {selectedRoute?.estimatedTimeInTraffic && (
+                  {selectedRoute?.estimatedTime && selectedRoute?.estimatedTimeInTraffic && (
                     <p className="text-xs text-gray-600 mt-1">
-                      مع الازدحام: {Math.round(Number(selectedRoute.estimatedTimeInTraffic))} دقيقة
+                      بدون ازدحام: {Math.round(Number(selectedRoute.estimatedTime))} دقيقة
+                    </p>
+                  )}
+                  {selectedRoute?.estimatedTimeInTraffic && selectedRoute?.estimatedTime && (
+                    <p className="text-xs text-orange-600 mt-1 font-medium">
+                      +{Math.round(Number(selectedRoute.estimatedTimeInTraffic) - Number(selectedRoute.estimatedTime))} دقيقة تأخير
                     </p>
                   )}
                 </div>
               </div>
+
+              {/* معلومات إضافية */}
+              {(selectedRoute?.weatherDelay || selectedRoute?.steps?.length > 0 || routePredictions?.currentIndex !== undefined) && (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">معلومات إضافية</h4>
+                  <div className="space-y-2">
+                    {selectedRoute?.estimatedTime && selectedRoute?.estimatedTimeInTraffic && (
+                      <div className="flex items-center justify-between py-1.5">
+                        <span className="text-xs text-gray-600">الوقت بدون ازدحام</span>
+                        <span className="text-xs font-semibold text-gray-900">
+                          {Math.round(Number(selectedRoute.estimatedTime))} دقيقة
+                        </span>
+                      </div>
+                    )}
+                    
+                    {selectedRoute?.weatherDelay && (
+                      <div className="flex items-center justify-between py-1.5">
+                        <span className="text-xs text-gray-600">تأخير الطقس المتوقع</span>
+                        <span className="text-xs font-semibold text-orange-600">
+                          +{Math.round(Number(selectedRoute.weatherDelay))} دقيقة
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedRoute?.steps && selectedRoute.steps.length > 0 && (
+                      <div className="flex items-center justify-between py-1.5">
+                        <span className="text-xs text-gray-600">عدد الخطوات</span>
+                        <span className="text-xs font-semibold text-gray-900">
+                          {selectedRoute.steps.length} خطوة
+                        </span>
+                      </div>
+                    )}
+
+                    {routePredictions && routePredictions.currentIndex !== undefined && routePredictions.currentIndex !== null && (
+                      <div className="flex items-center justify-between py-1.5">
+                        <span className="text-xs text-gray-600">الازدحام الحالي</span>
+                        <span className={`text-xs font-semibold ${
+                          Number(routePredictions.currentIndex) >= 70 ? 'text-red-600' :
+                          Number(routePredictions.currentIndex) >= 50 ? 'text-orange-600' :
+                          Number(routePredictions.currentIndex) >= 30 ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {Math.round(Number(routePredictions.currentIndex))}%
+                        </span>
+                      </div>
+                    )}
+
+                    {routePredictions && routePredictions.trend && (
+                      <div className="flex items-center justify-between py-1.5">
+                        <span className="text-xs text-gray-600">الاتجاه المتوقع</span>
+                        <span className={`text-xs font-semibold flex items-center gap-1 ${
+                          routePredictions.trend === 'increasing' ? 'text-red-600' :
+                          routePredictions.trend === 'decreasing' ? 'text-green-600' :
+                          'text-gray-600'
+                        }`}>
+                          {routePredictions.trend === 'increasing' ? (
+                            <>
+                              <TrendingUp className="h-3 w-3" />
+                              متزايد
+                            </>
+                          ) : routePredictions.trend === 'decreasing' ? (
+                            <>
+                              <TrendingDown className="h-3 w-3" />
+                              متناقص
+                            </>
+                          ) : (
+                            <>
+                              <Minus className="h-3 w-3" />
+                              مستقر
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* تنبؤات حركة المرور التفصيلية */}
               {routePredictionsLoading ? (
