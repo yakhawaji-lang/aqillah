@@ -19,6 +19,7 @@ import {
   CloudSnow,
   Droplets,
   TrendingUp,
+  TrendingDown,
   BarChart3
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
