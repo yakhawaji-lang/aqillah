@@ -83,9 +83,9 @@ export default function Home() {
               </div>
               <ArrowLeft className="h-6 w-6 text-gray-400 group-hover:text-primary-600 transition" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">لوحة التحكم الحكومية</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">إحصائيات مباشرة</h2>
             <p className="text-gray-600 mb-4">
-              لوحة قيادة متقدمة للمسؤولين والجهات الحكومية
+              إحصائيات مباشرة وشاملة عن حالة المرور الوطنية
             </p>
             <ul className="space-y-2 text-sm text-gray-600">
               <li className="flex items-center gap-2">
