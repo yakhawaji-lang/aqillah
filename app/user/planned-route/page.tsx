@@ -182,12 +182,12 @@ export default function PlannedRoutePage() {
     enabled: !!userLocation && !!destination && !!departureDate && !!departureTime && !!departureDateTime && isFutureDate && !isNaN(departureDateTime?.getTime()),
   })
 
-  // جلب تنبؤات المرور للمسار المحدد
+  // جلب تنبؤات المرور للمسار المحدد (تعمل حتى بدون selectedRoute)
   const { data: routePredictions, isLoading: routePredictionsLoading, error: routePredictionsError } = useQuery({
-    queryKey: ['route-predictions', selectedRoute?.id, departureDate, departureTime],
+    queryKey: ['route-predictions', userLocation, destination, departureDate, departureTime],
     queryFn: async () => {
-      // التحقق من جميع الشروط قبل المتابعة
-      if (!selectedRoute || !userLocation || !destination || !departureDateTime || !isFutureDate) {
+      // التحقق من جميع الشروط قبل المتابعة (لا نحتاج selectedRoute)
+      if (!userLocation || !destination || !departureDateTime || !isFutureDate) {
         return null
       }
       
@@ -235,7 +235,7 @@ export default function PlannedRoutePage() {
         return null
       }
     },
-    enabled: !!selectedRoute && !!userLocation && !!destination && !!departureDate && !!departureTime && !!departureDateTime && isFutureDate && !isNaN(departureDateTime?.getTime()),
+    enabled: !!userLocation && !!destination && !!departureDate && !!departureTime && !!departureDateTime && isFutureDate && !isNaN(departureDateTime?.getTime()),
     retry: 1, // إعادة المحاولة مرة واحدة فقط
     retryDelay: 1000, // انتظار ثانية واحدة قبل إعادة المحاولة
   })
@@ -869,7 +869,7 @@ export default function PlannedRoutePage() {
         )}
 
         {/* تنبؤات حركة المرور التفصيلية */}
-        {selectedRoute && departureDateTime && isFutureDate && (
+        {userLocation && destination && departureDateTime && isFutureDate && (
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-gray-900 flex items-center gap-2">
@@ -966,9 +966,13 @@ export default function PlannedRoutePage() {
                               <p className="font-bold text-lg">
                                 {delayMinutes > 0 ? `${delayMinutes.toFixed(1)} دقيقة` : 'غير محدد'}
                               </p>
-                              {selectedRoute?.estimatedTime && (
+                              {selectedRoute?.estimatedTime ? (
                                 <p className="text-xs opacity-70 mt-1">
                                   الوقت الإجمالي: {Math.round(Number(selectedRoute.estimatedTime) + delayMinutes)} دقيقة
+                                </p>
+                              ) : (
+                                <p className="text-xs opacity-70 mt-1">
+                                  احسب المسار لمعرفة الوقت الإجمالي
                                 </p>
                               )}
                             </div>
@@ -1262,9 +1266,19 @@ export default function PlannedRoutePage() {
         )}
 
         {/* خريطة المسار */}
-        {selectedRoute && userLocation && destination && (
+        {userLocation && destination && departureDateTime && isFutureDate && (
           <div className="bg-white rounded-xl p-4 shadow-sm">
-            <h3 className="font-bold text-gray-900 mb-4">خريطة المسار</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary-600" />
+                خريطة المسار مع حركة المرور
+              </h3>
+              {!selectedRoute && (
+                <span className="text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded">
+                  احسب المسار لعرض التفاصيل الكاملة
+                </span>
+              )}
+            </div>
             <div className="h-[400px] rounded-lg overflow-hidden">
               {(() => {
                 try {
@@ -1281,20 +1295,35 @@ export default function PlannedRoutePage() {
                   }
 
                   // استخدام origin و destination دائماً لضمان عرض المسار على الطرق الفعلية
-                  const routeToUse = {
+                  const routeToUse = selectedRoute ? {
+                    origin: { lat: userLocation[0], lng: userLocation[1] },
+                    destination: { lat: destination[0], lng: destination[1] },
+                    polyline: selectedRoute.polyline,
+                  } : {
                     origin: { lat: userLocation[0], lng: userLocation[1] },
                     destination: { lat: destination[0], lng: destination[1] },
                   }
 
                   return (
                     <GoogleTrafficMap
-                      key={`planned-route-map-${selectedRoute.id || Date.now()}`}
+                      key={`planned-route-map-${selectedRoute?.id || 'preview'}-${departureDate}-${departureTime}`}
                       center={{
                         lat: (userLocation[0] + destination[0]) / 2,
                         lng: (userLocation[1] + destination[1]) / 2,
                       }}
                       zoom={12}
-                      markers={[]}
+                      markers={[
+                        {
+                          lat: userLocation[0],
+                          lng: userLocation[1],
+                          title: 'موقعك الحالي',
+                        },
+                        {
+                          lat: destination[0],
+                          lng: destination[1],
+                          title: 'الوجهة',
+                        },
+                      ]}
                       route={routeToUse}
                       currentLocation={userLocation}
                       showTrafficLayer={true}
@@ -1315,6 +1344,21 @@ export default function PlannedRoutePage() {
                 }
               })()}
             </div>
+            {routePredictions && routePredictions.currentIndex !== undefined && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">الازدحام الحالي على المسار:</span>
+                  <span className={`text-sm font-bold ${
+                    Number(routePredictions.currentIndex) >= 70 ? 'text-red-600' :
+                    Number(routePredictions.currentIndex) >= 50 ? 'text-orange-600' :
+                    Number(routePredictions.currentIndex) >= 30 ? 'text-yellow-600' :
+                    'text-green-600'
+                  }`}>
+                    {Math.round(Number(routePredictions.currentIndex))}%
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
