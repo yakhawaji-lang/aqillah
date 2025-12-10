@@ -925,91 +925,116 @@ export default function NavigationPage() {
               </div>
             )}
 
-            {/* القسم الثالث: أزرار التحكم */}
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-              <div className="flex gap-2 mb-4">
+            {/* القسم الثالث: أزرار التحكم والتقدم - تصميم محسّن للجوال */}
+            <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200 space-y-4">
+              {/* زر التوجيه الرئيسي - كبير وواضح */}
+              <button
+                onClick={toggleNavigation}
+                className={`w-full py-4 rounded-xl font-bold text-lg transition shadow-lg ${
+                  isNavigating
+                    ? 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800'
+                    : 'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-3">
+                  {isNavigating ? (
+                    <>
+                      <Pause className="h-6 w-6" />
+                      <span>إيقاف التوجيه</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-6 w-6" />
+                      <span>بدء التوجيه</span>
+                    </>
+                  )}
+                </div>
+              </button>
+
+              {/* الأزرار الثانوية */}
+              <div className="flex gap-3">
                 <button
-                  onClick={toggleNavigation}
+                  onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
                   className={`flex-1 py-3 rounded-lg font-medium transition ${
-                    isNavigating
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-primary-600 text-white hover:bg-primary-700'
+                    isVoiceEnabled
+                      ? 'bg-primary-100 text-primary-700 border-2 border-primary-300'
+                      : 'bg-gray-100 text-gray-600 border-2 border-gray-200'
                   }`}
                 >
                   <div className="flex items-center justify-center gap-2">
-                    {isNavigating ? (
+                    {isVoiceEnabled ? (
                       <>
-                        <Pause className="h-5 w-5" />
-                        <span>إيقاف</span>
+                        <Volume2 className="h-5 w-5" />
+                        <span className="text-sm">الصوت مفعّل</span>
                       </>
                     ) : (
                       <>
-                        <Play className="h-5 w-5" />
-                        <span>بدء التوجيه</span>
+                        <VolumeX className="h-5 w-5" />
+                        <span className="text-sm">الصوت معطّل</span>
                       </>
                     )}
                   </div>
                 </button>
-                
-                <button
-                  onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
-                  className={`p-3 rounded-lg transition ${
-                    isVoiceEnabled
-                      ? 'bg-primary-100 text-primary-700'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {isVoiceEnabled ? (
-                    <Volume2 className="h-5 w-5" />
-                  ) : (
-                    <VolumeX className="h-5 w-5" />
-                  )}
-                </button>
 
                 <button
                   onClick={resetNavigation}
-                  className="p-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                  className="flex-1 py-3 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition border-2 border-gray-200 font-medium"
                 >
-                  <RotateCcw className="h-5 w-5" />
+                  <div className="flex items-center justify-center gap-2">
+                    <RotateCcw className="h-5 w-5" />
+                    <span className="text-sm">إعادة تعيين</span>
+                  </div>
                 </button>
               </div>
 
-              {/* شريط التقدم */}
-              {route.steps && (
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-1">
-                    <span>التقدم</span>
-                    <span className="font-bold">{currentStepIndex + 1} / {route.steps.length}</span>
+              {/* شريط التقدم - محسّن وواضح */}
+              {route.steps && route.steps.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 border-2 border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-primary-600 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-bold text-gray-700">التقدم</span>
+                    </div>
+                    <span className="text-lg font-bold text-primary-600">
+                      {currentStepIndex + 1} / {route.steps.length}
+                    </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div
-                      className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-primary-500 to-primary-600 h-3 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
                       style={{ width: `${progress}%` }}
-                    />
+                    >
+                      {progress > 10 && (
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      )}
+                    </div>
                   </div>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    {Math.round(progress)}% مكتمل
+                  </p>
                 </div>
               )}
 
               {/* بطاقة المسافة والوقت - تحت التقدم */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Route className="w-4 h-4 text-blue-600" />
-                    <span className="text-xs font-medium text-gray-700">المسافة</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Route className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-bold text-gray-700">المسافة</span>
                   </div>
-                  <p className="text-2xl font-bold text-blue-600">{route.distance.toFixed(1)}</p>
-                  <p className="text-xs text-gray-600">كيلومتر</p>
+                  <p className="text-3xl font-bold text-blue-600 mb-1">{route.distance.toFixed(1)}</p>
+                  <p className="text-xs text-gray-600 font-medium">كيلومتر</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3 border border-green-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-4 h-4 text-green-600" />
-                    <span className="text-xs font-medium text-gray-700">الوقت المتوقع</span>
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border-2 border-green-200 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-5 h-5 text-green-600" />
+                    <span className="text-sm font-bold text-gray-700">الوقت المتوقع</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-3xl font-bold text-green-600 mb-1">
                     {Math.round(route.estimatedTimeWithWeather || route.estimatedTimeInTraffic || route.estimatedTime)}
                   </p>
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-gray-600 font-medium">
                     {route.estimatedTimeWithWeather 
                       ? `دقيقة (مع الازدحام والطقس${route.weatherDelay ? ` +${route.weatherDelay.toFixed(0)}%` : ''})`
                       : route.estimatedTimeInTraffic 
@@ -1021,9 +1046,12 @@ export default function NavigationPage() {
 
               {/* المسافة إلى المنعطف التالي */}
               {isNavigating && distanceToNextTurn !== null && (
-                <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                  <p className="text-sm text-gray-600 mb-1">المسافة إلى المنعطف التالي</p>
-                  <p className="text-2xl font-bold text-primary-600">
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-300 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Navigation className="w-5 h-5 text-blue-600" />
+                    <p className="text-sm font-bold text-gray-700">المسافة إلى المنعطف التالي</p>
+                  </div>
+                  <p className="text-3xl font-bold text-primary-600">
                     {formatDistance(distanceToNextTurn)}
                   </p>
                 </div>
