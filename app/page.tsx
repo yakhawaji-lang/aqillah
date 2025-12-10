@@ -168,27 +168,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Quick Links */}
-        <div className="mt-8 flex flex-wrap justify-center gap-4">
-          <Link
-            href="/dashboard"
-            className="px-6 py-3 bg-white/20 backdrop-blur-sm text-white rounded-lg hover:bg-white/30 transition font-medium"
-          >
-            لوحة التحكم العامة
-          </Link>
-          <Link
-            href="/map"
-            className="px-6 py-3 bg-white/20 backdrop-blur-sm text-white rounded-lg hover:bg-white/30 transition font-medium"
-          >
-            الخريطة التفاعلية
-          </Link>
-          <Link
-            href="/alerts"
-            className="px-6 py-3 bg-white/20 backdrop-blur-sm text-white rounded-lg hover:bg-white/30 transition font-medium"
-          >
-            التنبيهات
-          </Link>
-        </div>
 
         {/* Footer */}
         <div className="mt-12 text-center text-white/80 text-sm">
