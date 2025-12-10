@@ -254,10 +254,15 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
     if (opts.watch) {
       console.log('📍 Starting watchPosition...')
       // استخدام watchPosition لتحديث الموقع بشكل مستمر
+      // زيادة maximumAge لتقليل التحديثات المتكررة
+      const watchOptions = {
+        ...options,
+        maximumAge: Math.max(options.maximumAge || 60000, 10000), // على الأقل 10 ثواني بين التحديثات
+      }
       watchIdRef.current = navigator.geolocation.watchPosition(
         handleSuccess,
         handleError,
-        options
+        watchOptions
       )
     } else {
       console.log('📍 Requesting getCurrentPosition...')

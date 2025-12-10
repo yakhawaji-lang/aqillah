@@ -43,12 +43,12 @@ export default function UserAppPage() {
   const [activeTab, setActiveTab] = useState<'map' | 'alerts' | 'route'>('map')
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
 
-  // جلب موقع المستخدم تلقائياً مع تحسينات
+  // جلب موقع المستخدم تلقائياً (مرة واحدة فقط، ليس مراقبة مستمرة)
   const { location: userLocation, loading: locationLoading, refresh: refreshLocation } = useGeolocation({
     enableHighAccuracy: true,
     timeout: 20000, // 20 ثانية
-    maximumAge: 60000, // دقيقة واحدة
-    watch: true, // مراقبة الموقع بشكل مستمر
+    maximumAge: 300000, // 5 دقائق - استخدام آخر موقع إذا كان حديثاً
+    watch: false, // لا نراقب الموقع بشكل مستمر في صفحة اختيار المسار
   })
 
   // Real-time traffic data
