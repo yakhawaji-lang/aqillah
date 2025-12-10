@@ -888,36 +888,42 @@ export default function NavigationPage() {
           )}
         </div>
 
-        {/* الخريطة */}
-        <div className="flex-1 relative min-h-0">
-          <GoogleTrafficMap
-            center={
-              currentLocation 
-                ? { lat: currentLocation[0], lng: currentLocation[1] } // مركز الخريطة على موقعك الحالي
-                : (route && route.route && route.route.length > 0 
-                  ? { lat: route.route[0][0], lng: route.route[0][1] }
-                  : route && route.originLat && route.originLng
-                    ? { lat: route.originLat, lng: route.originLng }
-                    : undefined) // لا موقع افتراضي
-            }
-            zoom={currentLocation ? 15 : (isNavigating && currentLocation ? 16 : 14)} // تكبير الخريطة عند وجود موقع حالي
-            showTrafficLayer={true}
-            route={
-              currentLocation && destination
-                ? {
-                    origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي دائماً
-                    destination: { lat: destination[0], lng: destination[1] }, // B: الوجهة المحددة
-                  }
-                : route && route.destinationLat && route.destinationLng && currentLocation
+        {/* قسم الخريطة */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
+          <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-primary-600" />
+            الخريطة
+          </h3>
+          <div className="flex-1 relative min-h-[400px] rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
+            <GoogleTrafficMap
+              center={
+                currentLocation 
+                  ? { lat: currentLocation[0], lng: currentLocation[1] } // مركز الخريطة على موقعك الحالي
+                  : (route && route.route && route.route.length > 0 
+                    ? { lat: route.route[0][0], lng: route.route[0][1] }
+                    : route && route.originLat && route.originLng
+                      ? { lat: route.originLat, lng: route.originLng }
+                      : undefined) // لا موقع افتراضي
+              }
+              zoom={currentLocation ? 15 : (isNavigating && currentLocation ? 16 : 14)} // تكبير الخريطة عند وجود موقع حالي
+              showTrafficLayer={true}
+              route={
+                currentLocation && destination
                   ? {
                       origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي دائماً
-                      destination: { lat: route.destinationLat, lng: route.destinationLng }, // B: الوجهة المحفوظة
+                      destination: { lat: destination[0], lng: destination[1] }, // B: الوجهة المحددة
                     }
-                  : undefined
-            }
-            currentLocation={currentLocation}
-            className="w-full h-full"
-          />
+                  : route && route.destinationLat && route.destinationLng && currentLocation
+                    ? {
+                        origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي دائماً
+                        destination: { lat: route.destinationLat, lng: route.destinationLng }, // B: الوجهة المحفوظة
+                      }
+                    : undefined
+              }
+              currentLocation={currentLocation}
+              className="w-full h-full"
+            />
+          </div>
         </div>
 
         {/* معلومات المسار - في الأسفل */}
