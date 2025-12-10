@@ -1,12 +1,13 @@
 'use client'
 
-import { MapPin, Bell, Settings, Menu } from 'lucide-react'
-import { useState } from 'react'
+import { MapPin, Bell, Settings, Menu, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 export function Header() {
   const [notifications, setNotifications] = useState(3)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
 
   const navItems = [
@@ -16,6 +17,34 @@ export function Header() {
     { href: '/government', label: 'لوحة الحكومة' },
     { href: '/government/data-center', label: 'مركز البيانات' },
   ]
+
+  // إغلاق القائمة عند تغيير الصفحة
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [pathname])
+
+  // إغلاق القائمة عند الضغط خارجها
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (isMobileMenuOpen && !target.closest('.mobile-menu-container')) {
+        setIsMobileMenuOpen(false)
+      }
+    }
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('click', handleClickOutside)
+      // منع التمرير عند فتح القائمة
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+      document.body.style.overflow = ''
+    }
+  }, [isMobileMenuOpen])
 
   return (
     <header className="bg-white shadow-md border-b border-gray-200 sticky top-0 z-50">
@@ -32,7 +61,7 @@ export function Header() {
             </div>
           </Link>
 
-          {/* Navigation */}
+          {/* Navigation - Desktop */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
@@ -65,12 +94,54 @@ export function Header() {
             <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition">
               <Settings className="h-5 w-5" />
             </button>
-            <button className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition">
-              <Menu className="h-5 w-5" />
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition mobile-menu-container"
+              aria-label="فتح القائمة"
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden mobile-menu-container">
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 top-16"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          
+          {/* Menu */}
+          <nav className="fixed top-16 right-0 left-0 bg-white shadow-lg z-50 max-h-[calc(100vh-4rem)] overflow-y-auto">
+            <div className="px-4 py-2">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`block px-4 py-3 rounded-lg font-medium transition mb-1 ${
+                      isActive
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   )
 }
