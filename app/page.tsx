@@ -172,7 +172,7 @@ export default function Home() {
         {/* Footer */}
         <div className="mt-12 text-center text-white/80 text-sm">
           <p>نظام وطني ذكي - عَقِلْها</p>
-          <p className="mt-2">بيانات مجهولة • خصوصية محمية • ذكاء استباقي</p>
+          <p className="mt-2">بيانات متعددة المصادر• خصوصية محمية • ذكاء استباقي</p>
         </div>
       </div>
     </div>
