@@ -775,8 +775,8 @@ export default function NavigationPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex flex-col h-screen">
-        {/* زر العودة + حقل البحث عن الوجهة */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3 space-y-3">
+        {/* زر العودة */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
           <button
             onClick={() => router.push('/user')}
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition"
@@ -784,84 +784,108 @@ export default function NavigationPage() {
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">العودة</span>
           </button>
-          
-          {/* حقل البحث عن الوجهة */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              الوجهة (B)
-            </label>
-            <LocationPicker
-              onLocationSelect={(location) => {
-                console.log('📍 Location selected from LocationPicker:', {
-                  name: location.name,
-                  lat: location.lat,
-                  lng: location.lng,
-                  formatted: `${location.lat}, ${location.lng}`,
-                })
-                
-                // التحقق من أن الإحداثيات صحيحة
-                if (!location.lat || !location.lng || isNaN(location.lat) || isNaN(location.lng)) {
-                  toast.error('إحداثيات غير صحيحة')
-                  console.error('❌ Invalid coordinates:', location)
-                  return
-                }
-                
-                // التحقق من أن الإحداثيات مختلفة عن موقعك الحالي
-                if (currentLocation && 
-                    Math.abs(currentLocation[0] - location.lat) < 0.0001 && 
-                    Math.abs(currentLocation[1] - location.lng) < 0.0001) {
-                  toast.error('الوجهة يجب أن تكون مختلفة عن موقعك الحالي')
-                  console.error('❌ Destination same as current location:', {
-                    current: {
-                      lat: currentLocation[0],
-                      lng: currentLocation[1],
-                      formatted: `${currentLocation[0]}, ${currentLocation[1]}`,
-                    },
-                    destination: {
-                      lat: location.lat,
-                      lng: location.lng,
-                      formatted: `${location.lat}, ${location.lng}`,
-                    },
-                  })
-                  return
-                }
-                
-                // B: الوجهة - حفظ خط الطول والعرض
-                const dest: [number, number] = [location.lat, location.lng]
-                setDestination(dest)
-                setDestinationName(location.name || 'موقع مختار')
-                console.log('✅ Destination (B) saved:', {
-                  name: location.name,
-                  lat: dest[0],
-                  lng: dest[1],
-                  formatted: `${dest[0]}, ${dest[1]}`,
-                  currentLocation: currentLocation ? {
+        </div>
+
+        {/* زر استخدام الموقع الحالي */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
+          <button
+            onClick={() => {
+              refreshLocation()
+              toast('جاري تحديد موقعك...', { icon: '📍' })
+            }}
+            disabled={locationLoading}
+            className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium shadow-md"
+          >
+            {locationLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>جاري تحديد الموقع...</span>
+              </>
+            ) : (
+              <>
+                <Navigation className="h-5 w-5" />
+                <span>استخدام الموقع الحالي</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* حقل البحث عن الوجهة */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3 space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            الوجهة (B)
+          </label>
+          <LocationPicker
+            onLocationSelect={(location) => {
+              console.log('📍 Location selected from LocationPicker:', {
+                name: location.name,
+                lat: location.lat,
+                lng: location.lng,
+                formatted: `${location.lat}, ${location.lng}`,
+              })
+              
+              // التحقق من أن الإحداثيات صحيحة
+              if (!location.lat || !location.lng || isNaN(location.lat) || isNaN(location.lng)) {
+                toast.error('إحداثيات غير صحيحة')
+                console.error('❌ Invalid coordinates:', location)
+                return
+              }
+              
+              // التحقق من أن الإحداثيات مختلفة عن موقعك الحالي
+              if (currentLocation && 
+                  Math.abs(currentLocation[0] - location.lat) < 0.0001 && 
+                  Math.abs(currentLocation[1] - location.lng) < 0.0001) {
+                toast.error('الوجهة يجب أن تكون مختلفة عن موقعك الحالي')
+                console.error('❌ Destination same as current location:', {
+                  current: {
                     lat: currentLocation[0],
                     lng: currentLocation[1],
                     formatted: `${currentLocation[0]}, ${currentLocation[1]}`,
-                  } : null,
+                  },
+                  destination: {
+                    lat: location.lat,
+                    lng: location.lng,
+                    formatted: `${location.lat}, ${location.lng}`,
+                  },
                 })
-                toast.success(`تم تحديد الوجهة: ${location.name || 'موقع مختار'}`)
-              }}
-              currentLocation={currentLocation || undefined}
-              placeholder="ابحث عن موقع أو اختر من الخريطة..."
-            />
-            {destination && (
-              <div className="mt-2 text-xs text-gray-600">
-                <span className="font-medium">خط الطول:</span> {destination[1].toFixed(6)}, 
-                <span className="font-medium mr-2"> خط العرض:</span> {destination[0].toFixed(6)}
-                {destinationName && (
-                  <span className="mr-2"> - {destinationName}</span>
-                )}
-              </div>
-            )}
-            {isCalculatingRoute && (
-              <div className="mt-2 flex items-center gap-2 text-sm text-primary-600">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
-                <span>جاري حساب المسار...</span>
-              </div>
-            )}
-          </div>
+                return
+              }
+              
+              // B: الوجهة - حفظ خط الطول والعرض
+              const dest: [number, number] = [location.lat, location.lng]
+              setDestination(dest)
+              setDestinationName(location.name || 'موقع مختار')
+              console.log('✅ Destination (B) saved:', {
+                name: location.name,
+                lat: dest[0],
+                lng: dest[1],
+                formatted: `${dest[0]}, ${dest[1]}`,
+                currentLocation: currentLocation ? {
+                  lat: currentLocation[0],
+                  lng: currentLocation[1],
+                  formatted: `${currentLocation[0]}, ${currentLocation[1]}`,
+                } : null,
+              })
+              toast.success(`تم تحديد الوجهة: ${location.name || 'موقع مختار'}`)
+            }}
+            currentLocation={currentLocation || undefined}
+            placeholder="ابحث عن موقع أو اختر من الخريطة..."
+          />
+          {destination && (
+            <div className="mt-2 text-xs text-gray-600">
+              <span className="font-medium">خط الطول:</span> {destination[1].toFixed(6)}, 
+              <span className="font-medium mr-2"> خط العرض:</span> {destination[0].toFixed(6)}
+              {destinationName && (
+                <span className="mr-2"> - {destinationName}</span>
+              )}
+            </div>
+          )}
+          {isCalculatingRoute && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-primary-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+              <span>جاري حساب المسار...</span>
+            </div>
+          )}
         </div>
 
         {/* الخريطة */}
