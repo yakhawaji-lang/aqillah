@@ -408,29 +408,6 @@ export default function UserAppPage() {
       <div className="p-4 max-w-7xl mx-auto">
         {activeTab === 'map' && (
           <div className="space-y-4">
-            {/* البحث والفلاتر - تصميم محسّن */}
-            <div className="space-y-3">
-              <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
-                <SearchBar
-                  placeholder="ابحث عن طريق أو موقع..."
-                  onSearch={setSearchQuery}
-                  suggestions={trafficData?.map((item: any) => item.roadName) || []}
-                />
-              </div>
-              <AdvancedFilters
-                cities={[
-                  { label: 'الرياض', value: 'الرياض' },
-                  { label: 'جدة', value: 'جدة' },
-                  { label: 'الدمام', value: 'الدمام' },
-                  { label: 'المدينة المنورة', value: 'المدينة المنورة' },
-                  { label: 'الخبر', value: 'الخبر' },
-                  { label: 'أبها', value: 'أبها' },
-                  { label: 'خميس مشيط', value: 'خميس مشيط' },
-                ]}
-                onFilterChange={setFilters}
-              />
-            </div>
-
             {/* حالة الازدحام الحالية - تصميم محسّن */}
             <div className="bg-white rounded-2xl p-4 shadow-xl border border-gray-100 overflow-hidden">
               <div className="flex items-center justify-between mb-4">
