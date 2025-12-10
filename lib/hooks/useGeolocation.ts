@@ -88,6 +88,28 @@ export function useGeolocation(options: GeolocationOptions = {}): UseGeolocation
       position.coords.longitude,
     ]
     
+    // Throttling: تقليل التحديثات المتكررة عند استخدام watch
+    const now = Date.now()
+    if (optionsRef.current.watch && now - lastUpdateTimeRef.current < 5000) {
+      // تجاهل التحديث إذا كان آخر تحديث قبل أقل من 5 ثواني
+      console.log('📍 Location update throttled (too frequent)')
+      return
+    }
+    
+    // التحقق من أن الموقع تغير بشكل كبير قبل التحديث (لتقليل التحديثات المتكررة عند watch)
+    const lastLocation = getLastKnownLocation()
+    if (lastLocation && optionsRef.current.watch) {
+      const distance = Math.sqrt(
+        Math.pow(loc[0] - lastLocation[0], 2) + Math.pow(loc[1] - lastLocation[1], 2)
+      )
+      // إذا كان التغيير أقل من 0.0001 درجة (حوالي 10 أمتار)، تجاهل التحديث
+      if (distance < 0.0001) {
+        console.log('📍 Location change too small, ignoring update')
+        return
+      }
+    }
+    
+    lastUpdateTimeRef.current = now
     setLocation(loc)
     setAccuracy(position.coords.accuracy)
     setLoading(false)
