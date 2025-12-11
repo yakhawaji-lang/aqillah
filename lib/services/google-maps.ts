@@ -329,8 +329,15 @@ class GoogleMapsService {
         androidApiKey: this.androidApiKey ? 'exists' : 'missing',
         apiKey: this.apiKey ? 'exists' : 'missing',
         isAndroid: request.isAndroid,
+        envVars: {
+          AQILLAH_PLACES_KEY: !!process.env.AQILLAH_PLACES_KEY,
+          AQILLAH_Andriod_KEY: !!process.env.AQILLAH_Andriod_KEY,
+          AQILLAH_ANDROID_KEY: !!process.env.AQILLAH_ANDROID_KEY,
+          AQILLAH_MAPS_WEB_KEY: !!process.env.AQILLAH_MAPS_WEB_KEY,
+          GOOGLE_MAPS_API_KEY: !!process.env.GOOGLE_MAPS_API_KEY,
+        },
       })
-      throw new Error('Google Maps Places API key not configured. Please set AQILLAH_PLACES_KEY or AQILLAH_Andriod_KEY in .env')
+      throw new Error('Google Maps Places API key not configured. Please set AQILLAH_PLACES_KEY, AQILLAH_MAPS_WEB_KEY, or GOOGLE_MAPS_API_KEY in .env file. Also ensure Places API is enabled in Google Cloud Console.')
     }
 
     console.log('🔑 Using API key:', {
@@ -381,12 +388,36 @@ class GoogleMapsService {
         }
       } else {
         const errorMsg = response.data.error_message || 'Unknown error'
+        const status = response.data.status
+        
         console.error('Places API error response:', {
-          status: response.data.status,
+          status,
           error_message: errorMsg,
           fullResponse: response.data,
         })
-        throw new Error(`Places API error: ${response.data.status} - ${errorMsg}`)
+        
+        // Create user-friendly error messages
+        let friendlyError = errorMsg
+        
+        if (status === 'REQUEST_DENIED') {
+          if (errorMsg.includes('Billing') || errorMsg.includes('billing')) {
+            friendlyError = 'يجب تفعيل Billing في Google Cloud Console. Places API يتطلب تفعيل الفوترة. اذهب إلى: https://console.cloud.google.com/project/_/billing/enable'
+          } else if (errorMsg.includes('API key') || errorMsg.includes('API not enabled')) {
+            friendlyError = 'Places API غير مفعلة أو API key غير صحيحة. تأكد من تفعيل Places API في Google Cloud Console: https://console.cloud.google.com/apis/library/places-backend.googleapis.com'
+          } else {
+            friendlyError = 'تم رفض الطلب. تأكد من تفعيل Places API وإعدادات API key في Google Cloud Console.'
+          }
+        } else if (status === 'OVER_QUERY_LIMIT') {
+          friendlyError = 'تم تجاوز حد الاستعلامات المسموح به. يرجى المحاولة لاحقاً أو تفعيل Billing.'
+        } else if (status === 'INVALID_REQUEST') {
+          friendlyError = 'طلب غير صحيح. يرجى التحقق من معاملات البحث.'
+        }
+        
+        const error = new Error(friendlyError) as any
+        error.status = status
+        error.originalMessage = errorMsg
+        error.billingRequired = status === 'REQUEST_DENIED' && (errorMsg.includes('Billing') || errorMsg.includes('billing'))
+        throw error
       }
     } catch (error: any) {
       console.error('Error in autocomplete service:', {
@@ -396,9 +427,34 @@ class GoogleMapsService {
         url: error.config?.url?.replace(apiKeyToUse, '***'),
       })
       
+      // If error already has status and friendly message, re-throw it
+      if (error.status && error.billingRequired !== undefined) {
+        throw error
+      }
+      
       if (error.response?.data) {
         const apiError = error.response.data
-        throw new Error(`Places API error: ${apiError.status || 'UNKNOWN'} - ${apiError.error_message || error.message}`)
+        const status = apiError.status || 'UNKNOWN'
+        const errorMsg = apiError.error_message || error.message
+        
+        // Create user-friendly error
+        let friendlyError = errorMsg
+        
+        if (status === 'REQUEST_DENIED') {
+          if (errorMsg.includes('Billing') || errorMsg.includes('billing')) {
+            friendlyError = 'يجب تفعيل Billing في Google Cloud Console. Places API يتطلب تفعيل الفوترة.'
+          } else if (errorMsg.includes('API key') || errorMsg.includes('API not enabled')) {
+            friendlyError = 'Places API غير مفعلة أو API key غير صحيحة. تأكد من تفعيل Places API في Google Cloud Console.'
+          } else {
+            friendlyError = 'تم رفض الطلب. تأكد من تفعيل Places API وإعدادات API key.'
+          }
+        }
+        
+        const newError = new Error(friendlyError) as any
+        newError.status = status
+        newError.originalMessage = errorMsg
+        newError.billingRequired = status === 'REQUEST_DENIED' && (errorMsg.includes('Billing') || errorMsg.includes('billing'))
+        throw newError
       }
       
       throw new Error(`Failed to autocomplete: ${error.message}`)

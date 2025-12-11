@@ -332,35 +332,92 @@ export function LocationPicker({
               <p className="text-sm text-gray-700 mb-3">
                 {(() => {
                   const errorMsg = searchError instanceof Error ? searchError.message : String(searchError)
-                  if (errorMsg.includes('Billing') || errorMsg.includes('REQUEST_DENIED')) {
+                  // Check if error has billingRequired property (from API route)
+                  const errorObj = searchError as any
+                  const isBillingError = errorMsg.includes('Billing') || 
+                                        errorMsg.includes('billing') ||
+                                        errorMsg.includes('REQUEST_DENIED') ||
+                                        errorObj?.billingRequired === true
+                  
+                  if (isBillingError) {
                     return 'يجب تفعيل Billing في Google Cloud Console لاستخدام Places API'
                   }
-                  return 'فشل الاتصال بخدمة البحث. تأكد من تفعيل Places API في Google Cloud Console.'
+                  if (errorMsg.includes('API key') || errorMsg.includes('not configured')) {
+                    return 'API key غير موجودة. تأكد من إضافة AQILLAH_PLACES_KEY أو AQILLAH_MAPS_WEB_KEY في ملف .env'
+                  }
+                  if (errorMsg.includes('API not enabled') || errorMsg.includes('not enabled')) {
+                    return 'Places API غير مفعلة. تأكد من تفعيل Places API في Google Cloud Console'
+                  }
+                  return errorMsg || 'فشل الاتصال بخدمة البحث. تأكد من تفعيل Places API في Google Cloud Console.'
                 })()}
               </p>
-              {(searchError instanceof Error && searchError.message.includes('Billing')) || 
-               (typeof searchError === 'object' && searchError !== null && 'message' in searchError && String(searchError.message).includes('Billing')) ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
-                  <p className="text-xs text-yellow-800 mb-2">
-                    <strong>الحل:</strong> اذهب إلى Google Cloud Console وفعّل Billing
-                  </p>
-                  <a 
-                    href="https://console.cloud.google.com/project/_/billing/enable" 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline"
-                  >
-                    🔗 تفعيل Billing الآن
-                  </a>
-                  <p className="text-xs text-gray-600 mt-2">
-                    ملاحظة: Google تعطي $200 مجاناً شهرياً لخدمات Maps Platform
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400 mt-2">
-                  تحقق من Console (F12) لمزيد من التفاصيل
-                </p>
-              )}
+              {(() => {
+                const errorMsg = searchError instanceof Error ? searchError.message : String(searchError)
+                const errorObj = searchError as any
+                const isBillingError = errorMsg.includes('Billing') || 
+                                      errorMsg.includes('billing') ||
+                                      errorMsg.includes('REQUEST_DENIED') ||
+                                      errorObj?.billingRequired === true
+                
+                if (isBillingError) {
+                  return (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3 text-right">
+                      <p className="text-xs text-yellow-800 mb-2">
+                        <strong>الحل:</strong> اذهب إلى Google Cloud Console وفعّل Billing
+                      </p>
+                      <a 
+                        href="https://console.cloud.google.com/project/_/billing/enable" 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline block mb-2"
+                      >
+                        🔗 تفعيل Billing الآن
+                      </a>
+                      <p className="text-xs text-gray-600 mt-2">
+                        ملاحظة: Google تعطي $200 مجاناً شهرياً لخدمات Maps Platform
+                      </p>
+                    </div>
+                  )
+                }
+                
+                const isApiNotEnabled = errorMsg.includes('API not enabled') || errorMsg.includes('not enabled')
+                if (isApiNotEnabled) {
+                  return (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3 text-right">
+                      <p className="text-xs text-blue-800 mb-2">
+                        <strong>الحل:</strong> فعّل Places API في Google Cloud Console
+                      </p>
+                      <a 
+                        href="https://console.cloud.google.com/apis/library/places-backend.googleapis.com" 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline block"
+                      >
+                        🔗 تفعيل Places API الآن
+                      </a>
+                    </div>
+                  )
+                }
+                
+                return (
+                  <div className="space-y-2 mt-3">
+                    <p className="text-xs text-gray-400">
+                      تحقق من Console (F12) لمزيد من التفاصيل
+                    </p>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-right">
+                      <p className="text-xs text-gray-700 mb-1">
+                        <strong>خطوات الحل:</strong>
+                      </p>
+                      <ol className="text-xs text-gray-600 list-decimal list-inside space-y-1">
+                        <li>تأكد من وجود API key في ملف .env</li>
+                        <li>فعّل Places API في Google Cloud Console</li>
+                        <li>فعّل Billing إذا كان مطلوباً</li>
+                        <li>تحقق من قيود API key (HTTP referrers)</li>
+                      </ol>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           ) : predictions.length > 0 ? (
             predictions.map((prediction, index) => (
