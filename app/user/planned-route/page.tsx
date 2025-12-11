@@ -24,7 +24,7 @@ import {
   Minus
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import GoogleTrafficMap from '@/components/GoogleTrafficMap'
+import AlternativeTrafficMap from '@/components/AlternativeTrafficMap'
 import { LocationPicker } from '@/components/LocationPicker'
 import { useGeolocation } from '@/lib/hooks/useGeolocation'
 import { AlertCard } from '@/components/AlertCard'
@@ -1417,7 +1417,7 @@ export default function PlannedRoutePage() {
                   }
 
                   return (
-                    <GoogleTrafficMap
+                    <AlternativeTrafficMap
                       key={`planned-route-map-${selectedRoute?.id || 'preview'}-${departureDate}-${departureTime}`}
                       center={{
                         lat: (userLocation[0] + destination[0]) / 2,

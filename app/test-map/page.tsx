@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import GoogleTrafficMap from '@/components/GoogleTrafficMap'
+import AlternativeTrafficMap from '@/components/AlternativeTrafficMap'
 
 export default function TestMapPage() {
   const [center, setCenter] = useState({ lat: 24.7136, lng: 46.6753 })
@@ -52,7 +52,7 @@ export default function TestMapPage() {
         <div className="bg-white rounded-lg shadow-lg p-4">
           <h2 className="text-xl font-semibold mb-2">الخريطة</h2>
           <div className="h-[600px] rounded-lg overflow-hidden border-2 border-gray-300">
-            <GoogleTrafficMap
+            <AlternativeTrafficMap
               center={center}
               zoom={zoom}
               showTrafficLayer={true}

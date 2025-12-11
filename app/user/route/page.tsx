@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import RoutePlanner from '@/components/user/RoutePlanner'
-import GoogleTrafficMap from '@/components/GoogleTrafficMap'
+import AlternativeTrafficMap from '@/components/AlternativeTrafficMap'
 import WeatherLayer from '@/components/user/WeatherLayer'
 import { Header } from '@/components/Header'
 import { ArrowLeft, Navigation, AlertTriangle, MapPin } from 'lucide-react'
@@ -67,7 +67,7 @@ export default function RoutePage() {
           </div>
 
           <div className="bg-white rounded-xl overflow-hidden shadow-lg" style={{ height: '600px' }}>
-            <GoogleTrafficMap
+            <AlternativeTrafficMap
               markers={route?.routes?.[0]?.risks?.map((r: any) => ({
                 lat: r.location.lat,
                 lng: r.location.lng,

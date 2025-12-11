@@ -19,7 +19,7 @@ import {
   Search
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import GoogleTrafficMap from '@/components/GoogleTrafficMap'
+import AlternativeTrafficMap from '@/components/AlternativeTrafficMap'
 import { CongestionIndicator } from '@/components/CongestionIndicator'
 import { AlertCard } from '@/components/AlertCard'
 import { RealtimeIndicator } from '@/components/RealtimeIndicator'
@@ -667,7 +667,7 @@ export default function UserAppPage() {
               </div>
               <div className="h-[500px] rounded-xl overflow-hidden border border-gray-200 shadow-inner">
                 {userLocation ? (
-                  <GoogleTrafficMap
+                  <AlternativeTrafficMap
                     key={`google-traffic-map-${userLocation[0]}-${userLocation[1]}-${mapMarkers.length}`}
                     center={{ lat: userLocation[0], lng: userLocation[1] }}
                     zoom={15}
@@ -1128,7 +1128,7 @@ export default function UserAppPage() {
                 {/* خريطة المسار */}
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                   <div className="h-[60vh] min-h-[400px] max-h-[600px]">
-                    <GoogleTrafficMap
+                    <AlternativeTrafficMap
                       key={`google-route-map-${selectedRoute.id}`}
                       center={
                         isDemoMode

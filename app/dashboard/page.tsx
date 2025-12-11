@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Header } from '@/components/Header'
 import { StatsCard } from '@/components/StatsCard'
-import GoogleTrafficMap from '@/components/GoogleTrafficMap'
+import AlternativeTrafficMap from '@/components/AlternativeTrafficMap'
 import { AlertCard } from '@/components/AlertCard'
 import { RealtimeIndicator } from '@/components/RealtimeIndicator'
 import { SearchBar } from '@/components/SearchBar'
@@ -250,7 +250,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">خريطة الازدحام</h3>
               <div className="h-[600px]">
-                <GoogleTrafficMap
+                <AlternativeTrafficMap
                   center={
                     selectedCity === 'الرياض' ? { lat: 24.7136, lng: 46.6753 } :
                     selectedCity === 'جدة' ? { lat: 21.4858, lng: 39.1925 } :

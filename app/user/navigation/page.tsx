@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import GoogleTrafficMap from '@/components/GoogleTrafficMap'
+import AlternativeTrafficMap from '@/components/AlternativeTrafficMap'
 import { 
   ArrowLeft, 
   Navigation, 
@@ -70,6 +70,8 @@ export default function NavigationPage() {
   const [isDemoMode, setIsDemoMode] = useState(true) // وضع الديمو مفعل افتراضياً
   const [trafficDetails, setTrafficDetails] = useState<any[]>([]) // تفاصيل الحركة المرورية
   const [weatherData, setWeatherData] = useState<any>(null) // بيانات الطقس
+  const [currentTrafficStatus, setCurrentTrafficStatus] = useState<any[]>([]) // حالة الازدحام الحالية
+  const [weatherAffectedAreas, setWeatherAffectedAreas] = useState<any[]>([]) // المناطق المتأثرة بالطقس
   
   // جلب موقع المستخدم تلقائياً مع تحسينات
   const { location: currentLocation, loading: locationLoading, refresh: refreshLocation } = useGeolocation({
@@ -221,7 +223,151 @@ export default function NavigationPage() {
       ],
     }
     
-    return { demoRoute, demoTrafficDetails, demoWeather }
+    // حالة الازدحام الحالية في الرياض - مواقع واقعية
+    const demoCurrentTrafficStatus = [
+      {
+        id: 'traffic-1',
+        lat: 24.7136,
+        lng: 46.6753,
+        roadName: 'طريق الملك فهد - مركز الرياض',
+        congestionIndex: 75,
+        avgSpeed: 35,
+        vehicleCount: 250,
+        delayMinutes: 12,
+        reason: 'ازدحام شديد - وقت الذروة الصباحية',
+        direction: 'شمال - جنوب',
+        lastUpdate: 'منذ 2 دقيقة',
+      },
+      {
+        id: 'traffic-2',
+        lat: 24.6800,
+        lng: 46.7200,
+        roadName: 'طريق الدائري الشرقي',
+        congestionIndex: 85,
+        avgSpeed: 25,
+        vehicleCount: 320,
+        delayMinutes: 18,
+        reason: 'ازدحام شديد جداً - حادث مروري',
+        direction: 'شرق - غرب',
+        lastUpdate: 'منذ 5 دقائق',
+      },
+      {
+        id: 'traffic-3',
+        lat: 24.7500,
+        lng: 46.7000,
+        roadName: 'طريق الدائري الشمالي',
+        congestionIndex: 70,
+        avgSpeed: 40,
+        vehicleCount: 180,
+        delayMinutes: 10,
+        reason: 'ازدحام - أعمال صيانة',
+        direction: 'شمال - جنوب',
+        lastUpdate: 'منذ 3 دقائق',
+      },
+      {
+        id: 'traffic-4',
+        lat: 24.6900,
+        lng: 46.6500,
+        roadName: 'طريق العليا',
+        congestionIndex: 60,
+        avgSpeed: 45,
+        vehicleCount: 150,
+        delayMinutes: 6,
+        reason: 'ازدحام متوسط - حركة عادية',
+        direction: 'شرق - غرب',
+        lastUpdate: 'منذ دقيقة واحدة',
+      },
+      {
+        id: 'traffic-5',
+        lat: 24.7200,
+        lng: 46.6800,
+        roadName: 'طريق الملك عبدالعزيز',
+        congestionIndex: 80,
+        avgSpeed: 30,
+        vehicleCount: 280,
+        delayMinutes: 15,
+        reason: 'ازدحام شديد - تقاطع مزدحم',
+        direction: 'شمال - جنوب',
+        lastUpdate: 'منذ 4 دقائق',
+      },
+      {
+        id: 'traffic-6',
+        lat: 24.6600,
+        lng: 46.7000,
+        roadName: 'طريق الدائري الجنوبي',
+        congestionIndex: 55,
+        avgSpeed: 50,
+        vehicleCount: 120,
+        delayMinutes: 4,
+        reason: 'ازدحام خفيف',
+        direction: 'شرق - غرب',
+        lastUpdate: 'منذ دقيقة واحدة',
+      },
+    ]
+    
+    // المناطق المتأثرة بالطقس في الرياض
+    const demoWeatherAffectedAreas = [
+      {
+        id: 'weather-1',
+        lat: 24.7136,
+        lng: 46.6753,
+        areaName: 'وسط الرياض',
+        weatherType: 'rain',
+        severity: 'high',
+        precipitation: 5.2,
+        visibility: 1000,
+        impact: 'أمطار غزيرة - رؤية منخفضة',
+        advice: 'قلل السرعة، استخدم المساحات',
+        affectedRoads: ['طريق الملك فهد', 'طريق العليا'],
+      },
+      {
+        id: 'weather-2',
+        lat: 24.7500,
+        lng: 46.7000,
+        areaName: 'شمال الرياض',
+        weatherType: 'fog',
+        severity: 'medium',
+        precipitation: 0,
+        visibility: 800,
+        impact: 'ضباب جزئي - رؤية محدودة',
+        advice: 'استخدم الأضواء الأمامية، قلل السرعة',
+        affectedRoads: ['طريق الدائري الشمالي', 'طريق الملك عبدالعزيز'],
+      },
+      {
+        id: 'weather-3',
+        lat: 24.6800,
+        lng: 46.7200,
+        areaName: 'شرق الرياض',
+        weatherType: 'rain',
+        severity: 'medium',
+        precipitation: 3.5,
+        visibility: 1200,
+        impact: 'أمطار متوسطة',
+        advice: 'انتبه للقيادة، حافظ على مسافة آمنة',
+        affectedRoads: ['طريق الدائري الشرقي'],
+      },
+      {
+        id: 'weather-4',
+        lat: 24.6600,
+        lng: 46.7000,
+        areaName: 'جنوب الرياض',
+        weatherType: 'fog',
+        severity: 'low',
+        precipitation: 0,
+        visibility: 1500,
+        impact: 'ضباب خفيف',
+        advice: 'انتبه للقيادة',
+        affectedRoads: ['طريق الدائري الجنوبي'],
+      },
+    ]
+    
+    return { 
+      demoRoute, 
+      demoTrafficDetails, 
+      demoWeather,
+      demoCurrentTrafficStatus,
+      demoWeatherAffectedAreas,
+    }
   }, [])
   
   useEffect(() => {
@@ -234,6 +380,8 @@ export default function NavigationPage() {
         setRoute(generateDemoData.demoRoute)
         setTrafficDetails(generateDemoData.demoTrafficDetails)
         setWeatherData(generateDemoData.demoWeather)
+        setCurrentTrafficStatus(generateDemoData.demoCurrentTrafficStatus)
+        setWeatherAffectedAreas(generateDemoData.demoWeatherAffectedAreas)
         setDestination([24.7500, 46.7000])
         setDestinationName('شمال الرياض')
         setIsLoadingRoute(false)
@@ -1230,7 +1378,7 @@ export default function NavigationPage() {
             الخريطة
           </h3>
           <div className="flex-1 relative min-h-[400px] rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
-            <GoogleTrafficMap
+            <AlternativeTrafficMap
               center={
                 isDemoMode && route
                   ? { lat: 24.7318, lng: 46.6877 } // وسط المسار الوهمي في الرياض
@@ -1266,23 +1414,62 @@ export default function NavigationPage() {
                       : undefined
               }
               markers={
-                routeAlerts && routeAlerts.length > 0
-                  ? routeAlerts
-                      .filter((alert: any) => shownAlerts.has(alert.id) || alert.type === 'congestion' || alert.type === 'accident')
-                      .map((alert: any) => {
-                        const location = alert.location || (alert as any).lat && (alert as any).lng 
-                          ? { lat: (alert as any).lat, lng: (alert as any).lng }
-                          : null
-                        if (!location) return null
-                        return {
-                          lat: location.lat || location[0],
-                          lng: location.lng || location[1],
-                          title: alert.message,
-                          congestionIndex: alert.congestionIndex || (alert.severity === 'critical' ? 90 : alert.severity === 'high' ? 70 : 50),
-                        }
-                      })
-                      .filter(Boolean)
-                  : []
+                isDemoMode
+                  ? [
+                      // إضافة مواقع الازدحام
+                      ...(currentTrafficStatus || []).map((traffic: any) => ({
+                        lat: traffic.lat,
+                        lng: traffic.lng,
+                        title: `${traffic.roadName} - ازدحام ${traffic.congestionIndex}%`,
+                        congestionIndex: traffic.congestionIndex,
+                        type: 'traffic',
+                      })),
+                      // إضافة المناطق المتأثرة بالطقس
+                      ...(weatherAffectedAreas || []).map((weather: any) => ({
+                        lat: weather.lat,
+                        lng: weather.lng,
+                        title: `${weather.areaName} - ${weather.weatherType === 'rain' ? 'أمطار' : 'ضباب'}`,
+                        congestionIndex: weather.severity === 'high' ? 90 : weather.severity === 'medium' ? 70 : 50,
+                        type: 'weather',
+                        weatherType: weather.weatherType,
+                      })),
+                      // إضافة تنبيهات المسار
+                      ...(routeAlerts && routeAlerts.length > 0
+                        ? routeAlerts
+                            .filter((alert: any) => shownAlerts.has(alert.id) || alert.type === 'congestion' || alert.type === 'accident')
+                            .map((alert: any) => {
+                              const location = alert.location || (alert as any).lat && (alert as any).lng 
+                                ? { lat: (alert as any).lat, lng: (alert as any).lng }
+                                : null
+                              if (!location) return null
+                              return {
+                                lat: location.lat || location[0],
+                                lng: location.lng || location[1],
+                                title: alert.message,
+                                congestionIndex: alert.congestionIndex || (alert.severity === 'critical' ? 90 : alert.severity === 'high' ? 70 : 50),
+                                type: 'alert',
+                              }
+                            })
+                            .filter(Boolean)
+                        : []),
+                    ]
+                  : routeAlerts && routeAlerts.length > 0
+                    ? routeAlerts
+                        .filter((alert: any) => shownAlerts.has(alert.id) || alert.type === 'congestion' || alert.type === 'accident')
+                        .map((alert: any) => {
+                          const location = alert.location || (alert as any).lat && (alert as any).lng 
+                            ? { lat: (alert as any).lat, lng: (alert as any).lng }
+                            : null
+                          if (!location) return null
+                          return {
+                            lat: location.lat || location[0],
+                            lng: location.lng || location[1],
+                            title: alert.message,
+                            congestionIndex: alert.congestionIndex || (alert.severity === 'critical' ? 90 : alert.severity === 'high' ? 70 : 50),
+                          }
+                        })
+                        .filter(Boolean)
+                    : []
               }
               currentLocation={currentLocation}
               className="w-full h-full"
@@ -1678,6 +1865,62 @@ export default function NavigationPage() {
               </div>
             )}
 
+            {/* حالة الازدحام الحالية */}
+            {currentTrafficStatus && currentTrafficStatus.length > 0 && (
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-red-500" />
+                  حالة الازدحام الحالية في الرياض
+                </h3>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {currentTrafficStatus.map((traffic: any, index: number) => (
+                    <div
+                      key={traffic.id || index}
+                      className={`p-3 rounded-lg border-2 ${
+                        traffic.congestionIndex >= 80
+                          ? 'bg-red-50 border-red-300'
+                          : traffic.congestionIndex >= 70
+                          ? 'bg-orange-50 border-orange-300'
+                          : traffic.congestionIndex >= 60
+                          ? 'bg-yellow-50 border-yellow-300'
+                          : 'bg-green-50 border-green-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <p className="font-bold text-gray-900 text-sm mb-1">{traffic.roadName}</p>
+                          <p className="text-xs text-gray-600 mb-2">{traffic.reason}</p>
+                          <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
+                              ازدحام: {traffic.congestionIndex}%
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Route className="w-3 h-3" />
+                              سرعة: {traffic.avgSpeed} كم/س
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              تأخير: {traffic.delayMinutes} د
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {traffic.direction}
+                            </span>
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-current/20">
+                            <p className="text-xs text-gray-500">
+                              آخر تحديث: {traffic.lastUpdate}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {/* القسم الرابع: التنبيهات على المسار */}
             {routeAlerts && routeAlerts.length > 0 && (
               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">

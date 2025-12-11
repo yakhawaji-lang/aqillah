@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Header } from '@/components/Header'
-import GoogleTrafficMap from '@/components/GoogleTrafficMap'
+import AlternativeTrafficMap from '@/components/AlternativeTrafficMap'
 import { StatsCard } from '@/components/StatsCard'
 import { SearchBar } from '@/components/SearchBar'
 import { AdvancedFilters } from '@/components/AdvancedFilters'
@@ -1257,7 +1257,7 @@ export default function GovernmentDashboardPage() {
             </div>
           </div>
           <div className="h-[650px] rounded-lg overflow-hidden border border-gray-200 shadow-inner">
-            <GoogleTrafficMap
+            <AlternativeTrafficMap
               center={mapCenter}
               zoom={mapZoom}
               markers={

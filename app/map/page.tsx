@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Header } from '@/components/Header'
-import GoogleTrafficMap from '@/components/GoogleTrafficMap'
+import AlternativeTrafficMap from '@/components/AlternativeTrafficMap'
 import { CongestionIndicator } from '@/components/CongestionIndicator'
 import { MapMarker } from '@/types'
 import axios from 'axios'
@@ -632,7 +632,7 @@ export default function MapPage() {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="h-[calc(100vh-120px)]">
-                <GoogleTrafficMap
+                <AlternativeTrafficMap
                   center={{
                     lat: getCityCenter(selectedCity)[0],
                     lng: getCityCenter(selectedCity)[1],
