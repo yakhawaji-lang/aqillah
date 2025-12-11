@@ -81,7 +81,21 @@ class GoogleMapsService {
     if (isAndroid && this.androidApiKey) {
       return this.androidApiKey
     }
-    return this.placesApiKey || this.apiKey
+    // Try placesApiKey first, then fallback to apiKey
+    const key = this.placesApiKey || this.apiKey
+    if (!key) {
+      console.error('No API key found. Available keys:', {
+        placesApiKey: !!this.placesApiKey,
+        androidApiKey: !!this.androidApiKey,
+        apiKey: !!this.apiKey,
+        envVars: {
+          AQILLAH_PLACES_KEY: !!process.env.AQILLAH_PLACES_KEY,
+          AQILLAH_MAPS_WEB_KEY: !!process.env.AQILLAH_MAPS_WEB_KEY,
+          GOOGLE_MAPS_API_KEY: !!process.env.GOOGLE_MAPS_API_KEY,
+        }
+      })
+    }
+    return key
   }
 
   /**

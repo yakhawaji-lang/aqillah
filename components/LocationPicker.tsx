@@ -42,12 +42,37 @@ export function LocationPicker({
     currentLocation || initialLocation || [24.7136, 46.6753]
   )
 
+  // Check Places API status on mount
+  const { data: apiStatus } = useQuery({
+    queryKey: ['places-api-status'],
+    queryFn: async () => {
+      try {
+        const response = await axios.get('/api/places/check')
+        return response.data
+      } catch (error) {
+        return { success: false, error: 'Failed to check API status' }
+      }
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    retry: 1,
+  })
+
   // Fetch autocomplete suggestions from Google Places API
   const { data: autocompleteData, isLoading: isSearching, error: searchError } = useQuery({
     queryKey: ['places-autocomplete', searchQuery, mapCenter],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) {
         return { predictions: [] }
+      }
+
+      // Check API status first (only if status check is complete)
+      if (apiStatus !== undefined && !apiStatus.success) {
+        const errorMsg = apiStatus.error || 'Places API is not configured correctly'
+        const enhancedError = new Error(errorMsg) as any
+        enhancedError.billingRequired = apiStatus.billingRequired
+        enhancedError.apiNotEnabled = apiStatus.apiNotEnabled
+        enhancedError.links = apiStatus.links
+        throw enhancedError
       }
 
       try {
@@ -107,7 +132,20 @@ export function LocationPicker({
           message: error.message,
           response: error.response?.data,
           status: error.response?.status,
+          config: error.config,
         })
+        
+        // Extract error message from response if available
+        if (error.response?.data) {
+          const apiError = error.response.data
+          const enhancedError = new Error(apiError.error || error.message) as any
+          enhancedError.status = apiError.status || error.response.status
+          enhancedError.billingRequired = apiError.billingRequired
+          enhancedError.apiEnabledLink = apiError.apiEnabledLink
+          enhancedError.originalError = apiError.originalError || error.message
+          throw enhancedError
+        }
+        
         throw error
       }
     },
@@ -359,6 +397,14 @@ export function LocationPicker({
                                       errorMsg.includes('REQUEST_DENIED') ||
                                       errorObj?.billingRequired === true
                 
+                const isApiNotEnabled = errorMsg.includes('API not enabled') || 
+                                       errorMsg.includes('not enabled') ||
+                                       errorObj?.apiNotEnabled === true
+                
+                // Use links from error object if available
+                const billingLink = errorObj?.links?.billing || 'https://console.cloud.google.com/project/_/billing/enable'
+                const placesApiLink = errorObj?.links?.placesApi || 'https://console.cloud.google.com/apis/library/places-backend.googleapis.com'
+                
                 if (isBillingError) {
                   return (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3 text-right">
@@ -366,7 +412,7 @@ export function LocationPicker({
                         <strong>الحل:</strong> اذهب إلى Google Cloud Console وفعّل Billing
                       </p>
                       <a 
-                        href="https://console.cloud.google.com/project/_/billing/enable" 
+                        href={billingLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-600 hover:underline block mb-2"
@@ -380,7 +426,6 @@ export function LocationPicker({
                   )
                 }
                 
-                const isApiNotEnabled = errorMsg.includes('API not enabled') || errorMsg.includes('not enabled')
                 if (isApiNotEnabled) {
                   return (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3 text-right">
@@ -388,7 +433,7 @@ export function LocationPicker({
                         <strong>الحل:</strong> فعّل Places API في Google Cloud Console
                       </p>
                       <a 
-                        href="https://console.cloud.google.com/apis/library/places-backend.googleapis.com" 
+                        href={placesApiLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-600 hover:underline block"

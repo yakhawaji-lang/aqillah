@@ -85,6 +85,16 @@ export async function GET(request: NextRequest) {
       userFriendlyError = 'يجب تفعيل Billing في Google Cloud Console. Places API يتطلب تفعيل الفوترة. اذهب إلى: https://console.cloud.google.com/project/_/billing/enable'
     }
     
+    // Determine status code based on error type
+    let statusCode = 500
+    if (errorMessage.includes('REQUEST_DENIED')) {
+      statusCode = 403
+    } else if (errorMessage.includes('OVER_QUERY_LIMIT')) {
+      statusCode = 429
+    } else if (errorMessage.includes('INVALID_REQUEST')) {
+      statusCode = 400
+    }
+    
     // Return more detailed error information
     return NextResponse.json({ 
       success: false,
@@ -93,7 +103,8 @@ export async function GET(request: NextRequest) {
       details: error.response?.data || (error.stack ? error.stack.substring(0, 500) : 'No details'),
       billingRequired: errorMessage.includes('Billing') || errorMessage.includes('REQUEST_DENIED'),
       billingLink: 'https://console.cloud.google.com/project/_/billing/enable',
+      apiEnabledLink: 'https://console.cloud.google.com/apis/library/places-backend.googleapis.com',
       data: []
-    }, { status: 500 })
+    }, { status: statusCode })
   }
 }
