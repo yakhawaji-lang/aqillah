@@ -1,60 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// دالة لإنشاء تنبيهات حقيقية من APIs
+// دالة لإنشاء تنبيهات من البيانات الوهمية في قاعدة البيانات
 async function generateRealAlerts(city: string, request: NextRequest) {
   const alerts: any[] = []
-  // الحصول على base URL من الطلب الحالي
-  const protocol = request.headers.get('x-forwarded-proto') || 'https'
-  const host = request.headers.get('host') || 'aqillah.vercel.app'
-  const baseUrl = `${protocol}://${host}`
 
   try {
-    // 1. تنبيهات الازدحام من بيانات المرور
+    // 1. تنبيهات الازدحام من بيانات المرور في قاعدة البيانات
     try {
-      const trafficRes = await fetch(`${baseUrl}/api/traffic/scan?city=${encodeURIComponent(city)}&minCongestion=50`, {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Aqillah-Alerts-Service',
+      const trafficData = await prisma.trafficData.findMany({
+        where: {
+          segment: {
+            city: city,
+          },
+          congestionIndex: {
+            gte: 50, // ازدحام متوسط أو أعلى
+          },
         },
+        include: {
+          segment: true,
+        },
+        orderBy: {
+          timestamp: 'desc',
+        },
+        take: 20,
       })
-      if (trafficRes.ok) {
-        const trafficData = await trafficRes.json()
-        if (trafficData.success && trafficData.data && Array.isArray(trafficData.data)) {
-          trafficData.data.forEach((item: any, index: number) => {
-            const congestionIndex = item.congestionIndex || 0
-            let severity: 'low' | 'medium' | 'high' | 'critical' = 'low'
-            if (congestionIndex >= 80) severity = 'critical'
-            else if (congestionIndex >= 70) severity = 'high'
-            else if (congestionIndex >= 60) severity = 'medium'
-            else severity = 'low'
 
-            alerts.push({
-              id: `traffic-${city}-${index}-${Date.now()}`,
-              segmentId: null,
-              roadName: item.roadName || item.name || 'طريق غير محدد',
-              city: city,
-              direction: item.direction || 'غير محدد',
-              type: 'congestion',
-              severity: severity,
-              message: `ازدحام مروري ${congestionIndex}% على ${item.roadName || item.name || 'الطريق'}. تأخير متوقع: ${item.delayMinutes || 0} دقيقة`,
-              alternativeRoute: item.alternativeRoute || null,
-              createdAt: new Date().toISOString(),
-              expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // ينتهي بعد ساعة
-              isActive: true,
-              source: 'traffic-api',
-              location: item.location || { lat: item.lat, lng: item.lng },
-              congestionIndex: congestionIndex,
-              delayMinutes: item.delayMinutes || 0,
-            })
+      // تجميع البيانات حسب المقطع
+      const segmentMap = new Map<string, any>()
+      trafficData.forEach((data) => {
+        if (!segmentMap.has(data.segmentId)) {
+          segmentMap.set(data.segmentId, {
+            segment: data.segment,
+            congestionIndex: data.congestionIndex,
+            delayMinutes: data.delayMinutes,
+            timestamp: data.timestamp,
           })
+        } else {
+          const existing = segmentMap.get(data.segmentId)!
+          if (data.timestamp > existing.timestamp) {
+            segmentMap.set(data.segmentId, {
+              segment: data.segment,
+              congestionIndex: data.congestionIndex,
+              delayMinutes: data.delayMinutes,
+              timestamp: data.timestamp,
+            })
+          }
         }
-      }
+      })
+
+      segmentMap.forEach((data, segmentId) => {
+        const congestionIndex = data.congestionIndex || 0
+        let severity: 'low' | 'medium' | 'high' | 'critical' = 'low'
+        if (congestionIndex >= 80) severity = 'critical'
+        else if (congestionIndex >= 70) severity = 'high'
+        else if (congestionIndex >= 60) severity = 'medium'
+        else severity = 'low'
+
+        alerts.push({
+          id: `traffic-${city}-${segmentId}-${Date.now()}`,
+          segmentId: segmentId,
+          roadName: data.segment.roadName,
+          city: city,
+          direction: data.segment.direction,
+          type: 'congestion',
+          severity: severity,
+          message: `ازدحام مروري ${congestionIndex}% على ${data.segment.roadName}. تأخير متوقع: ${Math.round(data.delayMinutes || 0)} دقيقة`,
+          alternativeRoute: null,
+          createdAt: data.timestamp.toISOString(),
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          isActive: true,
+          source: 'database',
+          congestionIndex: congestionIndex,
+          delayMinutes: data.delayMinutes,
+        })
+      })
     } catch (error) {
-      console.warn('Error fetching traffic alerts:', error)
+      console.warn('Error fetching traffic alerts from database:', error)
     }
 
-    // 2. تنبيهات الطقس
+    // 2. تنبيهات الطقس من قاعدة البيانات
     try {
       const cityCoordinates: Record<string, { lat: number; lng: number }> = {
         'الرياض': { lat: 24.7136, lng: 46.6753 },
@@ -67,122 +92,113 @@ async function generateRealAlerts(city: string, request: NextRequest) {
       }
       const coords = cityCoordinates[city] || cityCoordinates['الرياض']
       
-      const weatherRes = await fetch(`${baseUrl}/api/weather/impact?lat=${coords.lat}&lng=${coords.lng}`, {
-        headers: {
-          'Accept': 'application/json',
+      const weatherData = await prisma.weatherData.findFirst({
+        where: {
+          lat: {
+            gte: coords.lat - 0.1,
+            lte: coords.lat + 0.1,
+          },
+          lng: {
+            gte: coords.lng - 0.1,
+            lte: coords.lng + 0.1,
+          },
+        },
+        orderBy: {
+          timestamp: 'desc',
         },
       })
-      if (weatherRes.ok) {
-        const weatherData = await weatherRes.json()
-        if (weatherData.success && weatherData.data) {
-          const impact = weatherData.data
-          if (impact.severity && impact.severity !== 'none') {
-            let severity: 'low' | 'medium' | 'high' | 'critical' = 'low'
-            if (impact.severity === 'critical') severity = 'critical'
-            else if (impact.severity === 'high') severity = 'high'
-            else if (impact.severity === 'medium') severity = 'medium'
-            else severity = 'low'
 
-            alerts.push({
-              id: `weather-${city}-${Date.now()}`,
-              segmentId: null,
-              roadName: `منطقة ${city}`,
-              city: city,
-              direction: 'جميع الاتجاهات',
-              type: 'weather',
-              severity: severity,
-              message: impact.message || `ظروف طقس ${impact.severity === 'critical' ? 'حرجة' : impact.severity === 'high' ? 'صعبة' : 'متوسطة'} في ${city}. ${impact.advice || 'يرجى توخي الحذر أثناء القيادة'}`,
-              alternativeRoute: null,
-              createdAt: new Date().toISOString(),
-              expiresAt: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), // ينتهي بعد 3 ساعات
-              isActive: true,
-              source: 'weather-api',
-              weatherCondition: impact.condition,
-              impactLevel: impact.severity,
-            })
-          }
+      if (weatherData) {
+        const condition = weatherData.condition || 'clear'
+        const visibility = weatherData.visibility || 10000
+        const precipitation = weatherData.precipitation || 0
+        
+        // تحديد مستوى الخطورة بناءً على الطقس
+        let severity: 'low' | 'medium' | 'high' | 'critical' = 'low'
+        let message = ''
+        
+        if (condition === 'fog' && visibility < 500) {
+          severity = 'critical'
+          message = `ضباب كثيف ورؤية منخفضة (${Math.round(visibility)} متر) في ${city}. يرجى توخي الحذر الشديد`
+        } else if (condition === 'rain' && precipitation > 3) {
+          severity = 'high'
+          message = `أمطار غزيرة (${Math.round(precipitation * 10) / 10} مم/ساعة) في ${city}. يرجى توخي الحذر أثناء القيادة`
+        } else if (condition === 'rain' && precipitation > 1) {
+          severity = 'medium'
+          message = `أمطار متوسطة في ${city}. يرجى توخي الحذر`
+        } else if (condition === 'fog' && visibility < 1000) {
+          severity = 'medium'
+          message = `ضباب ورؤية منخفضة (${Math.round(visibility)} متر) في ${city}. يرجى توخي الحذر`
         }
-      }
-    } catch (error) {
-      console.warn('Error fetching weather alerts:', error)
-    }
 
-    // 3. تنبيهات الرؤية المنخفضة
-    try {
-      const visibilityRes = await fetch(`${baseUrl}/api/visibility/current?city=${encodeURIComponent(city)}`, {
-        headers: {
-          'Accept': 'application/json',
-        },
-      })
-      if (visibilityRes.ok) {
-        const visibilityData = await visibilityRes.json()
-        if (visibilityData.success && visibilityData.data && Array.isArray(visibilityData.data)) {
-          visibilityData.data.forEach((item: any, index: number) => {
-            if (item.visibility && item.visibility < 1000) { // رؤية أقل من 1 كم
-              let severity: 'low' | 'medium' | 'high' | 'critical' = 'medium'
-              if (item.visibility < 200) severity = 'critical'
-              else if (item.visibility < 500) severity = 'high'
-              else severity = 'medium'
-
-              alerts.push({
-                id: `visibility-${city}-${index}-${Date.now()}`,
-                segmentId: null,
-                roadName: item.roadName || item.segmentName || 'طريق غير محدد',
-                city: city,
-                direction: item.direction || 'غير محدد',
-                type: 'weather',
-                severity: severity,
-                message: `رؤية منخفضة ${item.visibility} متر على ${item.roadName || item.segmentName || 'الطريق'}. يرجى توخي الحذر الشديد`,
-                alternativeRoute: null,
-                createdAt: new Date().toISOString(),
-                expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // ينتهي بعد ساعتين
-                isActive: true,
-                source: 'visibility-api',
-                visibility: item.visibility,
-              })
-            }
+        if (severity !== 'low') {
+          alerts.push({
+            id: `weather-${city}-${Date.now()}`,
+            segmentId: null,
+            roadName: `منطقة ${city}`,
+            city: city,
+            direction: 'جميع الاتجاهات',
+            type: 'weather',
+            severity: severity,
+            message: message,
+            alternativeRoute: null,
+            createdAt: weatherData.timestamp.toISOString(),
+            expiresAt: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+            isActive: true,
+            source: 'database',
+            weatherCondition: condition,
+            visibility: visibility,
+            precipitation: precipitation,
           })
         }
       }
     } catch (error) {
-      console.warn('Error fetching visibility alerts:', error)
+      console.warn('Error fetching weather alerts from database:', error)
     }
 
-    // 4. تنبيهات نقاط الاختناق
+    // 3. تنبيهات نقاط الاختناق من قاعدة البيانات
     try {
-      const bottlenecksRes = await fetch(`${baseUrl}/api/bottlenecks?city=${encodeURIComponent(city)}`, {
-        headers: {
-          'Accept': 'application/json',
+      const bottlenecks = await prisma.bottleneck.findMany({
+        where: {
+          segment: {
+            city: city,
+          },
+          isResolved: false,
         },
+        include: {
+          segment: true,
+        },
+        orderBy: {
+          detectedAt: 'desc',
+        },
+        take: 10,
       })
-      if (bottlenecksRes.ok) {
-        const bottlenecksData = await bottlenecksRes.json()
-        if (bottlenecksData.success && bottlenecksData.data && Array.isArray(bottlenecksData.data)) {
-          bottlenecksData.data.forEach((item: any, index: number) => {
-            alerts.push({
-              id: `bottleneck-${city}-${index}-${Date.now()}`,
-              segmentId: item.segmentId || null,
-              roadName: item.roadName || item.name || 'طريق غير محدد',
-              city: city,
-              direction: item.direction || 'غير محدد',
-              type: 'congestion',
-              severity: 'high',
-              message: `نقطة اختناق مروري على ${item.roadName || item.name || 'الطريق'}. ${item.description || 'يرجى تجنب هذا الطريق أو استخدام مسار بديل'}`,
-              alternativeRoute: item.alternativeRoute || null,
-              createdAt: new Date().toISOString(),
-              expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // ينتهي بعد 4 ساعات
-              isActive: true,
-              source: 'bottlenecks-api',
-            })
-          })
-        }
-      }
+
+      bottlenecks.forEach((bottleneck) => {
+        alerts.push({
+          id: `bottleneck-${city}-${bottleneck.id}`,
+          segmentId: bottleneck.segmentId,
+          roadName: bottleneck.segment.roadName,
+          city: city,
+          direction: bottleneck.segment.direction,
+          type: 'congestion',
+          severity: bottleneck.severity === 'critical' ? 'critical' : bottleneck.severity === 'high' ? 'high' : 'medium',
+          message: `نقطة اختناق مروري على ${bottleneck.segment.roadName}. انخفاض السرعة ${Math.round(bottleneck.speedDrop)}%، امتداد ${Math.round(bottleneck.backwardExtent * 10) / 10} كم. يرجى تجنب هذا الطريق أو استخدام مسار بديل`,
+          alternativeRoute: null,
+          createdAt: bottleneck.detectedAt.toISOString(),
+          expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+          isActive: true,
+          source: 'database',
+          speedDrop: bottleneck.speedDrop,
+          backwardExtent: bottleneck.backwardExtent,
+        })
+      })
     } catch (error) {
-      console.warn('Error fetching bottlenecks alerts:', error)
+      console.warn('Error fetching bottlenecks alerts from database:', error)
     }
 
   } catch (error) {
-    console.error('Error generating real alerts:', error)
+    console.error('Error generating alerts from database:', error)
   }
 
   return alerts
@@ -194,7 +210,7 @@ export async function GET(request: NextRequest) {
     const city = searchParams.get('city')
     const activeOnly = searchParams.get('activeOnly') !== 'false'
 
-    // إنشاء تنبيهات حقيقية من APIs
+    // إنشاء تنبيهات من البيانات الوهمية في قاعدة البيانات
     const realAlerts = await generateRealAlerts(city || 'الرياض', request)
 
     // محاولة الوصول إلى قاعدة البيانات للحصول على تنبيهات إضافية
@@ -240,13 +256,22 @@ export async function GET(request: NextRequest) {
       console.warn('Database not available, using API alerts only:', dbError.message)
     }
 
-    // دمج التنبيهات من APIs مع التنبيهات من قاعدة البيانات
+    // دمج التنبيهات من قاعدة البيانات (جميعها من قاعدة البيانات)
     const allAlerts = [...realAlerts, ...dbAlerts]
+    
+    // إزالة التكرارات بناءً على segmentId و type
+    const uniqueAlerts = allAlerts.filter((alert, index, self) =>
+      index === self.findIndex((a) => 
+        a.segmentId === alert.segmentId && 
+        a.type === alert.type &&
+        Math.abs(new Date(a.createdAt).getTime() - new Date(alert.createdAt).getTime()) < 60000 // نفس الدقيقة
+      )
+    )
 
     // تصفية حسب المدينة إذا كانت محددة
     const filteredAlerts = city 
-      ? allAlerts.filter(alert => alert.city === city)
-      : allAlerts
+      ? uniqueAlerts.filter(alert => alert.city === city)
+      : uniqueAlerts
 
     // ترتيب حسب التاريخ (الأحدث أولاً)
     filteredAlerts.sort((a, b) => {
@@ -260,8 +285,7 @@ export async function GET(request: NextRequest) {
       data: filteredAlerts,
       meta: {
         total: filteredAlerts.length,
-        fromApi: realAlerts.length,
-        fromDatabase: dbAlerts.length,
+        fromDatabase: filteredAlerts.length,
       }
     })
   } catch (error: any) {

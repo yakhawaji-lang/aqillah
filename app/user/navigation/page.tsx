@@ -17,7 +17,14 @@ import {
   RotateCcw,
   AlertTriangle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  CloudRain,
+  Cloud,
+  Droplets,
+  Eye,
+  Wind,
+  Thermometer,
+  TrendingUp
 } from 'lucide-react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
@@ -60,6 +67,9 @@ export default function NavigationPage() {
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(true)
   const [destination, setDestination] = useState<[number, number] | null>(null) // B: الوجهة
   const [destinationName, setDestinationName] = useState<string>('') // اسم الوجهة
+  const [isDemoMode, setIsDemoMode] = useState(true) // وضع الديمو مفعل افتراضياً
+  const [trafficDetails, setTrafficDetails] = useState<any[]>([]) // تفاصيل الحركة المرورية
+  const [weatherData, setWeatherData] = useState<any>(null) // بيانات الطقس
   
   // جلب موقع المستخدم تلقائياً مع تحسينات
   const { location: currentLocation, loading: locationLoading, refresh: refreshLocation } = useGeolocation({
@@ -79,10 +89,156 @@ export default function NavigationPage() {
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null)
   const lastAnnouncementRef = useRef<number>(0)
 
+  // إنشاء بيانات ديمو وهمية واقعية
+  const generateDemoData = useMemo(() => {
+    // مسار وهمي في الرياض
+    const demoRoute: NavigationRoute = {
+      id: 'demo-navigation-riyadh',
+      originLat: 24.7136,
+      originLng: 46.6753,
+      destinationLat: 24.7500,
+      destinationLng: 46.7000,
+      route: [
+        [24.7136, 46.6753],
+        [24.7200, 46.6800],
+        [24.7300, 46.6850],
+        [24.7400, 46.6900],
+        [24.7500, 46.7000],
+      ],
+      distance: 5.3,
+      estimatedTime: 8,
+      estimatedTimeInTraffic: 12,
+      weatherDelay: 3,
+      estimatedTimeWithWeather: 15,
+      steps: [
+        {
+          instruction: 'اتجه شمالاً على طريق الملك فهد',
+          distance: 1200,
+          duration: 120,
+          startLocation: [24.7136, 46.6753],
+          endLocation: [24.7200, 46.6800],
+          maneuver: 'straight',
+        },
+        {
+          instruction: 'استدر يميناً على طريق الدائري الشمالي',
+          distance: 1500,
+          duration: 180,
+          startLocation: [24.7200, 46.6800],
+          endLocation: [24.7300, 46.6850],
+          maneuver: 'turn-right',
+        },
+        {
+          instruction: 'تابع مباشرة على طريق العليا',
+          distance: 1800,
+          duration: 200,
+          startLocation: [24.7300, 46.6850],
+          endLocation: [24.7400, 46.6900],
+          maneuver: 'straight',
+        },
+        {
+          instruction: 'وصلت إلى وجهتك',
+          distance: 800,
+          duration: 90,
+          startLocation: [24.7400, 46.6900],
+          endLocation: [24.7500, 46.7000],
+          maneuver: 'straight',
+        },
+      ],
+    }
+    
+    // تفاصيل الحركة المرورية الوهمية على طول المسار
+    const demoTrafficDetails = [
+      {
+        position: 0.1, // 10% من المسار
+        lat: 24.7180,
+        lng: 46.6775,
+        roadName: 'طريق الملك فهد',
+        congestionIndex: 65,
+        avgSpeed: 45,
+        vehicleCount: 120,
+        delayMinutes: 3,
+        reason: 'ازدحام بسبب وقت الذروة الصباحية',
+        incidents: ['حركة كثيفة', 'إشارة مرورية بطيئة'],
+      },
+      {
+        position: 0.35,
+        lat: 24.7250,
+        lng: 46.6825,
+        roadName: 'طريق الدائري الشمالي',
+        congestionIndex: 80,
+        avgSpeed: 30,
+        vehicleCount: 180,
+        delayMinutes: 8,
+        reason: 'ازدحام شديد بسبب أعمال صيانة',
+        incidents: ['أعمال صيانة على الطريق', 'حركة شاحنات', 'إغلاق مسار واحد'],
+      },
+      {
+        position: 0.65,
+        lat: 24.7350,
+        lng: 46.6875,
+        roadName: 'طريق العليا',
+        congestionIndex: 55,
+        avgSpeed: 50,
+        vehicleCount: 95,
+        delayMinutes: 2,
+        reason: 'ازدحام متوسط - حركة عادية',
+        incidents: ['حركة عادية'],
+      },
+    ]
+    
+    // بيانات الطقس الوهمية (أمطار وضباب)
+    const demoWeather = {
+      condition: 'rain', // 'rain' أو 'fog'
+      temperature: 18,
+      humidity: 85,
+      windSpeed: 25,
+      windDirection: 180,
+      visibility: 1200, // متر (منخفض بسبب المطر/الضباب)
+      pressure: 1008,
+      precipitation: 4.5, // مم/ساعة
+      precipitationProbability: 75, // نسبة هطول الأمطار
+      rainRate: 4.5,
+      cloudCover: 90,
+      alerts: [
+        {
+          type: 'rain',
+          severity: 'high',
+          message: 'أمطار غزيرة متوقعة - انتبه للقيادة',
+          advice: 'قلل السرعة، استخدم المساحات، حافظ على مسافة آمنة',
+        },
+        {
+          type: 'fog',
+          severity: 'medium',
+          message: 'ضباب جزئي - رؤية منخفضة',
+          advice: 'استخدم الأضواء الأمامية، قلل السرعة',
+        },
+      ],
+      hourlyForecast: [
+        { time: 'الآن', condition: 'rain', precipitation: 4.5, visibility: 1200, temperature: 18 },
+        { time: '+1 ساعة', condition: 'rain', precipitation: 3.2, visibility: 1500, temperature: 17 },
+        { time: '+2 ساعة', condition: 'fog', precipitation: 0.5, visibility: 800, temperature: 16 },
+        { time: '+3 ساعة', condition: 'fog', precipitation: 0, visibility: 600, temperature: 15 },
+      ],
+    }
+    
+    return { demoRoute, demoTrafficDetails, demoWeather }
+  }, [])
+  
   useEffect(() => {
     const loadRoute = async () => {
       setIsLoadingRoute(true)
       setRouteError(null)
+
+      // إذا كان وضع الديمو مفعل، استخدم البيانات الوهمية
+      if (isDemoMode) {
+        setRoute(generateDemoData.demoRoute)
+        setTrafficDetails(generateDemoData.demoTrafficDetails)
+        setWeatherData(generateDemoData.demoWeather)
+        setDestination([24.7500, 46.7000])
+        setDestinationName('شمال الرياض')
+        setIsLoadingRoute(false)
+        return
+      }
 
       try {
         const savedRoute = localStorage.getItem('currentRoute')
@@ -161,7 +317,7 @@ export default function NavigationPage() {
     }
 
     loadRoute()
-  }, [routeId])
+  }, [routeId, isDemoMode, generateDemoData])
 
   useEffect(() => {
     if (route) {
@@ -364,7 +520,7 @@ export default function NavigationPage() {
     return Math.sqrt(dx * dx + dy * dy) * 111000 // تحويل إلى متر تقريباً
   }
 
-  // جلب التنبيهات المرتبطة بالمسار
+  // جلب التنبيهات المرتبطة بالمسار + إضافة تنبيهات وهمية واقعية في الرياض
   const { data: allAlerts } = useQuery({
     queryKey: ['route-alerts', route?.id],
     queryFn: async () => {
@@ -372,16 +528,182 @@ export default function NavigationPage() {
       
       try {
         // جلب جميع التنبيهات النشطة
-        const res = await axios.get('/api/alerts?activeOnly=true')
-        return res.data.data || []
+        const res = await axios.get('/api/alerts?activeOnly=true&city=الرياض')
+        const apiAlerts = res.data.data || []
+        
+        // إضافة تنبيهات وهمية واقعية في الرياض على المسار
+        const mockAlerts = [
+          {
+            id: 'mock-congestion-1',
+            segmentId: null,
+            roadName: 'طريق الملك فهد',
+            city: 'الرياض',
+            direction: 'شمال',
+            type: 'congestion',
+            severity: 'high',
+            message: 'ازدحام مروري شديد على طريق الملك فهد. تأخير متوقع: 15 دقيقة',
+            location: { lat: 24.7200, lng: 46.6800 },
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+            isActive: true,
+            congestionIndex: 75,
+            delayMinutes: 15,
+          },
+          {
+            id: 'mock-accident-1',
+            segmentId: null,
+            roadName: 'طريق الدائري الشرقي',
+            city: 'الرياض',
+            direction: 'شرق',
+            type: 'accident',
+            severity: 'critical',
+            message: 'أمامك حادث مروري على طريق الدائري الشرقي - استخدم مساراً بديلاً',
+            location: { lat: 24.7100, lng: 46.7000 },
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+            isActive: true,
+            alternativeRoute: {
+              distance: 8.5,
+              duration: 20,
+              waypoints: [
+                { lat: 24.7150, lng: 46.6900 },
+                { lat: 24.7250, lng: 46.7100 },
+              ],
+            },
+          },
+        ]
+        
+        return [...apiAlerts, ...mockAlerts]
       } catch (error) {
         console.error('Error fetching alerts:', error)
-        return []
+        // إرجاع تنبيهات وهمية في حالة الخطأ
+        return [
+          {
+            id: 'mock-congestion-1',
+            segmentId: null,
+            roadName: 'طريق الملك فهد',
+            city: 'الرياض',
+            direction: 'شمال',
+            type: 'congestion',
+            severity: 'high',
+            message: 'ازدحام مروري شديد على طريق الملك فهد. تأخير متوقع: 15 دقيقة',
+            location: { lat: 24.7200, lng: 46.6800 },
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+            isActive: true,
+            congestionIndex: 75,
+            delayMinutes: 15,
+          },
+          {
+            id: 'mock-accident-1',
+            segmentId: null,
+            roadName: 'طريق الدائري الشرقي',
+            city: 'الرياض',
+            direction: 'شرق',
+            type: 'accident',
+            severity: 'critical',
+            message: 'أمامك حادث مروري على طريق الدائري الشرقي - استخدم مساراً بديلاً',
+            location: { lat: 24.7100, lng: 46.7000 },
+            createdAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+            isActive: true,
+            alternativeRoute: {
+              distance: 8.5,
+              duration: 20,
+              waypoints: [
+                { lat: 24.7150, lng: 46.6900 },
+                { lat: 24.7250, lng: 46.7100 },
+              ],
+            },
+          },
+        ]
       }
     },
     enabled: !!route,
     refetchInterval: 60000, // تحديث كل دقيقة
   })
+  
+  // حالة لإظهار التنبيهات بالتسلسل
+  const [shownAlerts, setShownAlerts] = useState<Set<string>>(new Set())
+  const [currentAlertIndex, setCurrentAlertIndex] = useState(0)
+  
+  // إظهار التنبيهات بالتسلسل عند بدء التوجيه
+  useEffect(() => {
+    if (!isNavigating || !routeAlerts || routeAlerts.length === 0) return
+    
+    // إظهار أول تنبيه (ازدحام) فوراً
+    if (routeAlerts.length > 0 && currentAlertIndex === 0) {
+      const firstAlert = routeAlerts[0]
+      if (firstAlert.type === 'congestion' && !shownAlerts.has(firstAlert.id)) {
+        setShownAlerts(new Set([firstAlert.id]))
+        setCurrentAlertIndex(1)
+        
+        // تشغيل صوت تنبيه
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
+        
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+        
+        oscillator.frequency.value = 600
+        oscillator.type = 'sine'
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
+        
+        oscillator.start(audioContext.currentTime)
+        oscillator.stop(audioContext.currentTime + 0.3)
+        
+        // إعلان صوتي
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(firstAlert.message)
+          utterance.lang = 'ar-SA'
+          utterance.rate = 0.9
+          window.speechSynthesis.speak(utterance)
+        }
+      }
+    }
+    
+    // إظهار ثاني تنبيه (حادث) بعد 3 ثواني
+    if (routeAlerts.length > 1 && currentAlertIndex === 1) {
+      const timer = setTimeout(() => {
+        const secondAlert = routeAlerts.find((a: any) => a.type === 'accident')
+        if (secondAlert && !shownAlerts.has(secondAlert.id)) {
+          setShownAlerts(new Set([...Array.from(shownAlerts), secondAlert.id]))
+          setCurrentAlertIndex(2)
+          
+          // تشغيل صوت تنبيه حرج
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+          const oscillator = audioContext.createOscillator()
+          const gainNode = audioContext.createGain()
+          
+          oscillator.connect(gainNode)
+          gainNode.connect(audioContext.destination)
+          
+          oscillator.frequency.value = 1000 // صوت أعلى للتنبيهات الحرجة
+          oscillator.type = 'sine'
+          
+          gainNode.gain.setValueAtTime(0.5, audioContext.currentTime)
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+          
+          oscillator.start(audioContext.currentTime)
+          oscillator.stop(audioContext.currentTime + 0.5)
+          
+          // إعلان صوتي
+          if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(secondAlert.message)
+            utterance.lang = 'ar-SA'
+            utterance.rate = 0.9
+            utterance.pitch = 1.2
+            window.speechSynthesis.speak(utterance)
+          }
+        }
+      }, 3000) // 3 ثواني
+      
+      return () => clearTimeout(timer)
+    }
+  }, [isNavigating, routeAlerts, currentAlertIndex, shownAlerts])
 
   // تصفية وترتيب التنبيهات حسب المسار
   const routeAlerts = useMemo(() => {
@@ -777,13 +1099,26 @@ export default function NavigationPage() {
       <div className="flex flex-col h-screen">
         {/* زر العودة */}
         <div className="bg-white border-b border-gray-200 px-4 py-3">
-          <button
-            onClick={() => router.push('/user')}
-            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">العودة</span>
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => router.push('/user')}
+              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">العودة</span>
+            </button>
+            {isDemoMode && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
+                <span>وضع الديمو</span>
+                <button
+                  onClick={() => setIsDemoMode(false)}
+                  className="text-xs underline hover:text-blue-900"
+                >
+                  تعطيل
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* زر استخدام الموقع الحالي */}
@@ -897,28 +1232,57 @@ export default function NavigationPage() {
           <div className="flex-1 relative min-h-[400px] rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
             <GoogleTrafficMap
               center={
-                currentLocation 
-                  ? { lat: currentLocation[0], lng: currentLocation[1] } // مركز الخريطة على موقعك الحالي
-                  : (route && route.route && route.route.length > 0 
-                    ? { lat: route.route[0][0], lng: route.route[0][1] }
-                    : route && route.originLat && route.originLng
-                      ? { lat: route.originLat, lng: route.originLng }
-                      : undefined) // لا موقع افتراضي
+                isDemoMode && route
+                  ? { lat: 24.7318, lng: 46.6877 } // وسط المسار الوهمي في الرياض
+                  : currentLocation 
+                    ? { lat: currentLocation[0], lng: currentLocation[1] } // مركز الخريطة على موقعك الحالي
+                    : (route && route.route && route.route.length > 0 
+                      ? { lat: route.route[0][0], lng: route.route[0][1] }
+                      : route && route.originLat && route.originLng
+                        ? { lat: route.originLat, lng: route.originLng }
+                        : { lat: 24.7136, lng: 46.6753 }) // الرياض كموقع افتراضي
               }
-              zoom={currentLocation ? 15 : (isNavigating && currentLocation ? 16 : 14)} // تكبير الخريطة عند وجود موقع حالي
+              zoom={isDemoMode ? 13 : (currentLocation ? 15 : (isNavigating && currentLocation ? 16 : 14))} // تكبير الخريطة عند وجود موقع حالي
               showTrafficLayer={true}
               route={
                 currentLocation && destination
                   ? {
                       origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي دائماً
                       destination: { lat: destination[0], lng: destination[1] }, // B: الوجهة المحددة
+                      polyline: route?.route ? route.route.map(([lat, lng]: [number, number]) => ({ lat, lng })) : undefined,
                     }
                   : route && route.destinationLat && route.destinationLng && currentLocation
                     ? {
                         origin: { lat: currentLocation[0], lng: currentLocation[1] }, // A: موقعك الحالي دائماً
                         destination: { lat: route.destinationLat, lng: route.destinationLng }, // B: الوجهة المحفوظة
+                        polyline: route.route ? route.route.map(([lat, lng]: [number, number]) => ({ lat, lng })) : undefined,
                       }
-                    : undefined
+                    : route && route.route && route.route.length > 0
+                      ? {
+                          origin: { lat: route.originLat || route.route[0][0], lng: route.originLng || route.route[0][1] },
+                          destination: { lat: route.destinationLat || route.route[route.route.length - 1][0], lng: route.destinationLng || route.route[route.route.length - 1][1] },
+                          polyline: route.route.map(([lat, lng]: [number, number]) => ({ lat, lng })),
+                        }
+                      : undefined
+              }
+              markers={
+                routeAlerts && routeAlerts.length > 0
+                  ? routeAlerts
+                      .filter((alert: any) => shownAlerts.has(alert.id) || alert.type === 'congestion' || alert.type === 'accident')
+                      .map((alert: any) => {
+                        const location = alert.location || (alert as any).lat && (alert as any).lng 
+                          ? { lat: (alert as any).lat, lng: (alert as any).lng }
+                          : null
+                        if (!location) return null
+                        return {
+                          lat: location.lat || location[0],
+                          lng: location.lng || location[1],
+                          title: alert.message,
+                          congestionIndex: alert.congestionIndex || (alert.severity === 'critical' ? 90 : alert.severity === 'high' ? 70 : 50),
+                        }
+                      })
+                      .filter(Boolean)
+                  : []
               }
               currentLocation={currentLocation}
               className="w-full h-full"
@@ -1087,6 +1451,232 @@ export default function NavigationPage() {
                 </div>
               )}
             </div>
+            
+            {/* تفاصيل الحركة المرورية على المسار */}
+            {trafficDetails && trafficDetails.length > 0 && (
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-orange-500" />
+                  تفاصيل الحركة المرورية على المسار
+                </h3>
+                <div className="space-y-3">
+                  {trafficDetails.map((detail: any, index: number) => (
+                    <div
+                      key={index}
+                      className={`p-3 rounded-lg border-2 ${
+                        detail.congestionIndex >= 70
+                          ? 'bg-red-50 border-red-200'
+                          : detail.congestionIndex >= 50
+                          ? 'bg-orange-50 border-orange-200'
+                          : 'bg-yellow-50 border-yellow-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <p className="font-bold text-gray-900 text-sm mb-1">{detail.roadName}</p>
+                          <p className="text-xs text-gray-600 mb-2">{detail.reason}</p>
+                          <div className="flex items-center gap-4 text-xs text-gray-600">
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
+                              ازدحام: {detail.congestionIndex}%
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Route className="w-3 h-3" />
+                              سرعة: {detail.avgSpeed} كم/س
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              تأخير: {detail.delayMinutes} د
+                            </span>
+                          </div>
+                          {detail.incidents && detail.incidents.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-current/20">
+                              <p className="text-xs font-medium mb-1">الحوادث:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {detail.incidents.map((incident: string, i: number) => (
+                                  <span
+                                    key={i}
+                                    className="px-2 py-0.5 bg-white/50 rounded text-xs"
+                                  >
+                                    {incident}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500">
+                            {Math.round(detail.position * 100)}% من المسار
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* تفاصيل الطقس (الأمطار والضباب) */}
+            {weatherData && (
+              <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg p-4 shadow-sm border-2 border-blue-200">
+                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  {weatherData.condition === 'rain' ? (
+                    <CloudRain className="w-5 h-5 text-blue-600" />
+                  ) : (
+                    <Cloud className="w-5 h-5 text-gray-600" />
+                  )}
+                  حالة الطقس
+                </h3>
+                
+                {/* الحالة الحالية */}
+                <div className="bg-white rounded-lg p-3 mb-3 border border-blue-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {weatherData.condition === 'rain' ? (
+                        <>
+                          <CloudRain className="w-5 h-5 text-blue-600" />
+                          <span className="font-bold text-gray-900">أمطار</span>
+                        </>
+                      ) : (
+                        <>
+                          <Cloud className="w-5 h-5 text-gray-600" />
+                          <span className="font-bold text-gray-900">ضباب</span>
+                        </>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      {weatherData.temperature}°C
+                    </span>
+                  </div>
+                  
+                  {/* تفاصيل الأمطار */}
+                  {weatherData.condition === 'rain' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-gray-700">
+                          <Droplets className="w-4 h-4 text-blue-600" />
+                          معدل هطول الأمطار
+                        </span>
+                        <span className="font-bold text-blue-600">
+                          {weatherData.precipitation.toFixed(1)} مم/ساعة
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-gray-700">
+                          <Droplets className="w-4 h-4 text-blue-500" />
+                          احتمال هطول الأمطار
+                        </span>
+                        <span className="font-bold text-blue-600">
+                          {weatherData.precipitationProbability}%
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-gray-700">
+                          <Eye className="w-4 h-4 text-gray-600" />
+                          الرؤية
+                        </span>
+                        <span className="font-bold text-orange-600">
+                          {weatherData.visibility} متر
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* تفاصيل الضباب */}
+                  {weatherData.condition === 'fog' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-gray-700">
+                          <Eye className="w-4 h-4 text-gray-600" />
+                          الرؤية
+                        </span>
+                        <span className="font-bold text-red-600">
+                          {weatherData.visibility} متر
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-gray-700">
+                          <Wind className="w-4 h-4 text-gray-600" />
+                          سرعة الرياح
+                        </span>
+                        <span className="font-bold text-gray-700">
+                          {weatherData.windSpeed} كم/س
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-gray-700">
+                          <Thermometer className="w-4 h-4 text-gray-600" />
+                          الرطوبة
+                        </span>
+                        <span className="font-bold text-gray-700">
+                          {weatherData.humidity}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* التنبيهات الطقسية */}
+                {weatherData.alerts && weatherData.alerts.length > 0 && (
+                  <div className="space-y-2">
+                    {weatherData.alerts.map((alert: any, index: number) => (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg border-2 ${
+                          alert.severity === 'high'
+                            ? 'bg-red-50 border-red-200'
+                            : 'bg-yellow-50 border-yellow-200'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                            alert.severity === 'high' ? 'text-red-600' : 'text-yellow-600'
+                          }`} />
+                          <div className="flex-1">
+                            <p className="font-bold text-sm mb-1">{alert.message}</p>
+                            <p className="text-xs text-gray-700">{alert.advice}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* التوقعات الساعية */}
+                {weatherData.hourlyForecast && weatherData.hourlyForecast.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-xs font-bold text-gray-700 mb-2">التوقعات الساعية:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {weatherData.hourlyForecast.map((forecast: any, index: number) => (
+                        <div
+                          key={index}
+                          className="bg-white rounded p-2 border border-gray-100"
+                        >
+                          <p className="text-xs font-medium text-gray-700 mb-1">{forecast.time}</p>
+                          <div className="flex items-center gap-1 text-xs text-gray-600">
+                            {forecast.condition === 'rain' ? (
+                              <CloudRain className="w-3 h-3 text-blue-600" />
+                            ) : (
+                              <Cloud className="w-3 h-3 text-gray-600" />
+                            )}
+                            <span>{forecast.condition === 'rain' ? 'أمطار' : 'ضباب'}</span>
+                          </div>
+                          {forecast.precipitation > 0 && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              {forecast.precipitation.toFixed(1)} مم
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            رؤية: {forecast.visibility}م
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* القسم الرابع: التنبيهات على المسار */}
             {routeAlerts && routeAlerts.length > 0 && (
@@ -1108,7 +1698,9 @@ export default function NavigationPage() {
                 
                 {showAlerts && (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {routeAlerts.map((alert: any, index: number) => {
+                    {routeAlerts
+                      .filter((alert: any) => shownAlerts.has(alert.id) || alert.type === 'congestion' || alert.type === 'accident')
+                      .map((alert: any, index: number) => {
                       const severityColors = {
                         critical: 'bg-red-50 border-red-300 text-red-800',
                         high: 'bg-orange-50 border-orange-300 text-orange-800',
@@ -1118,10 +1710,14 @@ export default function NavigationPage() {
                       
                       const severityColor = severityColors[alert.severity as keyof typeof severityColors] || severityColors.low
                       
+                      const isNew = !shownAlerts.has(alert.id) && (alert.type === 'congestion' || alert.type === 'accident')
+                      
                       return (
                         <div
                           key={alert.id || index}
-                          className={`p-3 rounded-lg border-2 ${severityColor}`}
+                          className={`p-3 rounded-lg border-2 ${severityColor} ${
+                            isNew ? 'animate-pulse ring-2 ring-primary-500' : ''
+                          }`}
                         >
                           <div className="flex items-start gap-2">
                             <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
@@ -1162,7 +1758,40 @@ export default function NavigationPage() {
               </div>
             )}
 
-            {/* القسم الخامس: قائمة الخطوات */}
+            {/* القسم الخامس: موقع الاتجاه في القائمة */}
+            {currentLocation && (destination || (route && route.destinationLat && route.destinationLng)) && (
+              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <Navigation className="w-5 h-5 text-primary-600" />
+                  موقع الاتجاه
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700">موقعك الحالي (A)</p>
+                      <p className="text-xs text-gray-500">
+                        {currentLocation[0].toFixed(6)}, {currentLocation[1].toFixed(6)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-primary-50 rounded-lg border-2 border-primary-200">
+                    <div className="w-2 h-2 bg-primary-600 rounded-full animate-pulse"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-primary-700">الوجهة (B)</p>
+                      <p className="text-xs text-gray-600">
+                        {destinationName || (destination ? `${destination[0].toFixed(6)}, ${destination[1].toFixed(6)}` : `${route.destinationLat.toFixed(6)}, ${route.destinationLng.toFixed(6)}`)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        خط العرض: {(destination ? destination[0] : route.destinationLat).toFixed(6)}, خط الطول: {(destination ? destination[1] : route.destinationLng).toFixed(6)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* القسم السادس: قائمة الخطوات */}
             {route.steps && route.steps.length > 0 && (
               <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
                 <h3 className="font-bold text-gray-900 mb-3">خطوات المسار</h3>

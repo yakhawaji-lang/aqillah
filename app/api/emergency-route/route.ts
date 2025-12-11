@@ -5,47 +5,7 @@ import {
   shouldUpdateRoute,
 } from '@/lib/core/emergency-routing'
 import { prisma } from '@/lib/prisma'
-import { googleMapsService } from '@/lib/services/google-maps'
 
-/**
- * فك تشفير Google Polyline إلى مصفوفة من الإحداثيات
- */
-function decodePolyline(encoded: string): Array<[number, number]> {
-  if (!encoded) return []
-  
-  const poly: Array<[number, number]> = []
-  let index = 0
-  const len = encoded.length
-  let lat = 0
-  let lng = 0
-
-  while (index < len) {
-    let b
-    let shift = 0
-    let result = 0
-    do {
-      b = encoded.charCodeAt(index++) - 63
-      result |= (b & 0x1f) << shift
-      shift += 5
-    } while (b >= 0x20)
-    const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1))
-    lat += dlat
-
-    shift = 0
-    result = 0
-    do {
-      b = encoded.charCodeAt(index++) - 63
-      result |= (b & 0x1f) << shift
-      shift += 5
-    } while (b >= 0x20)
-    const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1))
-    lng += dlng
-
-    poly.push([lat * 1e-5, lng * 1e-5])
-  }
-
-  return poly
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -223,64 +183,145 @@ export async function POST(request: NextRequest) {
       return bearing2 - bearing1
     }
 
-    // حساب المسار باستخدام Google Directions API للحصول على مسار يتبع الطرق الفعلية
+    // حساب المسار باستخدام البيانات الوهمية من قاعدة البيانات
+    // استخدام خوارزمية حساب مبسطة بناءً على المقاطع المتاحة
     let route
     try {
-      // استخدام Google Routes API للحصول على المسار الفعلي على الطرق
-      const googleRoute = await googleMapsService.calculateRoute({
-        origin: { lat: originLat, lng: originLng },
-        destination: { lat: destinationLat, lng: destinationLng },
-        departureTime: 'now',
-        alternatives: false,
+      // البحث عن المقاطع القريبة من نقطة البداية والنهاية
+      const originSegments = await prisma.roadSegment.findMany({
+        where: {
+          OR: [
+            {
+              startLat: { gte: originLat - 0.05, lte: originLat + 0.05 },
+              startLng: { gte: originLng - 0.05, lte: originLng + 0.05 },
+            },
+            {
+              endLat: { gte: originLat - 0.05, lte: originLat + 0.05 },
+              endLng: { gte: originLng - 0.05, lte: originLng + 0.05 },
+            },
+          ],
+        },
+        take: 5,
       })
 
-      if (!googleRoute.routes || googleRoute.routes.length === 0) {
-        throw new Error('لم يتم العثور على مسار')
-      }
-
-      const bestRoute = googleRoute.routes[0]
-      
-      // فك تشفير polyline للحصول على نقاط المسار
-      const decodedPolyline = decodePolyline(bestRoute.polyline)
-      
-      // تحويل الخطوات من Google Routes API
-      const steps = bestRoute.steps.map((step: any) => ({
-        instruction: step.instructions || 'تابع المسار',
-        distance: step.distance || 0,
-        duration: step.duration || 0,
-        startLocation: [step.startLocation.lat, step.startLocation.lng] as [number, number],
-        endLocation: [step.endLocation.lat, step.endLocation.lng] as [number, number],
-        maneuver: step.maneuver || undefined,
-      }))
-
-      // إنشاء كائن EmergencyRoute
-      route = {
-        id: `emergency-${Date.now()}`,
-        originLat,
-        originLng,
-        destinationLat,
-        destinationLng,
-        route: decodedPolyline,
-        distance: (bestRoute.distance || 0) / 1000, // تحويل من متر إلى كيلومتر
-        estimatedTime: (bestRoute.duration || 0) / 60, // الوقت بدون ازدحام (بالدقائق)
-        estimatedTimeInTraffic: bestRoute.durationInTraffic 
-          ? (bestRoute.durationInTraffic / 60) // الوقت مع الازدحام (بالدقائق)
-          : undefined,
-        lastUpdate: new Date(),
-        updateInterval: 30,
-        isActive: true,
-        congestionAlongRoute: [],
-        steps,
-      }
-
-      console.log('Route calculated using Google Directions API:', { 
-        distance: route.distance, 
-        estimatedTime: route.estimatedTime,
-        stepsCount: steps.length 
+      const destinationSegments = await prisma.roadSegment.findMany({
+        where: {
+          OR: [
+            {
+              startLat: { gte: destinationLat - 0.05, lte: destinationLat + 0.05 },
+              startLng: { gte: destinationLng - 0.05, lte: destinationLng + 0.05 },
+            },
+            {
+              endLat: { gte: destinationLat - 0.05, lte: destinationLat + 0.05 },
+              endLng: { gte: destinationLng - 0.05, lte: destinationLng + 0.05 },
+            },
+          ],
+        },
+        take: 5,
       })
+
+      // إذا وجدنا مقاطع قريبة، استخدمها لإنشاء مسار
+      if (originSegments.length > 0 || destinationSegments.length > 0) {
+        // استخدام الحساب المبسط مع بيانات الازدحام من قاعدة البيانات
+        route = calculateEmergencyRoute(
+          [originLat, originLng],
+          [destinationLat, destinationLng],
+          congestionMap
+        )
+
+        // إضافة معلومات إضافية من المقاطع
+        const allSegments = [...originSegments, ...destinationSegments]
+        if (allSegments.length > 0) {
+          // تحديث المسار ليمر عبر المقاطع المتاحة
+          const routePoints: Array<[number, number]> = [[originLat, originLng]]
+          
+          // إضافة نقاط من المقاطع
+          allSegments.forEach(segment => {
+            routePoints.push([segment.startLat, segment.startLng])
+            routePoints.push([segment.endLat, segment.endLng])
+          })
+          
+          routePoints.push([destinationLat, destinationLng])
+          
+          route.route = routePoints
+          
+          // حساب المسافة والوقت بناءً على المقاطع
+          let totalDistance = 0
+          let totalTime = 0
+          
+          for (let i = 0; i < routePoints.length - 1; i++) {
+            const [lat1, lng1] = routePoints[i]
+            const [lat2, lng2] = routePoints[i + 1]
+            
+            // حساب المسافة بين النقطتين
+            const R = 6371e3 // Earth radius in meters
+            const φ1 = lat1 * Math.PI / 180
+            const φ2 = lat2 * Math.PI / 180
+            const Δφ = (lat2 - lat1) * Math.PI / 180
+            const Δλ = (lng2 - lng1) * Math.PI / 180
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2)
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+
+            const distance = R * c / 1000 // بالكيلومتر
+            totalDistance += distance
+            
+            // حساب الوقت (افتراضي 60 كم/ساعة)
+            const avgSpeed = 60 // km/h
+            totalTime += (distance / avgSpeed) * 60 // بالدقائق
+          }
+          
+          route.distance = Math.round(totalDistance * 10) / 10
+          route.estimatedTime = Math.round(totalTime)
+          
+          // حساب الازدحام على طول المسار
+          const congestionAlongRoute: Array<{ lat: number; lng: number; congestion: number }> = []
+          routePoints.forEach(([lat, lng]) => {
+            // البحث عن مقطع قريب
+            const nearbySegment = allSegments.find(s => {
+              const dist1 = Math.sqrt(Math.pow(s.startLat - lat, 2) + Math.pow(s.startLng - lng, 2))
+              const dist2 = Math.sqrt(Math.pow(s.endLat - lat, 2) + Math.pow(s.endLng - lng, 2))
+              return dist1 < 0.01 || dist2 < 0.01
+            })
+            
+            if (nearbySegment) {
+              const segmentData = congestionMap.get(nearbySegment.id)
+              congestionAlongRoute.push({
+                lat,
+                lng,
+                congestion: segmentData?.index || 30,
+              })
+            } else {
+              congestionAlongRoute.push({
+                lat,
+                lng,
+                congestion: 30, // افتراضي
+              })
+            }
+          })
+          
+          route.congestionAlongRoute = congestionAlongRoute
+        }
+        
+        console.log('Route calculated using database segments:', { 
+          distance: route.distance, 
+          estimatedTime: route.estimatedTime,
+          segmentsCount: allSegments.length 
+        })
+      } else {
+        // إذا لم نجد مقاطع قريبة، استخدم الحساب المبسط
+        console.log('No nearby segments found, using simplified route calculation')
+        route = calculateEmergencyRoute(
+          [originLat, originLng],
+          [destinationLat, destinationLng],
+          congestionMap
+        )
+      }
     } catch (routeError: any) {
-      console.error('Error calculating route with Google Directions API:', routeError)
-      // Fallback إلى الحساب المبسط إذا فشل Google Directions API
+      console.error('Error calculating route:', routeError)
+      // Fallback إلى الحساب المبسط
       console.log('Falling back to simplified route calculation')
       route = calculateEmergencyRoute(
         [originLat, originLng],

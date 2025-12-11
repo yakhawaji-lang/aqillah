@@ -1,9 +1,10 @@
 /**
  * Weather Impact API - تأثير الطقس على القيادة
+ * يستخدم البيانات الوهمية من قاعدة البيانات فقط
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { weatherService } from '@/lib/services/weather'
+import { prisma } from '@/lib/prisma'
 import { weatherDrivingAssistant } from '@/lib/services/weather-driving-assistant'
 
 export async function GET(request: NextRequest) {
@@ -21,117 +22,113 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let weather: any
-    let weatherSources: string[] = [] // لتتبع مصادر البيانات المستخدمة
+    let weather: any = null
+    const targetDate = date && time ? new Date(`${date}T${time}`) : new Date()
+    const now = new Date()
 
-    // إذا كان هناك تاريخ ووقت مستقبلي، استخدم التنبؤات من مصادر متعددة
-    if (date && time) {
-      try {
-        const targetDate = new Date(`${date}T${time}`)
-        const now = new Date()
-        const daysDiff = Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        
-        if (daysDiff > 0 && daysDiff <= 16) {
-          // جلب التنبؤات للتاريخ المحدد من جميع المصادر المتاحة
-          const forecast = await weatherService.getWeatherForecast({
-            lat,
-            lng,
-            days: daysDiff,
-          })
-          
-          weatherSources.push(forecast.source || 'unknown')
-          
-          // البحث عن البيانات للتاريخ المحدد في hourly (أكثر دقة)
-          if (forecast.hourly && forecast.hourly.length > 0) {
-            // البحث عن أقرب ساعة للوقت المحدد
-            const targetHour = targetDate.getHours()
-            const targetDay = targetDate.toDateString()
-            
-            const matchingHour = forecast.hourly.find((hour: any) => {
-              const hourDate = new Date(hour.timestamp)
-              return hourDate.getHours() === targetHour &&
-                     hourDate.toDateString() === targetDay
-            })
-            
-            // إذا لم نجد تطابق دقيق، نبحث عن أقرب ساعة
-            const closestHour = matchingHour || forecast.hourly.reduce((closest: any, hour: any) => {
-              const hourDate = new Date(hour.timestamp)
-              const closestDate = closest ? new Date(closest.timestamp) : null
-              const targetTime = targetDate.getTime()
-              const hourDiff = Math.abs(hourDate.getTime() - targetTime)
-              const closestDiff = closestDate ? Math.abs(closestDate.getTime() - targetTime) : Infinity
-              return hourDiff < closestDiff ? hour : closest
-            }, null)
-            
-            if (closestHour) {
-              weather = {
-                current: {
-                  temperature: closestHour.temperature || 20,
-                  humidity: 70,
-                  windSpeed: closestHour.windSpeed || 20,
-                  windDirection: 0,
-                  visibility: closestHour.visibility || 10000,
-                  pressure: 1013,
-                  precipitation: closestHour.precipitation || 0,
-                  precipitationProbability: closestHour.precipitationProbability, // نسبة هطول الأمطار
-                  rainRate: closestHour.precipitation || 0,
-                  condition: closestHour.condition || 'clear',
-                  cloudCover: 50,
-                  timestamp: targetDate,
-                },
-                hourly: forecast.hourly, // حفظ جميع البيانات الساعية
-                source: forecast.source,
-              }
-            }
-          }
-          
-          // إذا لم نجد في hourly، جرب daily
-          if (!weather && forecast.daily && forecast.daily.length > 0) {
-            const targetDay = forecast.daily.find((day: any) => {
-              const dayDate = new Date(day.date)
-              return dayDate.toDateString() === targetDate.toDateString()
-            })
-            
-            if (targetDay) {
-              weather = {
-                current: {
-                  temperature: targetDay.high || targetDay.low || 20,
-                  humidity: 70,
-                  windSpeed: targetDay.windSpeed || 20,
-                  windDirection: 0,
-                  visibility: targetDay.visibility || 10000,
-                  pressure: 1013,
-                  precipitation: targetDay.precipitation || 0,
-                  precipitationProbability: targetDay.precipitationProbability, // نسبة هطول الأمطار
-                  rainRate: targetDay.precipitation || 0,
-                  condition: targetDay.condition || 'clear',
-                  cloudCover: 50,
-                  timestamp: targetDate,
-                },
-                daily: forecast.daily,
-                source: forecast.source,
-              }
-            }
-          }
-          
-          // حفظ تنبيهات الطقس إن وجدت
-          if (forecast.alerts && forecast.alerts.length > 0) {
-            weather.alerts = forecast.alerts
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to get forecast, trying current weather:', error)
+    // البحث عن بيانات الطقس الأقرب للإحداثيات المحددة
+    // البحث في نطاق 0.1 درجة (حوالي 11 كم)
+    const weatherData = await prisma.weatherData.findFirst({
+      where: {
+        lat: {
+          gte: lat - 0.1,
+          lte: lat + 0.1,
+        },
+        lng: {
+          gte: lng - 0.1,
+          lte: lng + 0.1,
+        },
+        timestamp: {
+          // إذا كان تاريخ مستقبلي، نبحث عن بيانات قريبة من التاريخ المحدد
+          ...(date && time ? {
+            gte: new Date(targetDate.getTime() - 24 * 60 * 60 * 1000),
+            lte: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000),
+          } : {
+            gte: new Date(now.getTime() - 2 * 60 * 60 * 1000), // آخر ساعتين
+          }),
+        },
+      },
+      orderBy: {
+        timestamp: 'desc',
+      },
+    })
+
+    if (weatherData) {
+      // تحويل بيانات قاعدة البيانات إلى تنسيق موحد
+      weather = {
+        current: {
+          temperature: weatherData.temperature,
+          humidity: weatherData.humidity,
+          windSpeed: weatherData.windSpeed,
+          windDirection: weatherData.windDirection,
+          visibility: weatherData.visibility,
+          pressure: weatherData.pressure,
+          precipitation: weatherData.precipitation,
+          precipitationProbability: weatherData.precipitationProbability || 0,
+          rainRate: weatherData.rainRate,
+          condition: weatherData.condition,
+          cloudCover: weatherData.cloudCover || 50,
+          timestamp: weatherData.timestamp,
+        },
+        source: 'database',
       }
-    }
 
-    // إذا لم نحصل على بيانات مستقبلية، استخدم الطقس الحالي من جميع المصادر
-    if (!weather) {
-      const currentWeather = await weatherService.getCurrentWeather({
-        lat,
-        lng,
-      })
-      weather = currentWeather
-      weatherSources.push(currentWeather.source || 'unknown')
+      // إذا كان هناك توقعات ساعية في البيانات
+      if (weatherData.hourlyForecast) {
+        const hourly = weatherData.hourlyForecast as any
+        weather.hourly = Array.isArray(hourly) ? hourly : []
+      }
+
+      // إذا كان هناك توقعات يومية في البيانات
+      if (weatherData.dailyForecast) {
+        const daily = weatherData.dailyForecast as any
+        weather.daily = Array.isArray(daily) ? daily : []
+      }
+
+      // إذا كان هناك تنبيهات طقس في البيانات
+      if (weatherData.alerts) {
+        const alerts = weatherData.alerts as any
+        weather.alerts = Array.isArray(alerts) ? alerts : []
+      }
+    } else {
+      // إذا لم نجد بيانات، نستخدم بيانات افتراضية واقعية
+      const cityCoordinates: Record<string, { lat: number; lng: number; temp: number; humidity: number }> = {
+        'الرياض': { lat: 24.7136, lng: 46.6753, temp: 25, humidity: 30 },
+        'جدة': { lat: 21.4858, lng: 39.1925, temp: 30, humidity: 60 },
+        'الدمام': { lat: 26.4207, lng: 50.0888, temp: 28, humidity: 50 },
+      }
+
+      // تحديد المدينة الأقرب
+      let closestCity = 'الرياض'
+      let minDistance = Infinity
+      for (const [city, coords] of Object.entries(cityCoordinates)) {
+        const distance = Math.sqrt(
+          Math.pow(lat - coords.lat, 2) + Math.pow(lng - coords.lng, 2)
+        )
+        if (distance < minDistance) {
+          minDistance = distance
+          closestCity = city
+        }
+      }
+
+      const defaultWeather = cityCoordinates[closestCity]
+      weather = {
+        current: {
+          temperature: defaultWeather.temp + (Math.random() - 0.5) * 5,
+          humidity: defaultWeather.humidity + (Math.random() - 0.5) * 20,
+          windSpeed: 10 + Math.random() * 15,
+          windDirection: Math.random() * 360,
+          visibility: 8000 + Math.random() * 2000,
+          pressure: 1010 + Math.random() * 10,
+          precipitation: 0,
+          precipitationProbability: 0,
+          rainRate: 0,
+          condition: 'clear',
+          cloudCover: 20 + Math.random() * 30,
+          timestamp: targetDate,
+        },
+        source: 'default',
+      }
     }
 
     // Analyze impact
@@ -145,22 +142,22 @@ export async function GET(request: NextRequest) {
       data: {
         ...impact,
         // بيانات الطقس الأساسية
-        condition: currentWeather.condition || currentWeather.weather || 'غير محدد',
-        temperature: currentWeather.temperature || currentWeather.temp || null,
-        precipitation: currentWeather.precipitation || currentWeather.rain || currentWeather.rainfall || 0,
-        precipitationProbability: currentWeather.precipitationProbability, // نسبة هطول الأمطار من OpenWeatherMap
-        visibility: currentWeather.visibility || currentWeather.vis || null,
-        windSpeed: currentWeather.windSpeed || currentWeather.wind?.speed || currentWeather.ws || null,
-        windDirection: currentWeather.windDirection || currentWeather.wind?.direction || null,
+        condition: currentWeather.condition || 'غير محدد',
+        temperature: currentWeather.temperature || null,
+        precipitation: currentWeather.precipitation || 0,
+        precipitationProbability: currentWeather.precipitationProbability || 0,
+        visibility: currentWeather.visibility || null,
+        windSpeed: currentWeather.windSpeed || null,
+        windDirection: currentWeather.windDirection || null,
         humidity: currentWeather.humidity || null,
         pressure: currentWeather.pressure || null,
-        cloudCover: currentWeather.cloudCover || currentWeather.clouds || null,
+        cloudCover: currentWeather.cloudCover || null,
         timestamp: currentWeather.timestamp || new Date(),
-        // بيانات إضافية من مصادر متعددة
-        source: weather.source || weatherSources.join(', ') || 'unknown',
-        hourlyForecast: weather.hourly || null, // بيانات ساعية للفترة القادمة
-        dailyForecast: weather.daily || null, // بيانات يومية للفترة القادمة
-        alerts: weather.alerts || null, // تنبيهات الطقس
+        // بيانات إضافية
+        source: weather.source || 'database',
+        hourlyForecast: weather.hourly || null,
+        dailyForecast: weather.daily || null,
+        alerts: weather.alerts || null,
       },
     })
   } catch (error: any) {

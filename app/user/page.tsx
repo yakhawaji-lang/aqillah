@@ -41,6 +41,7 @@ export default function UserAppPage() {
   const [selectedRoute, setSelectedRoute] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<'map' | 'alerts' | 'route'>('map')
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
+  const [isDemoMode, setIsDemoMode] = useState(true) // وضع الديمو مفعل افتراضياً
 
   // جلب موقع المستخدم تلقائياً (مرة واحدة فقط، ليس مراقبة مستمرة)
   const { location: userLocation, loading: locationLoading, refresh: refreshLocation } = useGeolocation({
@@ -53,11 +54,93 @@ export default function UserAppPage() {
   // Real-time traffic data
   const { data: trafficData, isLoading: trafficLoading, isConnected, lastUpdate, refetch: refetchTraffic } = useRealtimeTraffic()
   
-  // Notifications - فقط إذا كان هناك مسار محدد
-  const { alerts: apiAlerts, hasNewAlerts, soundEnabled, setSoundEnabled } = useNotifications(!!selectedRoute)
+  // Notifications - دائماً مفعلة للصفحة الرئيسية
+  const { alerts: apiAlerts, hasNewAlerts, soundEnabled, setSoundEnabled } = useNotifications(true)
   
   // استخدام البيانات من API فقط
   const allAlerts = apiAlerts || []
+  
+  // إظهار 3 تنبيهات فقط في الصفحة الرئيسية
+  const displayedAlerts = allAlerts.slice(0, 3)
+  
+  // حالة لإدارة التنبيهات المتسلسلة
+  const [currentAlertIndex, setCurrentAlertIndex] = useState<number>(0)
+  const [isAlertVisible, setIsAlertVisible] = useState<boolean>(false)
+  
+  // منطق إظهار وإخفاء التنبيهات بالتسلسل
+  useEffect(() => {
+    if (displayedAlerts.length === 0) {
+      setIsAlertVisible(false)
+      return
+    }
+    
+    // إعادة تعيين عند تغيير التنبيهات
+    if (currentAlertIndex >= displayedAlerts.length) {
+      setCurrentAlertIndex(0)
+    }
+    
+    const playAlertSound = () => {
+      if (!soundEnabled) return
+      
+      // إنشاء صوت تنبيه باستخدام Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+      
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      
+      const alert = displayedAlerts[currentAlertIndex]
+      const frequency = alert?.severity === 'critical' ? 1000 : alert?.severity === 'high' ? 800 : 600
+      
+      oscillator.frequency.value = frequency
+      oscillator.type = 'sine'
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
+      
+      oscillator.start(audioContext.currentTime)
+      oscillator.stop(audioContext.currentTime + 0.3)
+    }
+    
+    // إظهار التنبيه الحالي
+    setIsAlertVisible(true)
+    playAlertSound()
+    
+    // إخفاء التنبيه بعد 3 ثواني
+    const hideTimer = setTimeout(() => {
+      setIsAlertVisible(false)
+    }, 3000)
+    
+    // الانتقال للتنبيه التالي بعد 15 ثانية من بداية إظهار التنبيه الحالي
+    const nextTimer = setTimeout(() => {
+      if (displayedAlerts.length > 0) {
+        setCurrentAlertIndex((prevIndex) => {
+          if (prevIndex < displayedAlerts.length - 1) {
+            return prevIndex + 1
+          } else {
+            // إعادة من البداية
+            return 0
+          }
+        })
+      }
+    }, 15000) // 15 ثانية بين كل تنبيه
+    
+    return () => {
+      clearTimeout(hideTimer)
+      clearTimeout(nextTimer)
+    }
+  }, [displayedAlerts.length, currentAlertIndex, soundEnabled])
+  
+  // إعادة تعيين عند تغيير التنبيهات
+  useEffect(() => {
+    if (displayedAlerts.length > 0) {
+      setCurrentAlertIndex(0)
+      setIsAlertVisible(true)
+    } else {
+      setIsAlertVisible(false)
+    }
+  }, [displayedAlerts.length])
 
   // Search and filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -228,11 +311,109 @@ export default function UserAppPage() {
     return true
   }) || []
 
-  // جلب مسار الطوارئ إذا كان هناك وجهة
+  // بيانات وهمية واقعية للمسار في الرياض (وضع الديمو)
+  const generateDemoRoute = useMemo(() => {
+    // نقاط واقعية في الرياض
+    const origin: [number, number] = [24.7136, 46.6753] // مركز الرياض
+    const dest: [number, number] = [24.7500, 46.7000] // شمال الرياض
+    
+    // إنشاء مسار وهمي واقعي
+    const route: Array<[number, number]> = [
+      [24.7136, 46.6753], // البداية
+      [24.7200, 46.6800], // طريق الملك فهد
+      [24.7300, 46.6850], // طريق الدائري الشمالي
+      [24.7400, 46.6900], // طريق العليا
+      [24.7500, 46.7000], // النهاية
+    ]
+    
+    // خطوات المسار الوهمية
+    const steps = [
+      {
+        instruction: 'اتجه شمالاً على طريق الملك فهد',
+        distance: 1200, // متر
+        duration: 120, // ثانية
+        startLocation: [24.7136, 46.6753] as [number, number],
+        endLocation: [24.7200, 46.6800] as [number, number],
+        maneuver: 'straight',
+      },
+      {
+        instruction: 'استدر يميناً على طريق الدائري الشمالي',
+        distance: 1500,
+        duration: 180,
+        startLocation: [24.7200, 46.6800] as [number, number],
+        endLocation: [24.7300, 46.6850] as [number, number],
+        maneuver: 'turn-right',
+      },
+      {
+        instruction: 'تابع مباشرة على طريق العليا',
+        distance: 1800,
+        duration: 200,
+        startLocation: [24.7300, 46.6850] as [number, number],
+        endLocation: [24.7400, 46.6900] as [number, number],
+        maneuver: 'straight',
+      },
+      {
+        instruction: 'وصلت إلى وجهتك',
+        distance: 800,
+        duration: 90,
+        startLocation: [24.7400, 46.6900] as [number, number],
+        endLocation: [24.7500, 46.7000] as [number, number],
+        maneuver: 'straight',
+      },
+    ]
+    
+    // حساب المسافة الإجمالية (حوالي 5.3 كم)
+    const totalDistance = 5.3
+    const baseTime = 8 // دقائق بدون ازدحام
+    const congestionTime = 12 // دقائق مع الازدحام
+    
+    return {
+      id: 'demo-route-riyadh',
+      originLat: origin[0],
+      originLng: origin[1],
+      destinationLat: dest[0],
+      destinationLng: dest[1],
+      route: route,
+      distance: totalDistance,
+      estimatedTime: baseTime,
+      estimatedTimeInTraffic: congestionTime,
+      weatherDelay: 2,
+      estimatedTimeWithWeather: congestionTime + 2,
+      steps: steps,
+      congestionAlongRoute: [
+        { lat: 24.7200, lng: 46.6800, congestion: 65 },
+        { lat: 24.7300, lng: 46.6850, congestion: 75 },
+        { lat: 24.7400, lng: 46.6900, congestion: 55 },
+      ],
+      lastUpdate: new Date(),
+      updateInterval: 30,
+      isActive: true,
+    }
+  }, [])
+  
+  // تحميل بيانات الديمو تلقائياً عند فتح تبويب route
+  useEffect(() => {
+    if (activeTab === 'route' && isDemoMode && !selectedRoute) {
+      // تعيين موقع وهمي إذا لم يكن موجوداً
+      if (!userLocation) {
+        // لا نحتاج لتحديد الموقع في وضع الديمو
+      }
+      
+      // تعيين وجهة وهمية
+      if (!destination) {
+        setDestination([24.7500, 46.7000])
+      }
+      
+      // تعيين المسار الوهمي
+      setSelectedRoute(generateDemoRoute)
+    }
+  }, [activeTab, isDemoMode, selectedRoute, generateDemoRoute, userLocation, destination])
+  
+  // جلب مسار الطوارئ إذا كان هناك وجهة (في الوضع العادي)
   const { data: emergencyRoute } = useQuery({
     queryKey: ['emergency-route', userLocation, destination],
     queryFn: async () => {
-      if (!userLocation || !destination) return null
+      if (!userLocation || !destination || isDemoMode) return null
       const res = await axios.post('/api/emergency-route', {
         originLat: userLocation[0],
         originLng: userLocation[1],
@@ -241,7 +422,7 @@ export default function UserAppPage() {
       })
       return res.data.data
     },
-    enabled: !!userLocation && !!destination,
+    enabled: !!userLocation && !!destination && !isDemoMode,
   })
 
   const mapMarkers: MapMarker[] = useMemo(() => {
@@ -406,6 +587,71 @@ export default function UserAppPage() {
 
       {/* Content */}
       <div className="p-4 max-w-7xl mx-auto">
+        {/* إظهار تنبيه واحد بالتسلسل - يظهر لمدة 3 ثواني ثم يختفي */}
+        {activeTab === 'map' && displayedAlerts.length > 0 && currentAlertIndex >= 0 && (
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-3">
+              <Bell className="h-5 w-5 text-primary-600" />
+              التنبيهات المهمة
+              <span className="text-sm font-normal text-gray-500">
+                ({currentAlertIndex + 1} / {displayedAlerts.length})
+              </span>
+            </h3>
+            {isAlertVisible && displayedAlerts[currentAlertIndex] && (
+              <div
+                key={`alert-${currentAlertIndex}-${Date.now()}`}
+                className={`bg-white rounded-xl p-4 shadow-lg border-r-4 transition-all duration-500 ${
+                  isAlertVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+                } ${
+                  displayedAlerts[currentAlertIndex].severity === 'critical' ? 'border-red-500' :
+                  displayedAlerts[currentAlertIndex].severity === 'high' ? 'border-orange-500' :
+                  displayedAlerts[currentAlertIndex].severity === 'medium' ? 'border-yellow-500' :
+                  'border-blue-500'
+                } animate-fade-in`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-lg ${
+                    displayedAlerts[currentAlertIndex].severity === 'critical' ? 'bg-red-100' :
+                    displayedAlerts[currentAlertIndex].severity === 'high' ? 'bg-orange-100' :
+                    displayedAlerts[currentAlertIndex].severity === 'medium' ? 'bg-yellow-100' :
+                    'bg-blue-100'
+                  }`}>
+                    {displayedAlerts[currentAlertIndex].severity === 'critical' ? '🚨' :
+                     displayedAlerts[currentAlertIndex].severity === 'high' ? '🔶' :
+                     displayedAlerts[currentAlertIndex].severity === 'medium' ? '⚠️' : 'ℹ️'}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-gray-900 mb-1">{displayedAlerts[currentAlertIndex].message}</p>
+                    {displayedAlerts[currentAlertIndex].roadName && (
+                      <p className="text-sm text-gray-600 mb-2">{displayedAlerts[currentAlertIndex].roadName}</p>
+                    )}
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <span className={`px-2 py-1 rounded ${
+                        displayedAlerts[currentAlertIndex].severity === 'critical' ? 'bg-red-100 text-red-700' :
+                        displayedAlerts[currentAlertIndex].severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                        displayedAlerts[currentAlertIndex].severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {displayedAlerts[currentAlertIndex].severity === 'critical' ? 'حرج' :
+                         displayedAlerts[currentAlertIndex].severity === 'high' ? 'عالي' :
+                         displayedAlerts[currentAlertIndex].severity === 'medium' ? 'متوسط' : 'منخفض'}
+                      </span>
+                      {displayedAlerts[currentAlertIndex].type && (
+                        <span className="text-gray-600">
+                          {displayedAlerts[currentAlertIndex].type === 'congestion' ? 'ازدحام' :
+                           displayedAlerts[currentAlertIndex].type === 'accident' ? 'حادث' :
+                           displayedAlerts[currentAlertIndex].type === 'event' ? 'فعالية' :
+                           displayedAlerts[currentAlertIndex].type === 'weather' ? 'طقس' : displayedAlerts[currentAlertIndex].type}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
         {activeTab === 'map' && (
           <div className="space-y-4">
             {/* حالة الازدحام الحالية - تصميم محسّن */}
@@ -604,6 +850,33 @@ export default function UserAppPage() {
 
         {activeTab === 'route' && (
           <div className="space-y-4">
+            {/* وضع الديمو */}
+            {isDemoMode && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500 rounded-lg">
+                      <Route className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-blue-900">وضع العرض التوضيحي (Demo)</p>
+                      <p className="text-sm text-blue-700">يتم عرض مسار وهمي واقعي في مدينة الرياض</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsDemoMode(false)
+                      setSelectedRoute(null)
+                      setDestination(null)
+                    }}
+                    className="px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition border border-blue-300 font-medium text-sm"
+                  >
+                    تعطيل الديمو
+                  </button>
+                </div>
+              </div>
+            )}
+            
             {/* تحديد الوجهة - تصميم محسّن */}
             <div className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
               <div className="flex items-center gap-3 mb-6">
@@ -623,7 +896,12 @@ export default function UserAppPage() {
                     <div className="flex-1 flex items-center gap-3 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
                       <MapPin className="h-5 w-5 text-primary-600 flex-shrink-0" />
                       <span className="text-sm text-gray-700 flex-1">
-                        {locationLoading ? (
+                        {isDemoMode ? (
+                          <span className="flex items-center gap-2">
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">ديمو</span>
+                            مركز الرياض (24.7136, 46.6753)
+                          </span>
+                        ) : locationLoading ? (
                           <span className="flex items-center gap-2">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
                             جاري تحديد الموقع...
@@ -659,110 +937,127 @@ export default function UserAppPage() {
                     الوجهة
                   </label>
                   <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
-                    <LocationPicker
-                      onLocationSelect={(location) => {
-                        setDestination([location.lat, location.lng])
-                        toast.success(`تم تحديد الوجهة: ${location.name || 'موقع مختار'}`)
-                      }}
-                      currentLocation={userLocation || undefined}
-                      placeholder="ابحث عن موقع أو اختر من الخريطة..."
-                    />
+                    {isDemoMode ? (
+                      <div className="p-3 bg-white rounded-lg border-2 border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">ديمو</span>
+                          <span className="font-medium text-gray-900">شمال الرياض</span>
+                        </div>
+                        <p className="text-sm text-gray-600">24.7500, 46.7000</p>
+                      </div>
+                    ) : (
+                      <LocationPicker
+                        onLocationSelect={(location) => {
+                          setDestination([location.lat, location.lng])
+                          toast.success(`تم تحديد الوجهة: ${location.name || 'موقع مختار'}`)
+                        }}
+                        currentLocation={userLocation || undefined}
+                        placeholder="ابحث عن موقع أو اختر من الخريطة..."
+                      />
+                    )}
                   </div>
                 </div>
 
-                <button
-                  onClick={async () => {
-                    if (!userLocation) {
-                      toast.error('الرجاء السماح بالوصول إلى موقعك')
-                      return
-                    }
-                    
-                    if (!destination) {
-                      toast.error('الرجاء تحديد الوجهة')
-                      return
-                    }
-
-                    setIsCalculatingRoute(true)
-                    try {
-                      const res = await axios.post('/api/emergency-route', {
-                        originLat: userLocation[0],
-                        originLng: userLocation[1],
-                        destinationLat: destination[0],
-                        destinationLng: destination[1],
-                      })
+                {isDemoMode ? (
+                  <div className="w-full py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-xl text-lg">
+                    <Route className="h-6 w-6" />
+                    المسار جاهز للعرض (وضع الديمو)
+                  </div>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      if (!userLocation) {
+                        toast.error('الرجاء السماح بالوصول إلى موقعك')
+                        return
+                      }
                       
-                      if (res.data.success && res.data.data) {
-                        const routeData = res.data.data
+                      if (!destination) {
+                        toast.error('الرجاء تحديد الوجهة')
+                        return
+                      }
+
+                      setIsCalculatingRoute(true)
+                      try {
+                        const res = await axios.post('/api/emergency-route', {
+                          originLat: userLocation[0],
+                          originLng: userLocation[1],
+                          destinationLat: destination[0],
+                          destinationLng: destination[1],
+                        })
                         
-                        if (routeData.distance !== undefined && routeData.estimatedTime !== undefined && routeData.route && Array.isArray(routeData.route) && routeData.route.length > 0) {
-                          setSelectedRoute(routeData)
+                        if (res.data.success && res.data.data) {
+                          const routeData = res.data.data
                           
-                          try {
-                            const routeToSave = {
-                              ...routeData,
-                              id: routeData.id || `emergency-${Date.now()}`,
-                              route: routeData.route || [],
-                              steps: routeData.steps || [],
+                          if (routeData.distance !== undefined && routeData.estimatedTime !== undefined && routeData.route && Array.isArray(routeData.route) && routeData.route.length > 0) {
+                            setSelectedRoute(routeData)
+                            
+                            try {
+                              const routeToSave = {
+                                ...routeData,
+                                id: routeData.id || `emergency-${Date.now()}`,
+                                route: routeData.route || [],
+                                steps: routeData.steps || [],
+                              }
+                              localStorage.setItem('currentRoute', JSON.stringify(routeToSave))
+                            } catch (e) {
+                              console.error('Error saving route to localStorage:', e)
                             }
-                            localStorage.setItem('currentRoute', JSON.stringify(routeToSave))
-                          } catch (e) {
-                            console.error('Error saving route to localStorage:', e)
-                          }
-                          
-                          toast.success('تم حساب المسار بنجاح')
-                          
-                          try {
-                            const routeId = routeData.id || `emergency-${Date.now()}`
-                            window.location.href = `/user/navigation?routeId=${routeId}`
-                          } catch (navError: any) {
-                            console.error('Error navigating:', navError)
+                            
+                            toast.success('تم حساب المسار بنجاح')
+                            
                             try {
                               const routeId = routeData.id || `emergency-${Date.now()}`
-                              router.push(`/user/navigation?routeId=${routeId}`)
-                            } catch (e) {
-                              toast.error('تم حساب المسار بنجاح. سيتم الانتقال تلقائياً...', { duration: 3000 })
-                              setTimeout(() => {
+                              window.location.href = `/user/navigation?routeId=${routeId}`
+                            } catch (navError: any) {
+                              console.error('Error navigating:', navError)
+                              try {
                                 const routeId = routeData.id || `emergency-${Date.now()}`
-                                window.location.href = `/user/navigation?routeId=${routeId}`
-                              }, 2000)
+                                router.push(`/user/navigation?routeId=${routeId}`)
+                              } catch (e) {
+                                toast.error('تم حساب المسار بنجاح. سيتم الانتقال تلقائياً...', { duration: 3000 })
+                                setTimeout(() => {
+                                  const routeId = routeData.id || `emergency-${Date.now()}`
+                                  window.location.href = `/user/navigation?routeId=${routeId}`
+                                }, 2000)
+                              }
                             }
+                          } else {
+                            throw new Error('البيانات المستلمة غير كاملة')
                           }
                         } else {
-                          throw new Error('البيانات المستلمة غير كاملة')
+                          throw new Error(res.data.error || 'فشل في حساب المسار')
                         }
-                      } else {
-                        throw new Error(res.data.error || 'فشل في حساب المسار')
+                      } catch (error: any) {
+                        console.error('Error calculating route:', error)
+                        const errorMessage = error.response?.data?.error || error.message || 'حدث خطأ أثناء حساب المسار'
+                        toast.error(errorMessage)
+                        setIsCalculatingRoute(false)
+                        return
                       }
-                    } catch (error: any) {
-                      console.error('Error calculating route:', error)
-                      const errorMessage = error.response?.data?.error || error.message || 'حدث خطأ أثناء حساب المسار'
-                      toast.error(errorMessage)
+                      
                       setIsCalculatingRoute(false)
-                      return
-                    }
-                    
-                    setIsCalculatingRoute(false)
-                  }}
-                  disabled={!userLocation || !destination || isCalculatingRoute}
-                  className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl font-bold hover:from-primary-700 hover:to-primary-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl text-lg"
-                >
-                  {isCalculatingRoute ? (
-                    <>
-                      <RefreshCw className="h-6 w-6 animate-spin" />
-                      جاري الحساب...
-                    </>
-                  ) : (
-                    <>
-                      <Route className="h-6 w-6" />
-                      حساب المسار الأسرع
-                    </>
-                  )}
-                </button>
+                    }}
+                    disabled={!userLocation || !destination || isCalculatingRoute}
+                    className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl font-bold hover:from-primary-700 hover:to-primary-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl text-lg"
+                  >
+                    {isCalculatingRoute ? (
+                      <>
+                        <RefreshCw className="h-6 w-6 animate-spin" />
+                        جاري الحساب...
+                      </>
+                    ) : (
+                      <>
+                        <Route className="h-6 w-6" />
+                        حساب المسار الأسرع
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
             {/* خريطة المسار مع معلومات المسار - تصميم محسّن */}
-            {selectedRoute && userLocation && destination && (
+            {selectedRoute && (isDemoMode || (userLocation && destination)) && (
               <div className="space-y-4">
                 {/* معلومات المسار المهمة - بطاقة علوية محسّنة */}
                 <div className="bg-gradient-to-br from-primary-600 via-primary-700 to-primary-600 rounded-2xl p-6 shadow-2xl text-white overflow-hidden relative">
@@ -835,24 +1130,36 @@ export default function UserAppPage() {
                   <div className="h-[60vh] min-h-[400px] max-h-[600px]">
                     <GoogleTrafficMap
                       key={`google-route-map-${selectedRoute.id}`}
-                      center={{
-                        lat: (userLocation[0] + destination[0]) / 2,
-                        lng: (userLocation[1] + destination[1]) / 2,
-                      }}
-                      zoom={12}
+                      center={
+                        isDemoMode
+                          ? { lat: 24.7318, lng: 46.6877 } // وسط المسار الوهمي
+                          : {
+                              lat: (userLocation![0] + destination![0]) / 2,
+                              lng: (userLocation![1] + destination![1]) / 2,
+                            }
+                      }
+                      zoom={isDemoMode ? 13 : 12}
                       markers={mapMarkers.map(m => ({
                         lat: m.position[0],
                         lng: m.position[1],
                         title: m.roadName,
                         congestionIndex: m.congestionIndex,
                       }))}
-                      route={{
-                        origin: { lat: userLocation[0], lng: userLocation[1] },
-                        destination: { lat: destination[0], lng: destination[1] },
-                        polyline: selectedRoute.polyline,
-                      }}
+                      route={
+                        isDemoMode
+                          ? {
+                              origin: { lat: selectedRoute.originLat, lng: selectedRoute.originLng },
+                              destination: { lat: selectedRoute.destinationLat, lng: selectedRoute.destinationLng },
+                              polyline: selectedRoute.route.map(([lat, lng]: [number, number]) => ({ lat, lng })),
+                            }
+                          : {
+                              origin: { lat: userLocation![0], lng: userLocation![1] },
+                              destination: { lat: destination![0], lng: destination![1] },
+                              polyline: selectedRoute.polyline,
+                            }
+                      }
                       showTrafficLayer={true}
-                      currentLocation={userLocation}
+                      currentLocation={isDemoMode ? [selectedRoute.originLat, selectedRoute.originLng] : userLocation}
                       className="w-full h-full"
                     />
                   </div>
