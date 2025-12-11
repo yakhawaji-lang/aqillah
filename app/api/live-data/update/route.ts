@@ -8,32 +8,33 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚀 بدء إنشاء البيانات الوهمية الواقعية...')
-
-    // تشغيل السكريبت
-    const { stdout, stderr } = await execAsync('npm run db:seed', {
+    console.log('🔄 بدء تحديث البيانات الحية...')
+    
+    // تشغيل سكريبت التحديث
+    const { stdout, stderr } = await execAsync('tsx scripts/update-live-data.ts', {
       cwd: process.cwd(),
-      maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+      maxBuffer: 10 * 1024 * 1024,
     })
-
+    
     if (stderr && !stderr.includes('warning')) {
       console.error('⚠️ تحذيرات:', stderr)
     }
-
-    console.log('✅ تم إنشاء البيانات بنجاح')
+    
+    console.log('✅ تم تحديث البيانات بنجاح')
     console.log(stdout)
-
+    
     return NextResponse.json({
       success: true,
-      message: 'تم إنشاء البيانات الوهمية الواقعية بنجاح',
+      message: 'تم تحديث البيانات الحية بنجاح',
       output: stdout,
+      timestamp: new Date().toISOString(),
     })
   } catch (error: any) {
-    console.error('❌ خطأ في إنشاء البيانات:', error)
+    console.error('❌ خطأ في تحديث البيانات:', error)
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'فشل في إنشاء البيانات',
+        error: error.message || 'فشل في تحديث البيانات',
         details: error.stdout || error.stderr,
       },
       { status: 500 }
