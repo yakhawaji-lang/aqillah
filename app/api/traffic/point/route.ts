@@ -5,16 +5,38 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const lat = parseFloat(searchParams.get('lat') || '0')
-    const lng = parseFloat(searchParams.get('lng') || '0')
+    const latParam = searchParams.get('lat')
+    const lngParam = searchParams.get('lng')
     const city = searchParams.get('city') || 'الرياض'
 
-    if (!lat || !lng || lat === 0 || lng === 0) {
+    // التحقق من وجود المعاملات
+    if (!latParam || !lngParam) {
+      return NextResponse.json(
+        { success: false, error: 'المعاملات lat و lng مطلوبة' },
+        { status: 400 }
+      )
+    }
+
+    const lat = parseFloat(latParam)
+    const lng = parseFloat(lngParam)
+
+    // التحقق من صحة الإحداثيات
+    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
       return NextResponse.json(
         { success: false, error: 'إحداثيات غير صحيحة' },
+        { status: 400 }
+      )
+    }
+
+    // التحقق من نطاق الإحداثيات
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return NextResponse.json(
+        { success: false, error: 'الإحداثيات خارج النطاق الصحيح' },
         { status: 400 }
       )
     }
@@ -27,19 +49,67 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // إنشاء نقطة قريبة للاتجاه (نقطة على بعد ~500 متر)
+    // إنشاء نقطة قريبة للاتجاه (نقطة على بعد ~1 كم)
     // للحصول على بيانات الازدحام على الطريق
-    const distance = 0.005 // ~500 متر
+    const distance = 0.01 // ~1 كم
     const destinationLat = lat + distance
     const destinationLng = lng + distance
 
     // استخدام Google Directions API مع traffic_model
-    const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${lat},${lng}&destination=${destinationLat},${destinationLng}&departure_time=now&traffic_model=best_guess&key=${apiKey}`
+    const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${lat},${lng}&destination=${destinationLat},${destinationLng}&departure_time=now&traffic_model=best_guess&key=${apiKey}&language=ar`
     
     const response = await fetch(directionsUrl)
+    
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `فشل الاتصال بـ Google Maps API: ${response.status} ${response.statusText}`,
+        },
+        { status: response.status }
+      )
+    }
+    
     const data = await response.json()
 
-    if (data.status === 'OK' && data.routes && data.routes.length > 0) {
+    // معالجة حالات الخطأ من Google API
+    if (data.status !== 'OK') {
+      let errorMessage = 'فشل في جلب بيانات الازدحام'
+      
+      switch (data.status) {
+        case 'ZERO_RESULTS':
+          errorMessage = 'لا توجد طرق متاحة بين النقطتين المحددتين'
+          break
+        case 'NOT_FOUND':
+          errorMessage = 'النقطة المحددة غير موجودة'
+          break
+        case 'INVALID_REQUEST':
+          errorMessage = 'طلب غير صحيح - يرجى التحقق من الإحداثيات'
+          break
+        case 'OVER_QUERY_LIMIT':
+          errorMessage = 'تم تجاوز حد الاستعلامات المسموح به'
+          break
+        case 'REQUEST_DENIED':
+          errorMessage = 'تم رفض الطلب - يرجى التحقق من إعدادات API key'
+          break
+        case 'UNKNOWN_ERROR':
+          errorMessage = 'خطأ غير معروف من Google Maps API'
+          break
+        default:
+          errorMessage = data.error_message || `خطأ: ${data.status}`
+      }
+      
+      return NextResponse.json(
+        {
+          success: false,
+          error: errorMessage,
+          status: data.status,
+        },
+        { status: 400 }
+      )
+    }
+
+    if (data.routes && data.routes.length > 0) {
       const routeData = data.routes[0]
       const leg = routeData.legs[0]
       
@@ -109,8 +179,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: data.error_message || 'فشل في جلب بيانات الازدحام',
-          status: data.status,
+          error: 'لا توجد طرق متاحة',
+          status: 'ZERO_RESULTS',
         },
         { status: 400 }
       )
