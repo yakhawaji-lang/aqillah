@@ -1,200 +1,325 @@
 /**
- * سكريبت شامل لإضافة بيانات واقعية للنظام
- * يحاكي البرنامج بشكل كامل مع التوجهات والتحرك والخرائط والتنبيهات
+ * سكريبت إنشاء بيانات وهمية واقعية للنظام
+ * يولد بيانات محاكاة كاملة تغطي جميع أقسام النظام
  */
 
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// الطرق الرئيسية في المدن السعودية
-const majorRoads = {
-  'الرياض': [
-    { name: 'طريق الملك فهد', directions: ['شمال', 'جنوب'], coords: [[24.7136, 46.6753], [24.8000, 46.7000]] },
-    { name: 'طريق الدائري الشرقي', directions: ['شرق', 'غرب'], coords: [[24.6500, 46.8000], [24.7500, 46.8000]] },
-    { name: 'طريق الدائري الغربي', directions: ['شرق', 'غرب'], coords: [[24.6500, 46.5500], [24.7500, 46.5500]] },
-    { name: 'طريق الدائري الشمالي', directions: ['شمال', 'جنوب'], coords: [[24.8000, 46.6000], [24.8000, 46.7000]] },
-    { name: 'طريق الدائري الجنوبي', directions: ['شمال', 'جنوب'], coords: [[24.6000, 46.6000], [24.6000, 46.7000]] },
-    { name: 'طريق الملك عبدالعزيز', directions: ['شرق', 'غرب'], coords: [[24.7000, 46.6000], [24.7000, 46.8000]] },
-    { name: 'طريق الأمير سلطان', directions: ['شمال', 'جنوب'], coords: [[24.7200, 46.6500], [24.7200, 46.7500]] },
-    { name: 'طريق العليا', directions: ['شرق', 'غرب'], coords: [[24.6800, 46.6500], [24.6800, 46.7500]] },
-    { name: 'طريق العروبة', directions: ['شمال', 'جنوب'], coords: [[24.6900, 46.6400], [24.6900, 46.7400]] },
-    { name: 'طريق الخليج', directions: ['شرق', 'غرب'], coords: [[24.7100, 46.6200], [24.7100, 46.7200]] },
+// طرق حقيقية في المدن السعودية مع إحداثيات دقيقة
+const realRoads = {
+  الرياض: [
+    {
+      roadName: 'طريق الملك فهد',
+      direction: 'شمال',
+      startLat: 24.7136,
+      startLng: 46.6753,
+      endLat: 24.8500,
+      endLng: 46.6753,
+      length: 15.2,
+      freeFlowSpeed: 80,
+      hasTrafficLight: true,
+    },
+    {
+      roadName: 'طريق الملك فهد',
+      direction: 'جنوب',
+      startLat: 24.7136,
+      startLng: 46.6753,
+      endLat: 24.5800,
+      endLng: 46.6753,
+      length: 13.5,
+      freeFlowSpeed: 80,
+      hasTrafficLight: true,
+    },
+    {
+      roadName: 'الدائري الشرقي',
+      direction: 'شرق',
+      startLat: 24.7136,
+      startLng: 46.6753,
+      endLat: 24.7136,
+      endLng: 46.8000,
+      length: 12.8,
+      freeFlowSpeed: 100,
+      hasTrafficLight: false,
+    },
+    {
+      roadName: 'الدائري الشرقي',
+      direction: 'غرب',
+      startLat: 24.7136,
+      startLng: 46.6753,
+      endLat: 24.7136,
+      endLng: 46.5500,
+      length: 12.5,
+      freeFlowSpeed: 100,
+      hasTrafficLight: false,
+    },
+    {
+      roadName: 'طريق الملك عبدالعزيز',
+      direction: 'شمال',
+      startLat: 24.6500,
+      startLng: 46.7000,
+      endLat: 24.7500,
+      endLng: 46.7000,
+      length: 11.1,
+      freeFlowSpeed: 70,
+      hasTrafficLight: true,
+    },
+    {
+      roadName: 'طريق العليا',
+      direction: 'شرق',
+      startLat: 24.7200,
+      startLng: 46.6200,
+      endLat: 24.7200,
+      endLng: 46.7500,
+      length: 13.0,
+      freeFlowSpeed: 60,
+      hasTrafficLight: true,
+    },
+    {
+      roadName: 'طريق الخليج',
+      direction: 'غرب',
+      startLat: 24.7000,
+      startLng: 46.6500,
+      endLat: 24.7000,
+      endLng: 46.5000,
+      length: 15.0,
+      freeFlowSpeed: 60,
+      hasTrafficLight: true,
+    },
+    {
+      roadName: 'طريق الأمير محمد بن سلمان',
+      direction: 'شمال',
+      startLat: 24.6800,
+      startLng: 46.6800,
+      endLat: 24.8000,
+      endLng: 46.6800,
+      length: 13.3,
+      freeFlowSpeed: 80,
+      hasTrafficLight: true,
+    },
   ],
-  'جدة': [
-    { name: 'طريق الملك فهد', directions: ['شمال', 'جنوب'], coords: [[21.4858, 39.1925], [21.5500, 39.2000]] },
-    { name: 'طريق الكورنيش', directions: ['شرق', 'غرب'], coords: [[21.4800, 39.1500], [21.4800, 39.2500]] },
-    { name: 'طريق الحرمين', directions: ['شمال', 'جنوب'], coords: [[21.5000, 39.1800], [21.5000, 39.2200]] },
-    { name: 'طريق الملك عبدالله', directions: ['شرق', 'غرب'], coords: [[21.5200, 39.1700], [21.5200, 39.2300]] },
-    { name: 'طريق التحلية', directions: ['شمال', 'جنوب'], coords: [[21.4900, 39.1900], [21.4900, 39.2100]] },
+  جدة: [
+    {
+      roadName: 'طريق الملك فهد',
+      direction: 'شمال',
+      startLat: 21.4858,
+      startLng: 39.1925,
+      endLat: 21.6000,
+      endLng: 39.1925,
+      length: 12.7,
+      freeFlowSpeed: 80,
+      hasTrafficLight: true,
+    },
+    {
+      roadName: 'الكورنيش الشمالي',
+      direction: 'غرب',
+      startLat: 21.4858,
+      startLng: 39.1925,
+      endLat: 21.4858,
+      endLng: 39.1000,
+      length: 9.2,
+      freeFlowSpeed: 60,
+      hasTrafficLight: false,
+    },
+    {
+      roadName: 'طريق المدينة',
+      direction: 'شرق',
+      startLat: 21.4858,
+      startLng: 39.1925,
+      endLat: 21.4858,
+      endLng: 39.3000,
+      length: 10.7,
+      freeFlowSpeed: 70,
+      hasTrafficLight: true,
+    },
+    {
+      roadName: 'طريق الحرمين',
+      direction: 'جنوب',
+      startLat: 21.4858,
+      startLng: 39.1925,
+      endLat: 21.3500,
+      endLng: 39.1925,
+      length: 13.6,
+      freeFlowSpeed: 100,
+      hasTrafficLight: false,
+    },
   ],
-  'الدمام': [
-    { name: 'طريق الملك فهد', directions: ['شمال', 'جنوب'], coords: [[26.4207, 50.0888], [26.4800, 50.1000]] },
-    { name: 'طريق الكورنيش', directions: ['شرق', 'غرب'], coords: [[26.4100, 50.0500], [26.4100, 50.1500]] },
-    { name: 'طريق الخليج', directions: ['شمال', 'جنوب'], coords: [[26.4300, 50.0700], [26.4300, 50.1100]] },
+  الدمام: [
+    {
+      roadName: 'الكورنيش',
+      direction: 'شرق',
+      startLat: 26.4207,
+      startLng: 50.0888,
+      endLat: 26.4207,
+      endLng: 50.2000,
+      length: 11.1,
+      freeFlowSpeed: 60,
+      hasTrafficLight: false,
+    },
+    {
+      roadName: 'طريق الملك فهد',
+      direction: 'شمال',
+      startLat: 26.4207,
+      startLng: 50.0888,
+      endLat: 26.5500,
+      endLng: 50.0888,
+      length: 14.4,
+      freeFlowSpeed: 80,
+      hasTrafficLight: true,
+    },
   ],
 }
 
-// أنماط الازدحام حسب الوقت
-const congestionPatterns = {
-  morning: { min: 40, max: 85, peak: [7, 8, 9] }, // 7-9 صباحاً
-  midday: { min: 20, max: 50, peak: [] },
-  afternoon: { min: 30, max: 70, peak: [12, 13, 14] }, // 12-2 ظهراً
-  evening: { min: 50, max: 95, peak: [17, 18, 19, 20] }, // 5-8 مساءً
-  night: { min: 10, max: 30, peak: [] },
-}
-
-// أنواع التنبيهات
+// أنواع التنبيهات الواقعية
 const alertTypes = [
-  { type: 'congestion', severity: 'high', messages: ['ازدحام شديد على الطريق', 'حركة مرور بطيئة', 'تأخير متوقع'] },
-  { type: 'accident', severity: 'critical', messages: ['حادث مروري', 'إغلاق جزئي للطريق', 'انحراف المركبات'] },
-  { type: 'event', severity: 'medium', messages: ['فعالية قريبة', 'تجمع مروري', 'زيادة في حركة المرور'] },
-  { type: 'weather', severity: 'high', messages: ['أمطار غزيرة', 'رؤية منخفضة', 'رياح قوية'] },
-  { type: 'construction', severity: 'medium', messages: ['أعمال صيانة', 'إغلاق حارة', 'انحراف مؤقت'] },
+  { type: 'congestion', severity: 'high', message: 'ازدحام مروري شديد على الطريق' },
+  { type: 'accident', severity: 'critical', message: 'حادث مروري - تجنب الطريق' },
+  { type: 'event', severity: 'medium', message: 'فعالية قريبة - ازدحام متوقع' },
+  { type: 'weather', severity: 'medium', message: 'ظروف جوية صعبة - انتبه للقيادة' },
+  { type: 'construction', severity: 'low', message: 'أعمال صيانة على الطريق' },
 ]
 
-// حالات الطقس
+// حالات الطقس الواقعية
 const weatherConditions = [
-  { condition: 'clear', temp: { min: 25, max: 35 }, humidity: { min: 30, max: 50 }, windSpeed: { min: 5, max: 15 } },
-  { condition: 'partly_cloudy', temp: { min: 22, max: 32 }, humidity: { min: 40, max: 60 }, windSpeed: { min: 10, max: 20 } },
-  { condition: 'cloudy', temp: { min: 20, max: 30 }, humidity: { min: 50, max: 70 }, windSpeed: { min: 15, max: 25 } },
-  { condition: 'rain', temp: { min: 18, max: 28 }, humidity: { min: 70, max: 90 }, windSpeed: { min: 20, max: 35 }, precipitation: { min: 2, max: 15 } },
-  { condition: 'heavy_rain', temp: { min: 15, max: 25 }, humidity: { min: 80, max: 95 }, windSpeed: { min: 25, max: 45 }, precipitation: { min: 15, max: 50 } },
-  { condition: 'fog', temp: { min: 18, max: 25 }, humidity: { min: 85, max: 100 }, windSpeed: { min: 2, max: 10 }, visibility: { min: 100, max: 500 } },
+  { condition: 'clear', temperature: 35, humidity: 30, windSpeed: 15, visibility: 10000 },
+  { condition: 'clear', temperature: 38, humidity: 25, windSpeed: 20, visibility: 10000 },
+  { condition: 'partly_cloudy', temperature: 32, humidity: 40, windSpeed: 18, visibility: 8000 },
+  { condition: 'rain', temperature: 25, humidity: 70, windSpeed: 25, visibility: 5000, precipitation: 5 },
+  { condition: 'fog', temperature: 20, humidity: 85, windSpeed: 10, visibility: 2000 },
+  { condition: 'dust', temperature: 30, humidity: 20, windSpeed: 30, visibility: 3000 },
 ]
 
-// توليد رقم عشوائي بين قيمتين
-function randomBetween(min: number, max: number): number {
+// دالة لتوليد رقم عشوائي بين قيمتين
+function random(min: number, max: number): number {
   return Math.random() * (max - min) + min
 }
 
-// توليد عدد صحيح عشوائي
+// دالة لتوليد رقم صحيح عشوائي
 function randomInt(min: number, max: number): number {
-  return Math.floor(randomBetween(min, max))
+  return Math.floor(random(min, max + 1))
 }
 
-// الحصول على نمط الازدحام حسب الوقت
-function getCongestionPattern(hour: number): typeof congestionPatterns.morning {
-  if (hour >= 6 && hour < 10) return congestionPatterns.morning
-  if (hour >= 10 && hour < 14) return congestionPatterns.midday
-  if (hour >= 14 && hour < 17) return congestionPatterns.afternoon
-  if (hour >= 17 && hour < 21) return congestionPatterns.evening
-  return congestionPatterns.night
+// دالة لحساب مؤشر الازدحام بناءً على الوقت
+function getCongestionIndexByTime(hour: number): number {
+  // ساعات الذروة: 7-9 صباحاً و 5-7 مساءً
+  if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) {
+    return randomInt(60, 95) // ازدحام شديد
+  }
+  // ساعات متوسطة: 10-12 و 2-4
+  if ((hour >= 10 && hour <= 12) || (hour >= 14 && hour <= 16)) {
+    return randomInt(30, 60) // ازدحام متوسط
+  }
+  // ساعات هادئة: ليلاً وصباحاً مبكراً
+  return randomInt(10, 40) // ازدحام خفيف
 }
 
-// حساب مؤشر الازدحام بناءً على الوقت
-function calculateCongestionIndex(hour: number, baseIndex: number = 30): number {
-  const pattern = getCongestionPattern(hour)
-  const isPeak = pattern.peak.includes(hour)
-  const multiplier = isPeak ? 1.5 : 1.0
-  const congestion = baseIndex * multiplier + randomBetween(pattern.min, pattern.max)
-  return Math.min(100, Math.max(0, Math.round(congestion)))
+// دالة لحساب السرعة بناءً على مؤشر الازدحام
+function getSpeedByCongestion(congestionIndex: number, freeFlowSpeed: number): number {
+  if (congestionIndex >= 80) {
+    return random(10, 25) // ازدحام شديد جداً
+  }
+  if (congestionIndex >= 60) {
+    return random(25, 40) // ازدحام شديد
+  }
+  if (congestionIndex >= 40) {
+    return random(40, 55) // ازدحام متوسط
+  }
+  return random(freeFlowSpeed * 0.7, freeFlowSpeed) // ازدحام خفيف
 }
 
-// إنشاء مقاطع الطرق
-async function createRoadSegments() {
+async function generateRoadSegments() {
   console.log('🚧 إنشاء مقاطع الطرق...')
   const segments = []
 
-  for (const [city, roads] of Object.entries(majorRoads)) {
+  for (const [city, roads] of Object.entries(realRoads)) {
     for (const road of roads) {
-      for (const direction of road.directions) {
-        const [startLat, startLng] = road.coords[0]
-        const [endLat, endLng] = road.coords[1]
-        
-        // حساب المسافة التقريبية
-        const distance = Math.sqrt(
-          Math.pow((endLat - startLat) * 111, 2) + 
-          Math.pow((endLng - startLng) * 111, 2)
-        )
-
-        const segment = await prisma.roadSegment.create({
-          data: {
-            roadName: road.name,
-            city,
-            direction,
-            startLat,
-            startLng,
-            endLat,
-            endLng,
-            length: Math.round(distance * 10) / 10,
-            freeFlowSpeed: randomInt(60, 80),
-            hasTrafficLight: Math.random() > 0.5,
-          },
-        })
-
-        segments.push(segment)
-      }
+      const segment = await prisma.roadSegment.create({
+        data: {
+          roadName: road.roadName,
+          city,
+          direction: road.direction,
+          startLat: road.startLat,
+          startLng: road.startLng,
+          endLat: road.endLat,
+          endLng: road.endLng,
+          length: road.length,
+          freeFlowSpeed: road.freeFlowSpeed,
+          hasTrafficLight: road.hasTrafficLight,
+        },
+      })
+      segments.push(segment)
+      console.log(`✅ تم إنشاء مقطع: ${road.roadName} - ${city} - ${road.direction}`)
     }
   }
 
-  console.log(`✅ تم إنشاء ${segments.length} مقطع طريق`)
   return segments
 }
 
-// إنشاء بيانات ازدحام واقعية
-async function createTrafficData(segments: any[], days: number = 7) {
-  console.log(`📊 إنشاء بيانات ازدحام لآخر ${days} أيام...`)
+async function generateTrafficData(segments: any[]) {
+  console.log('🚗 إنشاء بيانات المرور...')
   const now = new Date()
   const trafficData = []
 
-  for (let day = 0; day < days; day++) {
-    const date = new Date(now)
-    date.setDate(date.getDate() - day)
+  // إنشاء بيانات للـ 24 ساعة الماضية (كل 15 دقيقة)
+  for (let hoursAgo = 0; hoursAgo < 24; hoursAgo++) {
+    for (let minutesOffset = 0; minutesOffset < 60; minutesOffset += 15) {
+      const timestamp = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000 - minutesOffset * 60 * 1000)
+      const hour = timestamp.getHours()
 
-    for (const segment of segments) {
-      // إنشاء بيانات كل ساعة
-      for (let hour = 0; hour < 24; hour++) {
-        const timestamp = new Date(date)
-        timestamp.setHours(hour, randomInt(0, 59), randomInt(0, 59))
-
-        const congestionIndex = calculateCongestionIndex(hour)
-        const avgSpeed = segment.freeFlowSpeed * (1 - congestionIndex / 100)
-        const density = congestionIndex * 2 + randomInt(10, 50)
-        const deviceCount = Math.max(30, Math.round(density * segment.length))
-        const delayMinutes = (congestionIndex / 100) * (segment.length / avgSpeed) * 60
+      for (const segment of segments) {
+        const congestionIndex = getCongestionIndexByTime(hour)
+        const avgSpeed = getSpeedByCongestion(congestionIndex, segment.freeFlowSpeed)
+        const deviceCount = randomInt(30, 200) // k-anonymity ≥ 30
+        const density = deviceCount / segment.length
+        const delayMinutes = congestionIndex >= 60 ? random(5, 30) : random(0, 5)
+        const movementDirection = random(0, 360)
 
         const data = await prisma.trafficData.create({
           data: {
             segmentId: segment.id,
             timestamp,
             deviceCount,
-            avgSpeed: Math.round(avgSpeed * 10) / 10,
-            density: Math.round(density * 10) / 10,
+            avgSpeed,
+            density,
             congestionIndex,
-            delayMinutes: Math.round(delayMinutes * 10) / 10,
-            movementDirection: randomInt(0, 360),
-            kAnonymity: randomInt(30, 100),
+            delayMinutes,
+            movementDirection,
+            kAnonymity: deviceCount,
             isAnonymized: true,
           },
         })
-
         trafficData.push(data)
       }
     }
   }
 
-  console.log(`✅ تم إنشاء ${trafficData.length} سجل ازدحام`)
+  console.log(`✅ تم إنشاء ${trafficData.length} سجل بيانات مرور`)
   return trafficData
 }
 
-// إنشاء تنبؤات
-async function createPredictions(segments: any[]) {
-  console.log('🔮 إنشاء تنبؤات...')
+async function generatePredictions(segments: any[]) {
+  console.log('🔮 إنشاء التنبؤات...')
   const now = new Date()
   const predictions = []
 
   for (const segment of segments) {
-    // تنبؤات للـ 5، 10، 30، 60 دقيقة القادمة
-    const intervals = [5, 10, 30, 60]
-    
-    for (const minutes of intervals) {
+    // تنبؤات لـ 5، 10، 30، 60 دقيقة قادمة
+    const predictionTimes = [5, 10, 30, 60]
+
+    for (const minutes of predictionTimes) {
       const predictedFor = new Date(now.getTime() + minutes * 60 * 1000)
       const futureHour = predictedFor.getHours()
-      
-      const predictedIndex = calculateCongestionIndex(futureHour)
-      const predictedDelay = (predictedIndex / 100) * (segment.length / segment.freeFlowSpeed) * 60
-      const confidence = 1 - (minutes / 120) // تقل الثقة مع الوقت
+      const predictedIndex = getCongestionIndexByTime(futureHour)
+      const predictedDelayMinutes = predictedIndex >= 60 ? random(5, 25) : random(0, 5)
+      const confidence = random(0.7, 0.95)
+
+      const factors = {
+        historicalPattern: random(0.6, 0.9),
+        currentTraffic: random(0.5, 0.8),
+        timeOfDay: futureHour >= 7 && futureHour <= 9 ? 0.9 : 0.5,
+        dayOfWeek: predictedFor.getDay() < 5 ? 0.8 : 0.6, // أيام العمل
+      }
 
       const prediction = await prisma.prediction.create({
         data: {
@@ -202,19 +327,13 @@ async function createPredictions(segments: any[]) {
           predictedAt: now,
           predictedFor,
           predictedIndex,
-          predictedDelayMinutes: Math.round(predictedDelay * 10) / 10,
-          confidence: Math.round(confidence * 100) / 100,
-          factors: {
-            timeOfDay: futureHour,
-            historicalAverage: predictedIndex,
-            weatherImpact: randomInt(-5, 5),
-            events: [],
-          },
-          modelType: 'temporal',
-          seasonalityFactor: 1.0,
+          predictedDelayMinutes,
+          confidence,
+          factors: factors as any,
+          modelType: minutes <= 10 ? 'temporal' : 'ml',
+          seasonalityFactor: random(0.8, 1.2),
         },
       })
-
       predictions.push(prediction)
     }
   }
@@ -223,147 +342,70 @@ async function createPredictions(segments: any[]) {
   return predictions
 }
 
-// إنشاء تنبيهات
-async function createAlerts(segments: any[]) {
-  console.log('⚠️ إنشاء تنبيهات...')
-  const alerts = []
+async function generateAlerts(segments: any[]) {
+  console.log('⚠️ إنشاء التنبيهات...')
   const now = new Date()
+  const alerts = []
 
   // إنشاء تنبيهات نشطة
-  const activeAlertsCount = randomInt(5, 15)
-  const selectedSegments = segments.sort(() => 0.5 - Math.random()).slice(0, activeAlertsCount)
+  for (let i = 0; i < segments.length * 0.3; i++) {
+    const segment = segments[randomInt(0, segments.length - 1)]
+    const alertType = alertTypes[randomInt(0, alertTypes.length - 1)]
+    const expiresAt = new Date(now.getTime() + randomInt(1, 6) * 60 * 60 * 1000)
 
-  for (const segment of selectedSegments) {
-    const alertType = alertTypes[randomInt(0, alertTypes.length)]
-    const message = alertType.messages[randomInt(0, alertType.messages.length)]
-    
-    const expiresAt = new Date(now)
-    expiresAt.setHours(expiresAt.getHours() + randomInt(1, 6))
+    // مسار بديل مقترح
+    const alternativeRoute = {
+      distance: segment.length * random(1.1, 1.5),
+      duration: random(10, 30),
+      waypoints: [
+        { lat: segment.startLat + random(-0.01, 0.01), lng: segment.startLng + random(-0.01, 0.01) },
+        { lat: segment.endLat + random(-0.01, 0.01), lng: segment.endLng + random(-0.01, 0.01) },
+      ],
+    }
 
     const alert = await prisma.alert.create({
       data: {
         segmentId: segment.id,
         type: alertType.type,
         severity: alertType.severity,
-        message: `${message} على ${segment.roadName}`,
-        alternativeRoute: {
-          distance: segment.length * 1.2,
-          duration: segment.length * 1.3,
-          waypoints: [],
-        },
-        createdAt: new Date(now.getTime() - randomInt(0, 120) * 60 * 1000),
+        message: `${alertType.message} على ${segment.roadName}`,
+        alternativeRoute: alternativeRoute as any,
+        createdAt: new Date(now.getTime() - randomInt(0, 120) * 60 * 1000), // قبل 0-120 دقيقة
         expiresAt,
         isActive: true,
       },
     })
-
     alerts.push(alert)
   }
 
-  console.log(`✅ تم إنشاء ${alerts.length} تنبيه نشط`)
+  console.log(`✅ تم إنشاء ${alerts.length} تنبيه`)
   return alerts
 }
 
-// إنشاء بيانات طقس
-async function createWeatherData() {
-  console.log('🌤️ إنشاء بيانات الطقس...')
-  const cities = [
-    { name: 'الرياض', coords: [24.7136, 46.6753] },
-    { name: 'جدة', coords: [21.4858, 39.1925] },
-    { name: 'الدمام', coords: [26.4207, 50.0888] },
-  ]
-
-  const weatherRecords = []
+async function generateBottlenecks(segments: any[]) {
+  console.log('🔴 إنشاء نقاط الازدحام...')
   const now = new Date()
-
-  for (const city of cities) {
-    const condition = weatherConditions[randomInt(0, weatherConditions.length)]
-    const weather = condition
-
-    const weatherData = await prisma.weatherData.create({
-      data: {
-        lat: city.coords[0],
-        lng: city.coords[1],
-        timestamp: now,
-        temperature: randomInt(weather.temp.min, weather.temp.max),
-        humidity: randomInt(weather.humidity.min, weather.humidity.max),
-        windSpeed: randomInt(weather.windSpeed.min, weather.windSpeed.max),
-        windDirection: randomInt(0, 360),
-        visibility: weather.visibility 
-          ? randomInt(weather.visibility.min, weather.visibility.max)
-          : randomInt(5000, 10000),
-        pressure: randomInt(1000, 1020),
-        precipitation: weather.precipitation 
-          ? randomBetween(weather.precipitation.min, weather.precipitation.max)
-          : 0,
-        rainRate: weather.precipitation 
-          ? randomBetween(weather.precipitation.min, weather.precipitation.max) / 10
-          : 0,
-        snowRate: 0,
-        condition: weather.condition,
-        cloudCover: randomInt(0, 100),
-        alerts: [],
-        forecast: {
-          hourly: Array.from({ length: 24 }, (_, i) => ({
-            time: new Date(now.getTime() + i * 60 * 60 * 1000),
-            temp: randomInt(weather.temp.min, weather.temp.max),
-            condition: weather.condition,
-            precipitation: weather.precipitation ? randomBetween(0, weather.precipitation.max) : 0,
-          })),
-        },
-      },
-    })
-
-    weatherRecords.push(weatherData)
-  }
-
-  console.log(`✅ تم إنشاء ${weatherRecords.length} سجل طقس`)
-  return weatherRecords
-}
-
-// إنشاء نقاط ازدحام (Bottlenecks)
-async function createBottlenecks(segments: any[]) {
-  console.log('🚧 إنشاء نقاط ازدحام...')
   const bottlenecks = []
-  const now = new Date()
 
-  // اختيار مقاطع عشوائية لإنشاء نقاط ازدحام
-  const bottleneckSegments = segments
-    .filter(s => s.congestionIndex > 60)
-    .sort(() => 0.5 - Math.random())
-    .slice(0, randomInt(3, 8))
+  // إنشاء نقاط ازدحام نشطة
+  for (let i = 0; i < segments.length * 0.2; i++) {
+    const segment = segments[randomInt(0, segments.length - 1)]
+    const severity = ['low', 'medium', 'high', 'critical'][randomInt(0, 3)]
+    const speedDrop = severity === 'critical' ? random(60, 80) : severity === 'high' ? random(40, 60) : random(20, 40)
 
-  // الحصول على مقاطع مع ازدحام عالي
-  const highCongestionSegments = await prisma.trafficData.findMany({
-    where: {
-      congestionIndex: { gte: 60 },
-      timestamp: { gte: new Date(now.getTime() - 60 * 60 * 1000) },
-    },
-    include: { segment: true },
-    take: 10,
-  })
-
-  const uniqueSegments = Array.from(
-    new Map(highCongestionSegments.map(d => [d.segmentId, d.segment])).values()
-  )
-
-  for (const segment of uniqueSegments.slice(0, randomInt(3, 8))) {
     const bottleneck = await prisma.bottleneck.create({
       data: {
         segmentId: segment.id,
         detectedAt: new Date(now.getTime() - randomInt(0, 60) * 60 * 1000),
-        originLat: (segment.startLat + segment.endLat) / 2,
-        originLng: (segment.startLng + segment.endLng) / 2,
-        severity: ['low', 'medium', 'high', 'critical'][randomInt(0, 4)],
-        speedDrop: randomInt(30, 70),
-        backwardExtent: randomBetween(0.5, 3.0),
-        isResolved: Math.random() > 0.3,
-        resolvedAt: Math.random() > 0.3 
-          ? new Date(now.getTime() - randomInt(0, 30) * 60 * 1000)
-          : null,
+        originLat: segment.startLat + (segment.endLat - segment.startLat) * random(0.3, 0.7),
+        originLng: segment.startLng + (segment.endLng - segment.startLng) * random(0.3, 0.7),
+        severity,
+        speedDrop,
+        backwardExtent: random(0.5, 3.0),
+        isResolved: Math.random() < 0.3, // 30% تم حلها
+        resolvedAt: Math.random() < 0.3 ? new Date(now.getTime() - randomInt(10, 120) * 60 * 1000) : null,
       },
     })
-
     bottlenecks.push(bottleneck)
   }
 
@@ -371,63 +413,77 @@ async function createBottlenecks(segments: any[]) {
   return bottlenecks
 }
 
-// إنشاء قرارات مرورية
-async function createTrafficDecisions(segments: any[]) {
-  console.log('🎯 إنشاء قرارات مرورية...')
-  const decisions = []
+async function generateWeatherData() {
+  console.log('🌤️ إنشاء بيانات الطقس...')
   const now = new Date()
+  const weatherData = []
 
-  const decisionTypes = ['diversion', 'signal_adjustment', 'intervention']
-  const selectedSegments = segments.sort(() => 0.5 - Math.random()).slice(0, randomInt(2, 5))
+  // إنشاء بيانات طقس للمدن الرئيسية
+  const cities = [
+    { name: 'الرياض', lat: 24.7136, lng: 46.6753 },
+    { name: 'جدة', lat: 21.4858, lng: 39.1925 },
+    { name: 'الدمام', lat: 26.4207, lng: 50.0888 },
+  ]
 
-  for (const segment of selectedSegments) {
-    const decision = await prisma.trafficDecision.create({
+  for (const city of cities) {
+    const weather = weatherConditions[randomInt(0, weatherConditions.length - 1)]
+    const data = await prisma.weatherData.create({
       data: {
-        segmentId: segment.id,
-        decisionType: decisionTypes[randomInt(0, decisionTypes.length)],
-        recommendedAt: new Date(now.getTime() - randomInt(0, 60) * 60 * 1000),
-        implementedAt: Math.random() > 0.5 
-          ? new Date(now.getTime() - randomInt(0, 30) * 60 * 1000)
-          : null,
-        expectedDelayReduction: randomBetween(5, 20),
-        expectedBenefitScore: randomInt(60, 95),
-        affectedSegments: [segment.id],
-        details: {
-          description: `قرار ${decisionTypes[randomInt(0, decisionTypes.length)]} للمقطع ${segment.roadName}`,
-          impact: 'positive',
+        lat: city.lat,
+        lng: city.lng,
+        timestamp: now,
+        temperature: weather.temperature,
+        humidity: weather.humidity,
+        windSpeed: weather.windSpeed,
+        windDirection: random(0, 360),
+        visibility: weather.visibility,
+        pressure: random(1010, 1020),
+        precipitation: weather.precipitation || 0,
+        rainRate: weather.precipitation ? random(1, 5) : 0,
+        snowRate: 0,
+        condition: weather.condition,
+        cloudCover: random(0, 100),
+        alerts: [],
+        forecast: {
+          hourly: Array.from({ length: 24 }, (_, i) => ({
+            time: new Date(now.getTime() + i * 60 * 60 * 1000),
+            temperature: weather.temperature + random(-5, 5),
+            condition: weather.condition,
+            precipitation: random(0, 10),
+          })),
+          daily: Array.from({ length: 7 }, (_, i) => ({
+            date: new Date(now.getTime() + i * 24 * 60 * 60 * 1000),
+            high: weather.temperature + random(0, 5),
+            low: weather.temperature - random(5, 10),
+            condition: weather.condition,
+          })),
         },
-        status: ['pending', 'approved', 'implemented'][randomInt(0, 3)],
       },
     })
-
-    decisions.push(decision)
+    weatherData.push(data)
   }
 
-  console.log(`✅ تم إنشاء ${decisions.length} قرار مروري`)
-  return decisions
+  console.log(`✅ تم إنشاء ${weatherData.length} سجل بيانات طقس`)
+  return weatherData
 }
 
-// إنشاء إحصائيات الاستخدام
-async function createUsageStats() {
-  console.log('📈 إنشاء إحصائيات الاستخدام...')
-  const stats = []
+async function generateUsageStats() {
+  console.log('📊 إنشاء الإحصائيات...')
   const now = new Date()
+  const stats = []
 
-  for (let day = 0; day < 30; day++) {
-    const date = new Date(now)
-    date.setDate(date.getDate() - day)
-    date.setHours(0, 0, 0, 0)
-
+  // إنشاء إحصائيات للـ 30 يوم الماضية
+  for (let daysAgo = 0; daysAgo < 30; daysAgo++) {
+    const date = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
     const stat = await prisma.usageStats.create({
       data: {
         date,
         totalUsers: randomInt(1000, 5000),
         activeAlerts: randomInt(10, 50),
         routesSuggested: randomInt(500, 2000),
-        avgResponseTime: randomBetween(0.5, 2.0),
+        avgResponseTime: random(0.5, 2.0),
       },
     })
-
     stats.push(stat)
   }
 
@@ -435,36 +491,187 @@ async function createUsageStats() {
   return stats
 }
 
-// الدالة الرئيسية
+async function generateTrafficDecisions(segments: any[]) {
+  console.log('🎯 إنشاء القرارات المرورية...')
+  const now = new Date()
+  const decisions = []
+
+  const decisionTypes = ['diversion', 'signal_adjustment', 'intervention']
+  const statuses = ['pending', 'approved', 'implemented', 'rejected']
+
+  for (let i = 0; i < segments.length * 0.15; i++) {
+    const segment = segments[randomInt(0, segments.length - 1)]
+    const decisionType = decisionTypes[randomInt(0, decisionTypes.length - 1)]
+    const status = statuses[randomInt(0, statuses.length - 1)]
+
+    const decision = await prisma.trafficDecision.create({
+      data: {
+        segmentId: segment.id,
+        decisionType,
+        recommendedAt: new Date(now.getTime() - randomInt(0, 48) * 60 * 60 * 1000),
+        implementedAt: status === 'implemented' ? new Date(now.getTime() - randomInt(0, 24) * 60 * 60 * 1000) : null,
+        expectedDelayReduction: random(5, 20),
+        expectedBenefitScore: random(60, 95),
+        affectedSegments: [segment.id],
+        details: {
+          reason: 'ازدحام مروري شديد',
+          action: decisionType === 'diversion' ? 'تحويل المرور' : 'تعديل الإشارات',
+          priority: 'high',
+        },
+        status,
+      },
+    })
+    decisions.push(decision)
+  }
+
+  console.log(`✅ تم إنشاء ${decisions.length} قرار مروري`)
+  return decisions
+}
+
+async function generateSignalRecommendations(segments: any[]) {
+  console.log('🚦 إنشاء توصيات الإشارات...')
+  const now = new Date()
+  const recommendations = []
+
+  const priorities = ['normal', 'high', 'emergency']
+
+  for (const segment of segments.filter(s => s.hasTrafficLight)) {
+    if (Math.random() < 0.4) {
+      // 40% من الإشارات لديها توصيات
+      const recommendation = await prisma.signalRecommendation.create({
+        data: {
+          segmentId: segment.id,
+          signalId: `signal-${segment.id}`,
+          recommendedAt: new Date(now.getTime() - randomInt(0, 24) * 60 * 60 * 1000),
+          greenTimeSeconds: randomInt(30, 60),
+          cycleTimeSeconds: randomInt(90, 180),
+          priority: priorities[randomInt(0, priorities.length - 1)],
+          expectedImpact: {
+            delayReduction: random(5, 15),
+            throughputIncrease: random(10, 30),
+          },
+          implemented: Math.random() < 0.5,
+          implementedAt: Math.random() < 0.5 ? new Date(now.getTime() - randomInt(0, 12) * 60 * 60 * 1000) : null,
+        },
+      })
+      recommendations.push(recommendation)
+    }
+  }
+
+  console.log(`✅ تم إنشاء ${recommendations.length} توصية إشارة`)
+  return recommendations
+}
+
+async function generateKPIs() {
+  console.log('📈 إنشاء مؤشرات الأداء...')
+  const now = new Date()
+  const kpis = []
+
+  const kpiTypes = ['prediction_accuracy', 'response_time', 'decision_effectiveness', 'privacy_compliance', 'system_uptime']
+
+  // إنشاء KPIs للـ 7 أيام الماضية
+  for (let daysAgo = 0; daysAgo < 7; daysAgo++) {
+    const date = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
+
+    for (const kpiType of kpiTypes) {
+      let value = 0
+      switch (kpiType) {
+        case 'prediction_accuracy':
+          value = random(75, 95)
+          break
+        case 'response_time':
+          value = random(0.5, 2.0)
+          break
+        case 'decision_effectiveness':
+          value = random(70, 90)
+          break
+        case 'privacy_compliance':
+          value = random(95, 100)
+          break
+        case 'system_uptime':
+          value = random(98, 100)
+          break
+      }
+
+      const kpi = await prisma.kPI.create({
+        data: {
+          date,
+          kpiType,
+          predictionAccuracy: kpiType === 'prediction_accuracy' ? value : random(75, 95),
+          responseTime: kpiType === 'response_time' ? value : random(0.5, 2.0),
+          decisionEffectiveness: kpiType === 'decision_effectiveness' ? value : random(70, 90),
+          privacyCompliance: kpiType === 'privacy_compliance' ? value : random(95, 100),
+          systemUptime: kpiType === 'system_uptime' ? value : random(98, 100),
+          details: {
+            notes: 'أداء جيد',
+            improvements: [],
+          },
+        },
+      })
+      kpis.push(kpi)
+    }
+  }
+
+  console.log(`✅ تم إنشاء ${kpis.length} مؤشر أداء`)
+  return kpis
+}
+
 async function main() {
   try {
-    console.log('🚀 بدء إنشاء البيانات الواقعية...\n')
+    console.log('🚀 بدء إنشاء البيانات الوهمية الواقعية...\n')
 
-    // إنشاء مقاطع الطرق
-    const segments = await createRoadSegments()
-    
-    // إنشاء بيانات الازدحام
-    await createTrafficData(segments, 7)
-    
-    // إنشاء التنبؤات
-    await createPredictions(segments)
-    
-    // إنشاء التنبيهات
-    await createAlerts(segments)
-    
-    // إنشاء بيانات الطقس
-    await createWeatherData()
-    
-    // إنشاء نقاط الازدحام
-    await createBottlenecks(segments)
-    
-    // إنشاء القرارات المرورية
-    await createTrafficDecisions(segments)
-    
-    // إنشاء إحصائيات الاستخدام
-    await createUsageStats()
+    // 1. إنشاء مقاطع الطرق
+    const segments = await generateRoadSegments()
+    console.log(`\n✅ تم إنشاء ${segments.length} مقطع طريق\n`)
 
-    console.log('\n✅ تم إنشاء جميع البيانات بنجاح!')
+    // 2. إنشاء بيانات المرور
+    await generateTrafficData(segments)
+    console.log('')
+
+    // 3. إنشاء التنبؤات
+    await generatePredictions(segments)
+    console.log('')
+
+    // 4. إنشاء التنبيهات
+    await generateAlerts(segments)
+    console.log('')
+
+    // 5. إنشاء نقاط الازدحام
+    await generateBottlenecks(segments)
+    console.log('')
+
+    // 6. إنشاء بيانات الطقس
+    await generateWeatherData()
+    console.log('')
+
+    // 7. إنشاء الإحصائيات
+    await generateUsageStats()
+    console.log('')
+
+    // 8. إنشاء القرارات المرورية
+    await generateTrafficDecisions(segments)
+    console.log('')
+
+    // 9. إنشاء توصيات الإشارات
+    await generateSignalRecommendations(segments)
+    console.log('')
+
+    // 10. إنشاء مؤشرات الأداء
+    await generateKPIs()
+    console.log('')
+
+    console.log('✅ تم إنشاء جميع البيانات الوهمية بنجاح!')
+    console.log('\n📊 ملخص البيانات:')
+    console.log(`   - مقاطع الطرق: ${segments.length}`)
+    console.log(`   - بيانات المرور: ~${segments.length * 96} سجل`)
+    console.log(`   - التنبؤات: ~${segments.length * 4} تنبؤ`)
+    console.log(`   - التنبيهات: ~${Math.floor(segments.length * 0.3)} تنبيه`)
+    console.log(`   - نقاط الازدحام: ~${Math.floor(segments.length * 0.2)} نقطة`)
+    console.log(`   - بيانات الطقس: 3 سجلات`)
+    console.log(`   - الإحصائيات: 30 سجل`)
+    console.log(`   - القرارات المرورية: ~${Math.floor(segments.length * 0.15)} قرار`)
+    console.log(`   - توصيات الإشارات: ~${Math.floor(segments.filter(s => s.hasTrafficLight).length * 0.4)} توصية`)
+    console.log(`   - مؤشرات الأداء: 35 مؤشر`)
   } catch (error) {
     console.error('❌ خطأ في إنشاء البيانات:', error)
     throw error
@@ -473,14 +680,9 @@ async function main() {
   }
 }
 
-// تشغيل السكريبت
-if (require.main === module) {
-  main()
-    .catch((error) => {
-      console.error(error)
-      process.exit(1)
-    })
-}
-
-export default main
+main()
+  .catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
 
